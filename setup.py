@@ -3,12 +3,9 @@
 import os
 import platform
 import subprocess
-from setuptools import Extension, setup#
+from setuptools import Extension, setup
 
-try:
-    from Cython.Build import cythonize
-except ImportError:
-    cythonize = None
+from Cython.Build import cythonize
 
 # -----------------------------------------------------------------------------
 # constants
@@ -35,7 +32,7 @@ EXTRA_OBJECTS = []
 EXTRA_LINK_ARGS = []
 LIBRARIES = ["pthread"]
 EXTRA_COMPILE_ARGS = ['-std=c++14']
-DEFINE_MACROS = []
+# DEFINE_MACROS = [("Py_LIMITED_API", 1)] # <- doesn't work yet
 
 if WITH_DYLIB:
     LIBRARIES.extend([
@@ -66,16 +63,6 @@ if PLATFORM == 'Darwin':
 
 if PLATFORM == 'Linux':
     EXTRA_LINK_ARGS.append('-fopenmp')
-
-# extensions = [
-#     Extension("cypack.utils", ["src/cypack/utils.pyx"]),
-#     Extension("cypack.answer", ["src/cypack/answer.pyx"]),
-#     Extension("cypack.fibonacci", ["src/cypack/fibonacci.pyx"]),
-#     Extension(
-#         "cypack.sub.wrong",
-#         ["src/cypack/sub/wrong.pyx", "src/cypack/sub/helper.c"]
-#     ),
-# ]
 
 
 def mk_extension(name, sources, define_macros=None):
@@ -108,19 +95,16 @@ common = {
 # forces cythonize in this case
 subprocess.call("cythonize *.pyx", cwd="src/cyllama", shell=True)
 
-with open("MANIFEST.in", "w") as f:
-    f.write("exclude src/cyllama/*.pxd\n")
-    f.write("exclude src/cyllama/*.pyx\n")
-    f.write("exclude src/cyllama/*.cpp\n")
-    f.write("exclude src/cyllama/*.h\n")
-    f.write("exclude src/cyllama/py.typed\n")
+if not os.path.exists('MANIFEST.in'):
+    with open("MANIFEST.in", "w") as f:
+        f.write("exclude src/cyllama/*.pxd\n")
+        f.write("exclude src/cyllama/*.pyx\n")
+        f.write("exclude src/cyllama/*.cpp\n")
+        f.write("exclude src/cyllama/*.h\n")
+        f.write("exclude src/cyllama/py.typed\n")
 
 extensions = [
-    mk_extension(
-        "cyllama.core",
-        sources=["src/cyllama/core.pyx"],
-        define_macros=DEFINE_MACROS,
-    ),
+    mk_extension("cyllama.core", sources=["src/cyllama/core.pyx"]),
 ]
 
 setup(

@@ -6,9 +6,12 @@ readme = "README.md"
 authors = [
     { name = "Shakeeb Alireza", email = "me@example.org" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.8"
 dependencies = ["numpy >= 2"]
 
 [build-system]
 requires = ["setuptools >= 61", "cython"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = false
