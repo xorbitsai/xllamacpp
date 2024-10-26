@@ -1,3 +1,9 @@
+.DS_Store
+src/cyllama/core.cpp
+bin/
+models/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

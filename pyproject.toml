@@ -1,0 +1,14 @@
+[project]
+name = "cyllama"
+version = "0.1.0"
+description = "A cython wrapper of llama.cpp"
+readme = "README.md"
+authors = [
+    { name = "Shakeeb Alireza", email = "me@example.org" }
+]
+requires-python = ">=3.13"
+dependencies = ["numpy >= 2"]
+
+[build-system]
+requires = ["setuptools >= 61", "cython"]
+build-backend = "setuptools.build_meta"
