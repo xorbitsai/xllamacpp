@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path.cwd()
-sys.path.insert(0, str(ROOT / 'build'))
+sys.path.insert(0, str(ROOT / 'src'))
 
 from cyllama import Llama
 
