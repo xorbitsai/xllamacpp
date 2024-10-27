@@ -1,9 +1,15 @@
 # set path so `llama-cli` etc.. be in path
 export PATH := $(PWD)/bin:$(PATH)
 
+
 THIRDPARTY := $(PWD)/thirdparty
 LLAMACPP := $(THIRDPARTY)/llama.cpp
-LIBLAMMA := $(LLAMACPP)/lib/libllama.a
+
+ifeq ($(WITH_DYLIB),1)
+	LIBLAMMA := $(LLAMACPP)/lib/libllama.dylib
+else
+	LIBLAMMA := $(LLAMACPP)/lib/libllama.a	
+endif
 
 MODEL := models/gemma-2-9b-it-IQ4_XS.gguf
 # MODEL := models/mistral-7b-instruct-v0.1.Q4_K_M.gguf

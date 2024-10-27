@@ -16,7 +16,7 @@ VERSION = '0.0.1'
 
 PLATFORM = platform.system()
 
-WITH_DYLIB = os.getenv("WITH_DYLIB", False)
+WITH_DYLIB = os.getenv("WITH_DYLIB", True)
 
 LLAMACPP_INCLUDE = os.path.join(CWD, "thirdparty/llama.cpp/include")
 LLAMACPP_LIBS_DIR = os.path.join(CWD, "thirdparty/llama.cpp/lib")
@@ -35,6 +35,7 @@ EXTRA_COMPILE_ARGS = ['-std=c++14']
 # DEFINE_MACROS = [("Py_LIMITED_API", 1)] # <- doesn't work yet
 
 if WITH_DYLIB:
+    EXTRA_OBJECTS.append(f'{LLAMACPP_LIBS_DIR}/libcommon.a')
     LIBRARIES.extend([
         'common',
         'ggml',
@@ -46,7 +47,6 @@ else:
         f'{LLAMACPP_LIBS_DIR}/libllama.a', 
         f'{LLAMACPP_LIBS_DIR}/libggml.a',
     ])
-
 
 INCLUDE_DIRS.append(os.path.join(CWD, 'include'))
 

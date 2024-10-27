@@ -30,6 +30,32 @@ get_llamacpp() {
 		cd ${CWD}
 }
 
+get_llamacpp_shared() {
+	# should be run after `get_llamacpp`
+	echo "install shared libs from llama.cpp"
+	PREFIX=${THIRDPARTY}/llama.cpp
+	INCLUDE=${PREFIX}/include
+	LIB=${PREFIX}/lib
+	mkdir -p build ${INCLUDE} && \
+		cd build && \
+		if [ ! -d "llama.cpp" ]; then
+			git clone --depth 1 --recursive https://github.com/ggerganov/llama.cpp.git
+		fi && \
+		cd llama.cpp && \
+		cp common/*.h ${INCLUDE} && \
+		cp common/*.hpp ${INCLUDE} && \
+		cp examples/llava/*.h ${INCLUDE} && \
+		mkdir -p build && \
+		cd build && \
+		cmake .. -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON && \
+		cmake --build . --config Release && \
+		cmake --install . --prefix ${PREFIX} && \
+		cp common/libcommon.a ${LIB} && \
+		cp examples/llava/libllava_shared.dylib ${LIB}/libllava_shared.dylib && \
+		mv ${PREFIX}/bin ${CWD}/bin && \
+		cd ${CWD}	
+}
+
 get_whispercpp() {
 	echo "update from whisper.cpp main repo"
 	PREFIX=${THIRDPARTY}/whisper.cpp
@@ -102,6 +128,7 @@ remove_current() {
 main() {
 	remove_current
 	get_llamacpp
+	# get_llamacpp_shared
 	get_llamacpp_python
 	# get_whispercpp
 	# get_stablediffusioncpp
