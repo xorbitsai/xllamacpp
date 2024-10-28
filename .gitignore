@@ -2,6 +2,7 @@
 src/cyllama/core.cpp
 bin/
 models/
+#thirdparty/llama-cpp-python
 
 
 # Byte-compiled / optimized / DLL files
