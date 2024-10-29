@@ -3,6 +3,7 @@
 cyllama: a thin cython wrapper of llama.cpp
 
 classes:
+    LlamaLogitBias
     LlamaTokenData
     LlamaTokenDataArray
     LoraAdapter
@@ -33,7 +34,7 @@ cimport llama_cpp
 # import numpy as np
 
 import os
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Callable
 
 
 
@@ -147,6 +148,17 @@ cpdef enum llama_split_mode:
     LLAMA_SPLIT_MODE_NONE  = 0
     LLAMA_SPLIT_MODE_LAYER = 1
     LLAMA_SPLIT_MODE_ROW   = 2
+
+cpdef enum common_sampler_type:
+    COMMON_SAMPLER_TYPE_NONE        = 1
+    COMMON_SAMPLER_TYPE_TOP_K       = 2
+    COMMON_SAMPLER_TYPE_TOP_P       = 3
+    COMMON_SAMPLER_TYPE_MIN_P       = 4
+    # COMMON_SAMPLER_TYPE_TFS_Z     = 5
+    COMMON_SAMPLER_TYPE_TYPICAL_P   = 6
+    COMMON_SAMPLER_TYPE_TEMPERATURE = 7
+    COMMON_SAMPLER_TYPE_XTC         = 8
+    COMMON_SAMPLER_TYPE_INFILL      = 9
 
 # callbacks
 # -----------------------------------------------------------------------------
@@ -278,6 +290,53 @@ def ask(str prompt, str model, n_predict=512, n_ctx=2048, disable_log=True, n_th
     #     self.candidates_data.p[:] = self.default_candidates_data_p
     #     self.candidates.sorted = False
     #     self.candidates.size = self.n_vocab
+
+cdef class LlamaLogitBias:
+    cdef llama_cpp.llama_logit_bias * ptr
+    cdef bint owner
+
+    def __cinit__(self):
+        self.ptr = NULL
+        self.owner = True
+
+    def __init__(self, int token, float bias):
+        self.ptr = <llama_cpp.llama_logit_bias *>malloc(sizeof(llama_cpp.llama_logit_bias))
+        if self.ptr is NULL:
+            raise MemoryError
+        self.owner = True
+        self.ptr.token = token
+        self.ptr.bias = bias
+
+    def __dealloc__(self):
+        # De-allocate if not null and flag is set
+        if self.ptr is not NULL and self.ptr_owner is True:
+            free(self.ptr)
+            self.ptr = NULL
+
+    @staticmethod
+    cdef LlamaLogitBias from_ptr(llama_cpp.llama_logit_bias *ptr, bint owner=False):
+        cdef LlamaLogitBias wrapper = LlamaLogitBias.__new__(LlamaLogitBias)
+        wrapper.ptr = ptr
+        wrapper.ptr_owner = owner
+        return wrapper
+
+    @property
+    def token(self) -> int:
+        """token token"""
+        return self.ptr.token
+
+    @token.setter
+    def token(self, int value):
+        self.ptr.token = value
+
+    @property
+    def bias(self) -> float:
+        """bias"""
+        return self.ptr.bias
+
+    @bias.setter
+    def bias(self, float value):
+        self.ptr.bias = value
 
 
 cdef class LlamaTokenData:
@@ -582,11 +641,6 @@ cdef class LlamaSampler:
         llama_cpp.llama_sampler_chain_add(
             self.ptr, llama_cpp.llama_sampler_init_min_p(p, min_keep))
 
-    def add_tail_free(self, float z, size_t min_keep):
-        """Tail Free Sampling described in https:#www.trentonbricken.com/Tail-Free-Sampling/."""
-        llama_cpp.llama_sampler_chain_add(
-            self.ptr, llama_cpp.llama_sampler_init_tail_free(z, min_keep))
-
     def add_typical(self, float p, size_t min_keep):
         """Locally Typical Sampling implementation described in the paper https:#arxiv.org/abs/2202.00666."""
         llama_cpp.llama_sampler_chain_add(
@@ -802,14 +856,14 @@ cdef class CommonSamplerParams:
     def xtc_threshold(self, float value):
         self.p.xtc_threshold = value
 
-    @property
-    def tfs_z(self) -> int:
-        """1.0 = disabled"""
-        return self.p.tfs_z
+    # @property
+    # def tfs_z(self) -> int:
+    #     """1.0 = disabled"""
+    #     return self.p.tfs_z
 
-    @tfs_z.setter
-    def tfs_z(self, float value):
-        self.p.tfs_z = value
+    # @tfs_z.setter
+    # def tfs_z(self, float value):
+    #     self.p.tfs_z = value
 
     @property
     def typ_p(self) -> int:
@@ -950,16 +1004,22 @@ cdef class CommonSamplerParams:
         self.p.grammar = value
 
     @property
-    def logit_bias(self) -> list[llama_logit_bias]:
+    def logit_bias(self) -> list[LlamaLogitBias]:
         """logit biases to apply
         
         std_vector[llama_logit_bias] logit_bias
         """
-        return self.p.logit_bias
+        result = []
+        for i in range(self.p.logit_bias.size()):
+            result.append(LlamaLogitBias.from_ptr(&self.p.logit_bias[i]))
+        return result
 
     @logit_bias.setter
-    def logit_bias(self, value: list[llama_logit_bias]):
-        self.p.logit_bias = value
+    def logit_bias(self, elems: list[LlamaLogitBias]):
+        cdef vector[llama_cpp.llama_logit_bias] vec
+        for elem in elems:
+            vec.push_back(elem.ptr[0])
+        self.p.logit_bias = vec
 
     # # print the parameters into a string
     # # std_string print() const
@@ -2339,7 +2399,7 @@ cdef class ModelParams:
     #     self.p.rpc_servers = value
 
     @property
-    def progress_callback(self) -> py_progress_callback:
+    def progress_callback(self) -> Callable[[float], bool]:
         """get/set python callback to indicate progress in processing model."""
         return <object>self.p.progress_callback_user_data
 

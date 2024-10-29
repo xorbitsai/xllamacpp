@@ -26,8 +26,9 @@ $(LIBLAMMA):
 	@scripts/setup.sh
 
 build: $(LIBLAMMA)
+	@rm -rf build
 	@python3 setup.py build_ext --inplace
-	#@rm -rf build
+	@rm -rf build
 
 wheel:
 	@echo "WITH_DYLIB=$(WITH_DYLIB)"

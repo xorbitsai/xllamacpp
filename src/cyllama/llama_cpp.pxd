@@ -10,10 +10,12 @@ from libcpp.set cimport set as std_set
 
 cdef extern from "ggml.h":
 
+    # constants
     DEF GGML_MAX_DIMS = 4
     DEF GGML_MAX_NAME = 64
     DEF GGML_MAX_OP_PARAMS = 64
     DEF GGML_MAX_SRC = 10
+    DEF GGML_MAX_N_THREADS = 16
 
     cdef enum ggml_log_level:
         GGML_LOG_LEVEL_NONE  = 0
@@ -1149,9 +1151,6 @@ cdef extern from "llama.h":
     # @details Minimum P sampling as described in https:#github.com/ggerganov/llama.cpp/pull/3841
     cdef llama_sampler * llama_sampler_init_min_p (float p, size_t min_keep)
 
-    # @details Tail Free Sampling described in https:#www.trentonbricken.com/Tail-Free-Sampling/.
-    cdef llama_sampler * llama_sampler_init_tail_free (float z, size_t min_keep)
-
     # @details Locally Typical Sampling implementation described in the paper https:#arxiv.org/abs/2202.00666.
     cdef llama_sampler * llama_sampler_init_typical (float p, size_t min_keep)
 
@@ -1329,8 +1328,6 @@ cdef extern from "common.h":
     # -------------------------------------------------------------------------
     # CPU utils
 
-    DEF GGML_MAX_N_THREADS = 512
-
     ctypedef struct cpu_params:
         int      n_threads
         bint     cpumask[GGML_MAX_N_THREADS] # CPU affinity mask.
@@ -1364,15 +1361,15 @@ cdef extern from "common.h":
         LLAMA_EXAMPLE_COUNT
 
     cdef enum common_sampler_type:
-        COMMON_SAMPLER_TYPE_NONE
-        COMMON_SAMPLER_TYPE_TOP_K
-        COMMON_SAMPLER_TYPE_TOP_P
-        COMMON_SAMPLER_TYPE_MIN_P
-        COMMON_SAMPLER_TYPE_TFS_Z
-        COMMON_SAMPLER_TYPE_TYPICAL_P
-        COMMON_SAMPLER_TYPE_TEMPERATURE
-        COMMON_SAMPLER_TYPE_XTC
-        COMMON_SAMPLER_TYPE_INFILL
+        COMMON_SAMPLER_TYPE_NONE        = 1
+        COMMON_SAMPLER_TYPE_TOP_K       = 2
+        COMMON_SAMPLER_TYPE_TOP_P       = 3
+        COMMON_SAMPLER_TYPE_MIN_P       = 4
+        # COMMON_SAMPLER_TYPE_TFS_Z     = 5
+        COMMON_SAMPLER_TYPE_TYPICAL_P   = 6
+        COMMON_SAMPLER_TYPE_TEMPERATURE = 7
+        COMMON_SAMPLER_TYPE_XTC         = 8
+        COMMON_SAMPLER_TYPE_INFILL      = 9
 
     # dimensionality reduction methods, used by cvector-generator
     cdef enum dimre_method:
@@ -1391,7 +1388,7 @@ cdef extern from "common.h":
         float   min_p                  # 0.0 = disabled
         float   xtc_probability        # 0.0 = disabled
         float   xtc_threshold          # > 0.5 disables XTC
-        float   tfs_z                  # 1.0 = disabled
+        # float   tfs_z                  # 1.0 = disabled
         float   typ_p                  # typical_p, 1.0 = disabled
         float   temp                   # <= 0.0 to sample greedily, 0.0 to not output probabilities
         float   dynatemp_range         # 0.0 = disabled
@@ -1829,12 +1826,14 @@ cdef extern from "arg.h":
         std_vector[common_arg] options
         void(*print_usage)(int, char **)
 
+    ctypedef void(*print_usage)(int, char **)
+
     # parse input arguments from CLI
     # if one argument has invalid value, it will automatically display usage of the specific argument (and not the full usage message)
-    cdef bint common_params_parse(int argc, char ** argv, common_params & params, llama_example ex, void(*print_usage)(int, char **))
+    cdef bint common_params_parse(int argc, char ** argv, common_params & params, llama_example ex, print_usage callback)
 
     # function to be used by test-arg-parser
-    cdef common_params_context common_params_parser_init(common_params & params, llama_example ex, void(*print_usage)(int, char **))    
+    cdef common_params_context common_params_parser_init(common_params & params, llama_example ex, print_usage callback)    
 
 #------------------------------------------------------------------------------
 cdef extern from "clip.h":

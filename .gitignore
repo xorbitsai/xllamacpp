@@ -1,9 +1,11 @@
 .DS_Store
-src/cyllama/core.cpp
+src/cyllama/cyllama.cpp
 bin/
 models/
 thirdparty/llama-cpp-python
 
+# editor
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
