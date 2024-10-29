@@ -26,9 +26,9 @@ $(LIBLAMMA):
 	@scripts/setup.sh
 
 build: $(LIBLAMMA)
-	@rm -rf build
+	@rm -rf build src/cyllama/cyllama.cpp
 	@python3 setup.py build_ext --inplace
-	@rm -rf build
+	@rm -rf build src/cyllama/cyllama.cpp
 
 wheel:
 	@echo "WITH_DYLIB=$(WITH_DYLIB)"
