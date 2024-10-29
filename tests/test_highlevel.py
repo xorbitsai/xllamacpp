@@ -3,7 +3,7 @@ from pathlib import Path
 ROOT = Path.cwd()
 sys.path.insert(0, str(ROOT / 'src'))
 
-from cyllama.core import ask
+from cyllama.cyllama import ask
 
 
 def test_ask(model_path):

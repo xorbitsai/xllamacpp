@@ -5,7 +5,7 @@ sys.path.insert(0, str(ROOT / 'src'))
 
 MODEL = ROOT / 'models' / 'Llama-3.2-1B-Instruct-Q8_0.gguf'
 
-import cyllama.core as cy
+import cyllama.cyllama as cy
 
 params = cy.CommonParams()
 params.model = str(MODEL)

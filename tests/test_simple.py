@@ -3,7 +3,7 @@ from pathlib import Path
 ROOT = Path.cwd()
 sys.path.insert(0, str(ROOT / 'src'))
 
-import cyllama.core as cy
+import cyllama.cyllama as cy
 
 def test_cy_highlevel_simple(model_path):
     cy.ask("When did the universe begin?", model=model_path)

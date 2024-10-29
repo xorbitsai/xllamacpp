@@ -5,7 +5,7 @@ sys.path.insert(0, str(ROOT / 'src'))
 
 MODEL = ROOT / 'models' / 'Llama-3.2-1B-Instruct-Q8_0.gguf'
 
-from cyllama.core import ask
+from cyllama.cyllama import ask
 
 
 if __name__ == '__main__':

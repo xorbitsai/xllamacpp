@@ -104,7 +104,7 @@ if not os.path.exists('MANIFEST.in'):
         f.write("exclude src/cyllama/py.typed\n")
 
 extensions = [
-    mk_extension("cyllama.core", sources=["src/cyllama/core.pyx"]),
+    mk_extension("cyllama.cyllama", sources=["src/cyllama/cyllama.pyx"]),
 ]
 
 setup(
