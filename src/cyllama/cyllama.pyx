@@ -2358,12 +2358,7 @@ cdef class ModelParams:
 
     @property
     def main_gpu(self) -> int:
-        """main_gpu interpretation depends on split_mode:
-
-        LLAMA_SPLIT_NONE: the GPU that is used for the entire model
-        LLAMA_SPLIT_ROW: the GPU that is used for small tensors and intermediate results
-        LLAMA_SPLIT_LAYER: ignored
-        """
+        """The GPU that is used for the entire model when split_mode is LLAMA_SPLIT_MODE_NONE"""
         return self.p.main_gpu
 
     @main_gpu.setter
@@ -2372,7 +2367,7 @@ cdef class ModelParams:
 
     @property
     def tensor_split(self) -> list[float]:
-        """how split tensors should be distributed across GPUs"""
+        """Proportion of the model (layers or rows) to offload to each GPU, size: llama_max_devices()"""
         cdef size_t length = sizeof(self.p.tensor_split)
         results = []
         for i in range(length):
@@ -2381,13 +2376,13 @@ cdef class ModelParams:
 
     # @tensor_split.setter
     # def tensor_split(self, value: list[float]):
-    #     assert len(value) == 128
-    #     for i in range(128):
+    #     cdef size_t size = llama_cpp.llama_max_devices()
+    #     for i in range(size):
     #         self.p.tensor_split[i] = value[i]
 
     @property
     def rpc_servers(self) -> list[str]:
-        """List separated list of RPC servers"""
+        """Comma separated list of RPC servers"""
         cdef size_t length = sizeof(self.p.rpc_servers)
         results = []
         for i in range(length):
@@ -2400,7 +2395,13 @@ cdef class ModelParams:
 
     @property
     def progress_callback(self) -> Callable[[float], bool]:
-        """get/set python callback to indicate progress in processing model."""
+        """Called with a progress value between 0.0 and 1.0. Pass NULL to disable.
+        
+        If the provided progress_callback returns true, model loading continues.
+        If it returns false, model loading is immediately aborted.
+
+        progress_callback_user_data is context pointer passed to the progress callback
+        """
         return <object>self.p.progress_callback_user_data
 
     @progress_callback.setter
@@ -2409,7 +2410,7 @@ cdef class ModelParams:
 
     # @property
     # def kv_overrides(self) -> list[str]:
-    #     """set llama model kv overrides
+    #     """override key-value pairs of the model meta data
         
     #     const llama_model_kv_override * kv_overrides
     #     """

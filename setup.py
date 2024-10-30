@@ -16,11 +16,15 @@ VERSION = '0.0.1'
 
 PLATFORM = platform.system()
 
-WITH_DYLIB = os.getenv("WITH_DYLIB", True)
+WITH_DYLIB = os.getenv("WITH_DYLIB", False)
 
 LLAMACPP_INCLUDE = os.path.join(CWD, "thirdparty/llama.cpp/include")
 LLAMACPP_LIBS_DIR = os.path.join(CWD, "thirdparty/llama.cpp/lib")
 
+DEFINE_MACROS = []
+EXTRA_COMPILE_ARGS = ['-std=c++14']
+EXTRA_LINK_ARGS = []
+EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
     "src/cyllama",
     LLAMACPP_INCLUDE,
@@ -28,11 +32,8 @@ INCLUDE_DIRS = [
 LIBRARY_DIRS = [
     LLAMACPP_LIBS_DIR,
 ]
-EXTRA_OBJECTS = []
-EXTRA_LINK_ARGS = []
 LIBRARIES = ["pthread"]
-EXTRA_COMPILE_ARGS = ['-std=c++14']
-# DEFINE_MACROS = [("Py_LIMITED_API", 1)] # <- doesn't work yet
+
 
 if WITH_DYLIB:
     EXTRA_OBJECTS.append(f'{LLAMACPP_LIBS_DIR}/libcommon.a')
@@ -53,7 +54,7 @@ INCLUDE_DIRS.append(os.path.join(CWD, 'include'))
 if PLATFORM == 'Darwin':
     EXTRA_LINK_ARGS.append('-mmacosx-version-min=14.7')
     # add local rpath
-    EXTRA_LINK_ARGS.append('-Wl,-rpath,'+LLAMACPP_LIBS_DIR)
+    EXTRA_LINK_ARGS.append('-Wl,-rpath,' + LLAMACPP_LIBS_DIR)
     os.environ['LDFLAGS'] = ' '.join([
         '-framework Accelerate',
         '-framework Foundation',

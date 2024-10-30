@@ -11,11 +11,12 @@ from libcpp.set cimport set as std_set
 cdef extern from "ggml.h":
 
     # constants
-    DEF GGML_MAX_DIMS = 4
-    DEF GGML_MAX_NAME = 64
-    DEF GGML_MAX_OP_PARAMS = 64
-    DEF GGML_MAX_SRC = 10
-    DEF GGML_MAX_N_THREADS = 16
+    cpdef enum:
+        GGML_MAX_DIMS = 4
+        GGML_MAX_N_THREADS = 16
+        GGML_MAX_NAME = 64
+        GGML_MAX_OP_PARAMS = 64
+        GGML_MAX_SRC = 10
 
     cdef enum ggml_log_level:
         GGML_LOG_LEVEL_NONE  = 0
@@ -368,9 +369,9 @@ cdef extern from "llama.h":
         LLAMA_ATTENTION_TYPE_NON_CAUSAL  = 1
 
     cdef enum llama_split_mode:
-        LLAMA_SPLIT_MODE_NONE  = 0
-        LLAMA_SPLIT_MODE_LAYER = 1
-        LLAMA_SPLIT_MODE_ROW   = 2
+        LLAMA_SPLIT_MODE_NONE  = 0 # single GPU
+        LLAMA_SPLIT_MODE_LAYER = 1 # split layers and KV across GPUs
+        LLAMA_SPLIT_MODE_ROW   = 2 # split layers and KV across GPUs, use tensor parallelism if supported
 
     ctypedef struct llama_token_data:
         llama_token id
@@ -411,11 +412,14 @@ cdef extern from "llama.h":
         char    val_str[128]
 
     ctypedef struct llama_model_params:
-        int32_t n_gpu_layers
-        llama_split_mode split_mode
-        int32_t main_gpu
-        const float * tensor_split
-        const char * rpc_servers
+        int32_t n_gpu_layers           # number of layers to store in VRAM
+        llama_split_mode split_mode    # how to split the model across multiple GPUs
+        int32_t main_gpu               # the GPU that is used for the entire model when split_mode is LLAMA_SPLIT_MODE_NONE
+        const float * tensor_split     # proportion of the model (layers or rows) to offload to each GPU, size: llama_max_devices() 
+        const char * rpc_servers       # comma separated list of RPC servers to use for offloading
+        # Called with a progress value between 0.0 and 1.0. Pass NULL to disable.
+        # If the provided progress_callback returns true, model loading continues.
+        # If it returns false, model loading is immediately aborted.
         llama_progress_callback progress_callback
         void * progress_callback_user_data
         const llama_model_kv_override * kv_overrides
@@ -1388,7 +1392,7 @@ cdef extern from "common.h":
         float   min_p                  # 0.0 = disabled
         float   xtc_probability        # 0.0 = disabled
         float   xtc_threshold          # > 0.5 disables XTC
-        # float   tfs_z                  # 1.0 = disabled
+        # float   tfs_z                # 1.0 = disabled
         float   typ_p                  # typical_p, 1.0 = disabled
         float   temp                   # <= 0.0 to sample greedily, 0.0 to not output probabilities
         float   dynatemp_range         # 0.0 = disabled
@@ -1400,7 +1404,7 @@ cdef extern from "common.h":
         int32_t mirostat               # 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
         float   mirostat_tau           # target entropy
         float   mirostat_eta           # learning rate
-        bint    penalize_nl             # consider newlines as a repeatable token
+        bint    penalize_nl            # consider newlines as a repeatable token
         bint    ignore_eos
 
         std_vector[common_sampler_type] samplers
