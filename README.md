@@ -212,10 +212,23 @@ This will:
 
 As a first step, you should download a smallish llm in the `.gguf` model from [huggingface](https://huggingface.co/models?search=gguf). This [document](https://github.com/shakfu/llamalib/blob/main/docs/model-performance.md) provides some examples of models which have been known to work on a 16GB M1 Macbook air.
 
-A good model to start with is [Llama-3.2-1B-Instruct-Q6_K.gguf](https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/blob/main/Llama-3.2-1B-Instruct-Q6_K.gguf). After downloading it, place the model in the `llamalib/models` folder and run:
+A good model to start with is [Llama-3.2-1B-Instruct-Q8_0.gguf](https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf). `cyllama` expects models to be stored in a `models` folder in the cloned `cyllama` directory. To create the `models` directory if doesn't exist and download this model, you can just type:
 
 ```sh
-bin/llama-simple -c 512 -n 512 -m models/Llama-3.2-1B-Instruct-Q6_K.gguf \
+make download
+```
+
+This basically just does:
+
+```sh
+cd cyllama
+mkdir models && cd models
+wget https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf 
+
+Now you can test it using `llama-cli` or `llama-simple`:
+
+```sh
+bin/llama-simple -c 512 -n 512 -m models/Llama-3.2-1B-Instruct-Q8_0.gguf \
 	-p "Is mathematics discovered or invented?"
 ```
 

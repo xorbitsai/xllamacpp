@@ -21,9 +21,9 @@ $(LIBLAMMA):
 	@scripts/setup.sh
 
 build: $(LIBLAMMA)
-	@rm -rf build src/cyllama/cyllama.cpp
+	@rm -rf src/cyllama/cyllama.cpp
 	@python3 setup.py build_ext --inplace
-	@rm -rf build src/cyllama/cyllama.cpp
+	@rm -rf src/cyllama/cyllama.cpp
 
 wheel:
 	@echo "WITH_DYLIB=$(WITH_DYLIB)"
@@ -41,7 +41,7 @@ bind: build/include
 
 
 .PHONY: test test_simple test_main test_retrieve test_model test_llava \
-		bump clean reset
+		download bump clean reset
 
 test:
 	@pytest
@@ -79,16 +79,18 @@ test_retrieve:
 
 $(MODEL):
 	@mkdir -p models && cd models && \
-		wget https://huggingface.co/bartowski/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-IQ4_XS.gguf
+		wget https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf
+
+download: $(MODEL)
+	@echo "minimal model downloaded to models directory"
 
 test_model: $(MODEL)
-	@./bin/llama-simple -c 2048 -n 512 -m $(MODEL) \
-	-p "Number of planets in our solar system"
+	@./bin/llama-simple -m $(MODEL) -n 128 "Number of planets in our solar system"
 
 test_llava:
 	@./bin/llama-llava-cli -m models/llava-llama-3-8b-v1_1-int4.gguf \
 		--mmproj models/llava-llama-3-8b-v1_1-mmproj-f16.gguf \
-		--image tests/media/flower.jpg -c 4096 -e \
+		--image tests/media/dice.jpg -c 4096 -e \
 		-p "<|start_header_id|>user<|end_header_id|>\n\n<image>\nDescribe this image<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
 
 bump:
