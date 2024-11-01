@@ -170,7 +170,6 @@ cdef extern from "ggml.h":
     ctypedef struct ggml_backend_buffer:
         pass
 
-
     # -------------------------------------------------------------------------
     # n-dimensional tensor
 
@@ -215,9 +214,31 @@ cdef extern from "ggml.h":
     cdef int64_t ggml_cycles()
     cdef int64_t ggml_cycles_per_ms()
 
-    # typedef struct ggml_threadpool * ggml_threadpool_t
-    ctypedef struct ggml_threadpool_t:
+    # Threadpool params
+    # Use ggml_threadpool_params_default() or ggml_threadpool_params_init() to populate the defaults
+    ctypedef struct ggml_threadpool_params:
+        bint                cpumask[GGML_MAX_N_THREADS] # mask of cpu cores (all-zeros means use default affinity settings)
+        int                 n_threads                   # number of threads
+        ggml_sched_priority prio                        # thread priority
+        uint32_t            poll                        # polling level (0 - no polling, 100 - aggressive polling)
+        bint                strict_cpu                  # strict cpu placement
+        bint                paused                      # start in paused state
+
+    ctypedef struct ggml_threadpool:
         pass
+
+    ctypedef ggml_threadpool * ggml_threadpool_t
+
+    cdef ggml_threadpool_params ggml_threadpool_params_default(int n_threads)
+    cdef void ggml_threadpool_params_init(ggml_threadpool_params * p, int n_threads)
+    cdef bint ggml_threadpool_params_match(const ggml_threadpool_params * p0, const ggml_threadpool_params * p1)
+
+    cdef ggml_threadpool * ggml_threadpool_new(ggml_threadpool_params * params)
+    cdef void ggml_threadpool_free(ggml_threadpool * threadpool)
+    cdef int ggml_threadpool_get_n_threads(ggml_threadpool * threadpool)
+    cdef void ggml_threadpool_pause(ggml_threadpool * threadpool)
+    cdef void ggml_threadpool_resume(ggml_threadpool * threadpool)
+
 
 
 #------------------------------------------------------------------------------
