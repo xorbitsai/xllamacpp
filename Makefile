@@ -1,7 +1,12 @@
 # set path so `llama-cli` etc.. be in path
 export PATH := $(PWD)/bin:$(PATH)
 
+# models
 MODEL := models/Llama-3.2-1B-Instruct-Q8_0.gguf
+MODEL_RAG := models/all-MiniLM-L6-v2-Q5_K_S.gguf
+MODEL_LLAVA := models/llava-llama-3-8b-v1_1-int4.gguf
+MODEL_LLAVA_MMPROG := models/llava-llama-3-8b-v1_1-mmproj-f16.gguf
+
 THIRDPARTY := $(PWD)/thirdparty
 LLAMACPP := $(THIRDPARTY)/llama.cpp
 MIN_OSX_VER := -mmacosx-version-min=13.6
@@ -13,7 +18,7 @@ else
 endif
 
 
-.PHONY: cmake clean reset setup setup_inplace wheel bind header
+.PHONY: all build cmake clean reset setup setup_inplace wheel bind header
 
 all: build
 
@@ -21,9 +26,13 @@ $(LIBLAMMA):
 	@scripts/setup.sh
 
 build: $(LIBLAMMA)
-	@rm -rf src/cyllama/cyllama.cpp
 	@python3 setup.py build_ext --inplace
 	@rm -rf src/cyllama/cyllama.cpp
+
+# build: $(LIBLAMMA)
+# 	@rm -rf build src/cyllama/cyllama.cpp
+# 	@python3 setup.py build_ext --inplace
+# 	@rm -rf src/cyllama/cyllama.cpp
 
 wheel:
 	@echo "WITH_DYLIB=$(WITH_DYLIB)"
@@ -41,7 +50,7 @@ bind: build/include
 
 
 .PHONY: test test_simple test_main test_retrieve test_model test_llava \
-		download bump clean reset
+		download download_all bump clean reset
 
 test:
 	@pytest
@@ -70,8 +79,18 @@ test_main:
 	@./build/main -m $(MODEL) --log-disable \
 		-p "When did the French Revolution start?" -c 2048 -n 512
 
-test_retrieve:
-	@./bin/llama-retrieval --model models/all-MiniLM-L6-v2-Q5_K_S.gguf \
+$(MODEL_LLAVA):
+	@mkdir -p models && cd models && \
+		wget https://huggingface.co/xtuner/llava-llama-3-8b-v1_1-gguf/resolve/main/llava-llama-3-8b-v1_1-int4.gguf &&
+		wget https://huggingface.co/xtuner/llava-llama-3-8b-v1_1-gguf/resolve/main/llava-llama-3-8b-v1_1-mmproj-f16.gguf
+
+
+$(MODEL_RAG):
+	@mkdir -p models && cd models && \
+		wget https://huggingface.co/second-state/All-MiniLM-L6-v2-Embedding-GGUF/resolve/main/all-MiniLM-L6-v2-Q5_K_S.gguf
+
+test_retrieve: $(MODEL_RAG)
+	@./bin/llama-retrieval --model $(MODEL_RAG) \
 		--top-k 3 --context-file README.md \
 		--context-file LICENSE \
 		--chunk-size 100 \
@@ -84,10 +103,13 @@ $(MODEL):
 download: $(MODEL)
 	@echo "minimal model downloaded to models directory"
 
+download_all: $(MODEL) $(MODEL_RAG) $(MODEL_LLAVA)
+	@echo "all tests models downloaded to models directory"
+
 test_model: $(MODEL)
 	@./bin/llama-simple -m $(MODEL) -n 128 "Number of planets in our solar system"
 
-test_llava:
+test_llava: $(MODEL_LLAVA)
 	@./bin/llama-llava-cli -m models/llava-llama-3-8b-v1_1-int4.gguf \
 		--mmproj models/llava-llama-3-8b-v1_1-mmproj-f16.gguf \
 		--image tests/media/dice.jpg -c 4096 -e \

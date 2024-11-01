@@ -183,8 +183,13 @@ cdef bint abort_callback(void * py_abort_callback) noexcept:
 #     cdef GGMLTensor tensor = GGMLTensor.from_ptr(t)
 #     return (<object>py_sched_eval_callback)(tensor, ask)
 
+# cdef cppbool progress_callback(float progress, void * py_progress_callback) noexcept:
+#     """llama_progress_callback callback wrapper enabling python callbacks to be used"""
+#     return (<object>py_progress_callback)(progress)
+
 cdef cppbool progress_callback(float progress, void * py_progress_callback) noexcept:
     """llama_progress_callback callback wrapper enabling python callbacks to be used"""
+    cdef void * user_data = NULL
     return (<object>py_progress_callback)(progress)
 
 
@@ -2330,7 +2335,7 @@ cdef class ModelParams:
 
     def __init__(self):
         self.p = llama_cpp.llama_model_default_params()
-        self.p.progress_callback = &progress_callback
+        # self.p.progress_callback = &progress_callback # FIXME: causes crash
 
     @staticmethod
     cdef ModelParams from_instance(llama_cpp.llama_model_params params):
@@ -2566,7 +2571,7 @@ cdef class LlamaModel:
         self.ptr = NULL
         self.owner = True
 
-    def __init__(self, *, path_model: str, params: Optional[ModelParams] = None, verbose: bool = True):
+    def __init__(self, path_model: str, params: Optional[ModelParams] = None, verbose: bool = True):
         self.path_model = path_model
         self.params = params if params else ModelParams()
         self.verbose = verbose
