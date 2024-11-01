@@ -183,13 +183,8 @@ cdef bint abort_callback(void * py_abort_callback) noexcept:
 #     cdef GGMLTensor tensor = GGMLTensor.from_ptr(t)
 #     return (<object>py_sched_eval_callback)(tensor, ask)
 
-# cdef cppbool progress_callback(float progress, void * py_progress_callback) noexcept:
-#     """llama_progress_callback callback wrapper enabling python callbacks to be used"""
-#     return (<object>py_progress_callback)(progress)
-
 cdef cppbool progress_callback(float progress, void * py_progress_callback) noexcept:
     """llama_progress_callback callback wrapper enabling python callbacks to be used"""
-    cdef void * user_data = NULL
     return (<object>py_progress_callback)(progress)
 
 
