@@ -115,6 +115,7 @@ get_llamacpp_python() {
 		rm -rf ${PREFIX} && \
 		mkdir -p ${PREFIX} && \
 		cp -rf llama-cpp-python/llama_cpp ${PREFIX}/ && \
+		rm -rf llama-cpp-python && \
 		cd ${CWD}
 }
 
