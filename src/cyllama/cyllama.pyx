@@ -7,6 +7,7 @@ classes:
     LlamaTokenData
     LlamaTokenDataArray
     LoraAdapter
+    GGMLThreadPoolParams
     GGMLTensor
     SamplerChainParams
     LlamaSampler
@@ -40,6 +41,8 @@ from typing import Optional, Sequence, Callable
 
 # constants
 # -----------------------------------------------------------------------------
+
+LLAMA_DEFAULT_SEED = 0xFFFFFFFF
 
 cpdef enum:
     GGML_DEFAULT_N_THREADS = 4
@@ -129,6 +132,8 @@ cpdef enum ggml_type:
     GGML_TYPE_Q4_0_4_4 = 31
     GGML_TYPE_Q4_0_4_8 = 32
     GGML_TYPE_Q4_0_8_8 = 33
+    GGML_TYPE_TQ1_0   = 34
+    GGML_TYPE_TQ2_0   = 35
     GGML_TYPE_COUNT
 
 cpdef enum llama_ftype:
@@ -552,6 +557,81 @@ cdef class LoraAdapter:
         return wrapper
 
 
+cdef class GGMLThreadPoolParams:
+    cdef llama_cpp.ggml_threadpool_params p
+
+    def __init__(self, int n_threads):
+        self.p = llama_cpp.ggml_threadpool_params_default(n_threads)
+
+    @staticmethod
+    cdef GGMLThreadPoolParams from_instance(llama_cpp.ggml_threadpool_params params):
+        cdef GGMLThreadPoolParams wrapper = GGMLThreadPoolParams.__new__(GGMLThreadPoolParams)
+        wrapper.p = params
+        return wrapper
+
+    @property
+    def cpumask(self) -> list[bool]:
+        """mask of cpu cores (all-zeros means use default affinity settings)
+        
+        cpumask[GGML_MAX_N_THREADS] is (by default) of size 16
+        """
+        res = []
+        for i in range(GGML_MAX_N_THREADS):
+            res.append(<bint>self.p.cpumask[i])
+        return res
+
+    @cpumask.setter
+    def cpumask(self, values: list[bool]):
+        assert len(values) == GGML_MAX_N_THREADS
+        for i in range(GGML_MAX_N_THREADS):
+            self.p.cpumask[i] = <bint>values[i]
+
+    @property
+    def n_threads(self) -> int:
+        """number of threads"""
+        return self.p.n_threads
+
+    @n_threads.setter
+    def n_threads(self, int value):
+        self.p.n_threads = value
+
+    @property
+    def prio(self) -> llama_cpp.ggml_sched_priority:
+        """thread priority"""
+        return self.p.prio
+
+    @prio.setter
+    def prio(self, llama_cpp.ggml_sched_priority value):
+        self.p.prio = value
+
+    @property
+    def poll(self) -> uint32_t:
+        """polling level (0 - no polling, 100 - aggressive polling)"""
+        return self.p.poll
+
+    @poll.setter
+    def poll(self, uint32_t value):
+        self.p.poll = value
+
+    @property
+    def strict_cpu(self) -> bool:
+        """strict cpu placement"""
+        return self.p.strict_cpu
+
+    @strict_cpu.setter
+    def strict_cpu(self, bint value):
+        self.p.strict_cpu = value
+
+    @property
+    def paused(self) -> bool:
+        """start in paused state"""
+        return self.p.paused
+
+    @paused.setter
+    def paused(self, bint value):
+        self.p.paused = value
+
+
 cdef class GGMLTensor:
     cdef llama_cpp.ggml_tensor * ptr
     cdef bint ptr_owner
@@ -869,7 +949,7 @@ cdef class CommonSamplerParams:
         self.p.top_k = value
 
     @property
-    def top_p(self) -> int:
+    def top_p(self) -> float:
         """1.0 = disabled"""
         return self.p.top_p
 
@@ -878,7 +958,7 @@ cdef class CommonSamplerParams:
         self.p.top_p = value
 
     @property
-    def min_p(self) -> int:
+    def min_p(self) -> float:
         """0.0 = disabled"""
         return self.p.min_p
 
@@ -887,7 +967,7 @@ cdef class CommonSamplerParams:
         self.p.min_p = value
 
     @property
-    def xtc_probability(self) -> int:
+    def xtc_probability(self) -> float:
         """0.0 = disabled"""
         return self.p.xtc_probability
 
@@ -896,7 +976,7 @@ cdef class CommonSamplerParams:
         self.p.xtc_probability = value
 
     @property
-    def xtc_threshold(self) -> int:
+    def xtc_threshold(self) -> float:
         """> 0.5 disables XTC"""
         return self.p.xtc_threshold
 
@@ -905,7 +985,7 @@ cdef class CommonSamplerParams:
         self.p.xtc_threshold = value
 
     # @property
-    # def tfs_z(self) -> int:
+    # def tfs_z(self) -> float:
     #     """1.0 = disabled"""
     #     return self.p.tfs_z
 
@@ -914,7 +994,7 @@ cdef class CommonSamplerParams:
     #     self.p.tfs_z = value
 
     @property
-    def typ_p(self) -> int:
+    def typ_p(self) -> float:
         """typical_p, 1.0 = disabled"""
         return self.p.typ_p
 
@@ -923,7 +1003,7 @@ cdef class CommonSamplerParams:
         self.p.typ_p = value
 
     @property
-    def temp(self) -> int:
+    def temp(self) -> float:
         """<= 0.0 to sample greedily, 0.0 to not output probabilities"""
         return self.p.temp
 
@@ -932,7 +1012,7 @@ cdef class CommonSamplerParams:
         self.p.temp = value
 
     @property
-    def dynatemp_range(self) -> int:
+    def dynatemp_range(self) -> float:
         """0.0 = disabled"""
         return self.p.dynatemp_range
 
@@ -941,7 +1021,7 @@ cdef class CommonSamplerParams:
         self.p.dynatemp_range = value
 
     @property
-    def dynatemp_exponent(self) -> int:
+    def dynatemp_exponent(self) -> float:
         """controls how entropy maps to temperature in dynamic temperature sampler"""
         return self.p.dynatemp_exponent
 
@@ -984,6 +1064,48 @@ cdef class CommonSamplerParams:
     @penalty_present.setter
     def penalty_present(self, float value):
         self.p.penalty_present = value
+
+    @property
+    def dry_multiplier(self) -> float:
+        """0.0 = disabled
+
+        DRY repetition penalty for tokens extending repetition
+        """
+        return self.p.dry_multiplier
+
+    @dry_multiplier.setter
+    def dry_multiplier(self, float value):
+        self.p.dry_multiplier = value
+
+    @property
+    def dry_base(self) -> float:
+        """0.0 = disabled
+
+        multiplier * base ^ (length of sequence before token - allowed length)
+        """
+        return self.p.dry_base
+
+    @dry_base.setter
+    def dry_base(self, float value):
+        self.p.dry_base = value
+
+    @property
+    def dry_allowed_length(self) -> int:
+        """tokens extending repetitions beyond this receive penalty"""
+        return self.p.dry_allowed_length
+
+    @dry_allowed_length.setter
+    def dry_allowed_length(self, int value):
+        self.p.dry_allowed_length = value
+
+    @property
+    def dry_penalty_last_n(self) -> int:
+        """how many tokens to scan for repetitions (0 = disable penalty, -1 = context size)"""
+        return self.p.dry_penalty_last_n
+
+    @dry_penalty_last_n.setter
+    def dry_penalty_last_n(self, int value):
+        self.p.dry_penalty_last_n = value
 
     @property
     def mirostat(self) -> int:
@@ -1029,6 +1151,15 @@ cdef class CommonSamplerParams:
     @ignore_eos.setter
     def ignore_eos(self, bint value):
         self.p.ignore_eos = value
+
+    @property
+    def no_perf(self) -> bool:
+        """disable performance metrics"""
+        return self.p.no_perf
+
+    @no_perf.setter
+    def no_perf(self, bint value):
+        self.p.no_perf = value
 
     @property
     def samplers(self) -> list[common_sampler_type]:
@@ -1340,6 +1471,15 @@ cdef class CommonParams:
     @n_gpu_layers_draft.setter
     def n_gpu_layers_draft(self, value: int):
         self.p.n_gpu_layers_draft = value
+
+    @property
+    def main_gpu(self) -> int:
+        """he GPU that is used for scratch and small tensors"""
+        return self.p.main_gpu
+
+    @main_gpu.setter
+    def main_gpu(self, value: int):
+        self.p.main_gpu = value
 
     @property
     def tensor_split(self) -> list[float]:

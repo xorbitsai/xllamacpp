@@ -65,7 +65,10 @@ cdef extern from "ggml.h":
         GGML_TYPE_Q4_0_4_4 = 31
         GGML_TYPE_Q4_0_4_8 = 32
         GGML_TYPE_Q4_0_8_8 = 33
+        GGML_TYPE_TQ1_0   = 34
+        GGML_TYPE_TQ2_0   = 35
         GGML_TYPE_COUNT
+        
 
     cdef enum ggml_op:
         GGML_OP_NONE = 0
@@ -1406,28 +1409,33 @@ cdef extern from "common.h":
     ctypedef struct common_sampler_params:
         uint32_t seed  # the seed used to initialize llama_sampler
 
-        int32_t n_prev                 # number of previous tokens to remember
-        int32_t n_probs                # if greater than 0, output the probabilities of top n_probs tokens.
-        int32_t min_keep               # 0 = disabled, otherwise samplers should return at least min_keep tokens
-        int32_t top_k                  # <= 0 to use vocab size
-        float   top_p                  # 1.0 = disabled
-        float   min_p                  # 0.0 = disabled
-        float   xtc_probability        # 0.0 = disabled
-        float   xtc_threshold          # > 0.5 disables XTC
-        # float   tfs_z                # 1.0 = disabled
-        float   typ_p                  # typical_p, 1.0 = disabled
-        float   temp                   # <= 0.0 to sample greedily, 0.0 to not output probabilities
-        float   dynatemp_range         # 0.0 = disabled
-        float   dynatemp_exponent      # controls how entropy maps to temperature in dynamic temperature sampler
-        int32_t penalty_last_n         # last n tokens to penalize (0 = disable penalty, -1 = context size)
-        float   penalty_repeat         # 1.0 = disabled
-        float   penalty_freq           # 0.0 = disabled
-        float   penalty_present        # 0.0 = disabled
-        int32_t mirostat               # 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
-        float   mirostat_tau           # target entropy
-        float   mirostat_eta           # learning rate
-        bint    penalize_nl            # consider newlines as a repeatable token
-        bint    ignore_eos
+        int32_t n_prev                     # number of previous tokens to remember
+        int32_t n_probs                    # if greater than 0, output the probabilities of top n_probs tokens.
+        int32_t min_keep                   # 0 = disabled, otherwise samplers should return at least min_keep tokens
+        int32_t top_k                      # <= 0 to use vocab size
+        float   top_p                      # 1.0 = disabled
+        float   min_p                      # 0.0 = disabled
+        float   xtc_probability            # 0.0 = disabled
+        float   xtc_threshold              # > 0.5 disables XTC
+        # float   tfs_z                    # 1.0 = disabled
+        float   typ_p                      # typical_p, 1.0 = disabled
+        float   temp                       # <= 0.0 to sample greedily, 0.0 to not output probabilities
+        float   dynatemp_range             # 0.0 = disabled
+        float   dynatemp_exponent          # controls how entropy maps to temperature in dynamic temperature sampler
+        int32_t penalty_last_n             # last n tokens to penalize (0 = disable penalty, -1 = context size)
+        float   penalty_repeat             # 1.0 = disabled
+        float   penalty_freq               # 0.0 = disabled
+        float   penalty_present            # 0.0 = disabled
+        float   dry_multiplier             # 0.0 = disabled; DRY repetition penalty for tokens extending repetition:
+        float   dry_base                   # 0.0 = disabled; multiplier * base ^ (length of sequence before token - allowed length)
+        int32_t dry_allowed_length         # tokens extending repetitions beyond this receive penalty
+        int32_t dry_penalty_last_n         # how many tokens to scan for repetitions (0 = disable penalty, -1 = context size)
+        int32_t mirostat                   # 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
+        float   mirostat_tau               # target entropy
+        float   mirostat_eta               # learning rate
+        bint    penalize_nl                # consider newlines as a repeatable token
+        bint    ignore_eos                 # ignore end-of-sentence
+        bint    no_perf                    # disable performance metrics
 
         std_vector[common_sampler_type] samplers
 
