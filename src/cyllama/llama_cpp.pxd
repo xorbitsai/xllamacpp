@@ -1610,7 +1610,7 @@ cdef extern from "common.h":
         float slot_prompt_similarity
 
         # batched-bench params
-        bint is_pp_sharede
+        bint is_pp_shared
 
         std_vector[int32_t] n_pp
         std_vector[int32_t] n_tg

@@ -136,11 +136,28 @@ def test_common_params():
     assert params.yarn_beta_slow       ==  approx(1.0)
     assert params.yarn_orig_ctx        ==  0
     assert params.defrag_thold         ==  approx(-1.0)
+
+    assert params.cpuparams.n_threads  == -1
+    assert params.cpuparams.cpumask    == [False] * cy.GGML_MAX_N_THREADS
+    assert params.cpuparams.mask_valid == False
+    assert params.cpuparams.priority   == cy.GGML_SCHED_PRIO_NORMAL
+    assert params.cpuparams.strict_cpu == False
+    assert params.cpuparams.poll       == 50
+
+    # assert params.cpuparams_batch      ==
+    # assert params.draft_cpuparams      ==
+    # assert params.draft_cpuparams_batch ===
+
+    # assert params.cb_eval             == nullptr;
+    # assert params.cb_eval_user_data   == nullptr;
+
     assert params.numa                 ==  cy.GGML_NUMA_STRATEGY_DISABLED
     assert params.split_mode           ==  cy.LLAMA_SPLIT_MODE_LAYER
     assert params.rope_scaling_type    ==  cy.LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED
     assert params.pooling_type         ==  cy.LLAMA_POOLING_TYPE_UNSPECIFIED
     assert params.attention_type       ==  cy.LLAMA_ATTENTION_TYPE_UNSPECIFIED
+
+    # common_sampler_params sparams
 
     assert params.model                == ""
     assert params.model_draft          == ""
@@ -199,3 +216,77 @@ def test_common_params():
     assert params.warmup               == True  
     assert params.check_tensors        == False 
 
+    assert params.cache_type_k         == "f16"
+    assert params.cache_type_v         == "f16"
+
+    assert params.mmproj               == ""
+    assert params.image                == []
+
+    assert params.embedding            == False
+    assert params.embd_normalize       == 2
+    assert params.embd_out             == ""
+    assert params.embd_sep             == "\n"
+    assert params.reranking            == False
+
+    assert params.port                 == 8080
+    assert params.timeout_read         == 600
+    assert params.timeout_write        == 600
+    assert params.n_threads_http       == -1
+    assert params.n_cache_reuse        == 0
+
+    assert params.hostname             == "127.0.0.1"
+    assert params.public_path          == ""
+    assert params.chat_template        == ""
+    assert params.enable_chat_template == True
+
+    assert params.api_keys             == []
+    assert params.ssl_file_key         == ""
+    assert params.ssl_file_cert        == ""
+
+    assert params.webui                == True
+    assert params.endpoint_slots       == False
+    assert params.endpoint_props       == False
+    assert params.endpoint_metrics     == False
+
+    assert params.log_json             == False
+
+    assert params.slot_save_path       == ""
+
+    assert params.slot_prompt_similarity == approx(0.5)
+
+    assert params.is_pp_shared         == False
+
+    assert params.n_pp                 == []
+    assert params.n_tg                 == []
+    assert params.n_pl                 == []
+
+    assert params.context_files        == []
+    assert params.chunk_size           == 64
+    assert params.chunk_separator      == "\n"
+
+    assert params.n_junk               == 250
+    assert params.i_pos                == -1
+    assert params.out_file             == "imatrix.dat"
+
+    assert params.n_out_freq           == 10
+    assert params.n_save_freq          == 0
+    assert params.i_chunk              == 0
+
+    assert params.process_output       == False
+    assert params.compute_ppl          == True
+
+    assert params.n_pca_batch           == 100
+    assert params.n_pca_iterations      == 1000
+    # assert params.cvector_dimre_method  == cy.DIMRE_METHOD_PCA
+    # assert params.cvector_outfile       == "control_vector.gguf"
+    # assert params.cvector_positive_file == "examples/cvector-generator/positive.txt"
+    # assert params.cvector_negative_file == "examples/cvector-generator/negative.txt"
+
+    # assert params.spm_infill            == False
+
+    # assert params.lora_outfile          == "ggml-lora-merged-f16.gguf"
+
+    # assert params.batched_bench_output_jsonl == False
+
+
+    # ... rest not yet implemented

@@ -136,6 +136,12 @@ cpdef enum ggml_type:
     GGML_TYPE_TQ2_0   = 35
     GGML_TYPE_COUNT
 
+cpdef enum ggml_sched_priority:
+    GGML_SCHED_PRIO_NORMAL
+    GGML_SCHED_PRIO_MEDIUM
+    GGML_SCHED_PRIO_HIGH
+    GGML_SCHED_PRIO_REALTIME
+
 cpdef enum llama_ftype:
     LLAMA_FTYPE_ALL_F32              = 0
     LLAMA_FTYPE_MOSTLY_F16           = 1
@@ -1294,14 +1300,22 @@ cdef class CpuParams:
     def n_threads(self, value: int):
         self.ptr.n_threads = value
 
-    # @property
-    # def cpumask(self) -> list[bool]:
-    #     """CPU affinity mask."""
-    #     return self.ptr.cpumask
+    @property
+    def cpumask(self) -> list[bool]:
+        """CPU affinity mask: mask of cpu cores (all-zeros means use default affinity settings)
+        
+        cpumask[GGML_MAX_N_THREADS] is (by default) of size 16
+        """
+        res = []
+        for i in range(GGML_MAX_N_THREADS):
+            res.append(<bint>self.ptr.cpumask[i])
+        return res
 
-    # @cpumask.setter
-    # def cpumask(self, value: list[bool]):
-    #     self.ptr.cpumask = value
+    @cpumask.setter
+    def cpumask(self, values: list[bool]):
+        assert len(values) == GGML_MAX_N_THREADS
+        for i in range(GGML_MAX_N_THREADS):
+            self.ptr.cpumask[i] = <bint>values[i]
 
     @property
     def mask_valid(self) -> bool:
@@ -1321,23 +1335,23 @@ cdef class CpuParams:
     def priority(self, value: llama_cpp.ggml_sched_priority):
         self.ptr.priority = value
 
-    # @property
-    # def llama_cpp.ggml_sched_strict_cpu strict_cpu(self):
-    #     """Use strict CPU placement."""
-    #     return self.ptr.strict_cpu
+    @property
+    def strict_cpu(self) -> bool:
+        """Use strict CPU placement."""
+        return self.ptr.strict_cpu
 
-    # @strict_cpu.setter
-    # def strict_cpu(self, llama_cpp.ggml_sched_strict_cpu value):
-    #     self.ptr.strict_cpu = value
+    @strict_cpu.setter
+    def strict_cpu(self, bint value):
+        self.ptr.strict_cpu = value
 
-    # @property
-    # def poll(self) -> llama_cpp.ggml_sched_poll:
-    #     """Use strict CPU placement"""
-    #     return self.ptr.poll
+    @property
+    def poll(self) -> uint32_t:
+        """Polling (busywait) level (0 - no polling, 100 - mostly polling)"""
+        return self.ptr.poll
 
-    # @poll.setter
-    # def poll(self, value: llama_cpp.ggml_sched_poll):
-    #     self.ptr.poll = value
+    @poll.setter
+    def poll(self, uint32_t value):
+        self.ptr.poll = value
 
 
 cdef class CommonParams:
@@ -2255,6 +2269,24 @@ cdef class CommonParams:
         self.p.check_tensors = value
 
     @property
+    def cache_type_k(self) -> str:
+        """validate tensor data"""
+        return self.p.cache_type_k.decode()
+
+    @cache_type_k.setter
+    def cache_type_k(self, value: str):
+        self.p.cache_type_k = value.encode()
+
+    @property
+    def cache_type_v(self) -> str:
+        """validate tensor data"""
+        return self.p.cache_type_v.decode()
+
+    @cache_type_v.setter
+    def cache_type_v(self, value: str):
+        self.p.cache_type_v = value.encode()
+
+    @property
     def mmproj(self) -> str:
         """path to multimodal projector"""
         return self.p.mmproj.decode()
@@ -2321,6 +2353,51 @@ cdef class CommonParams:
     @reranking.setter
     def reranking(self, value: bool):
         self.p.reranking = value
+
+    @property
+    def port(self) -> int:
+        """server listens on this network port"""
+        return self.p.port
+
+    @port.setter
+    def port(self, value: int):
+        self.p.port = value
+
+    @property
+    def timeout_read(self) -> int:
+        """http read timeout in seconds"""
+        return self.p.timeout_read
+
+    @timeout_read.setter
+    def timeout_read(self, value: int):
+        self.p.timeout_read = value
+
+    @property
+    def timeout_write(self) -> int:
+        """http write timeout in seconds"""
+        return self.p.timeout_write
+
+    @timeout_write.setter
+    def timeout_write(self, value: int):
+        self.p.timeout_write = value
+
+    @property
+    def n_threads_http(self) -> int:
+        """number of threads to process HTTP requests (TODO: support threadpool)"""
+        return self.p.n_threads_http
+
+    @n_threads_http.setter
+    def n_threads_http(self, value: int):
+        self.p.n_threads_http = value
+
+    @property
+    def n_cache_reuse(self) -> int:
+        """min chunk size to reuse from the cache via KV shifting"""
+        return self.p.n_cache_reuse
+
+    @n_cache_reuse.setter
+    def n_cache_reuse(self, value: int):
+        self.p.n_cache_reuse = value
 
     @property
     def hostname(self) -> str:
@@ -2462,46 +2539,159 @@ cdef class CommonParams:
     def slot_prompt_similarity(self, value: float):
         self.p.slot_prompt_similarity = value
 
-    # @property
-    # def is_pp_shared(self) -> bool:
-    #     """batched-bench params"""
-    #     return self.p.is_pp_shared
+    @property
+    def is_pp_shared(self) -> bool:
+        """batched-bench params"""
+        return self.p.is_pp_shared
 
-    # @is_pp_shared.setter
-    # def is_pp_shared(self, value: bool):
-    #     self.p.is_pp_shared = value
+    @is_pp_shared.setter
+    def is_pp_shared(self, value: bool):
+        self.p.is_pp_shared = value
 
+    @property
+    def n_pp(self) -> list[int]:
+        return self.p.n_pp
 
-    # std::vector<int32_t> n_pp;
-    # std::vector<int32_t> n_tg;
-    # std::vector<int32_t> n_pl;
+    @n_pp.setter
+    def n_pp(self, list[int] values):
+        self.p.n_pp = values
 
-    # // retrieval params
-    # std::vector<std::string> context_files; // context files to embed
+    @property
+    def n_tg(self) -> list[int]:
+        return self.p.n_tg
 
-    # int32_t chunk_size = 64; // chunk size for context embedding
+    @n_tg.setter
+    def n_tg(self, list[int] values):
+        self.p.n_tg = values
 
-    # std::string chunk_separator = "\n"; // chunk separator for context embedding
+    @property
+    def n_pl(self) -> list[int]:
+        return self.p.n_pl
 
-    # // passkey params
-    # int32_t n_junk = 250; // number of times to repeat the junk text
-    # int32_t i_pos  = -1;  // position of the passkey in the junk text
+    @n_pl.setter
+    def n_pl(self, list[int] values):
+        self.p.n_pl = values
 
-    # // imatrix params
-    # std::string out_file = "imatrix.dat"; // save the resulting imatrix to this file
+    @property
+    def context_files(self) -> list[str]:
+        """context files to embed"""
+        return [name.decode() for name in self.p.context_files]
 
-    # int32_t n_out_freq  = 10; // output the imatrix every n_out_freq iterations
-    # int32_t n_save_freq =  0; // save the imatrix every n_save_freq iterations
-    # int32_t i_chunk     =  0; // start processing from this chunk
+    @context_files.setter
+    def context_files(self, list[str] values):
+        self.p.context_files = [name.encode() for name in values]
 
-    # bool process_output = false; // collect data for the output tensor
-    # bool compute_ppl    = true;  // whether to compute perplexity
+    @property
+    def chunk_size(self) -> int:
+        """chunk size for context embedding"""
+        return self.p.chunk_size
+
+    @chunk_size.setter
+    def chunk_size(self, value: int):
+        self.p.chunk_size = value
+
+    @property
+    def chunk_separator(self) -> str:
+        """chunk separator for context embedding"""
+        return self.p.chunk_separator.decode()
+
+    @chunk_separator.setter
+    def chunk_separator(self, value: str):
+        self.p.chunk_separator = value.encode('utf8')
+
+    @property
+    def n_junk(self) -> int:
+        """number of times to repeat the junk text"""
+        return self.p.n_junk
+
+    @n_junk.setter
+    def n_junk(self, value: int):
+        self.p.n_junk = value
+
+    @property
+    def i_pos(self) -> int:
+        """position of the passkey in the junk text"""
+        return self.p.i_pos
+
+    @i_pos.setter
+    def i_pos(self, value: int):
+        self.p.i_pos = value
+
+    @property
+    def out_file(self) -> str:
+        """save the resulting imatrix to this file"""
+        return self.p.out_file.decode()
+
+    @out_file.setter
+    def out_file(self, value: str):
+        self.p.out_file = value.encode('utf8')
+
+    @property
+    def n_out_freq(self) -> int:
+        """output the imatrix every n_out_freq iterations"""
+        return self.p.n_out_freq
+
+    @n_out_freq.setter
+    def n_out_freq(self, value: int):
+        self.p.n_out_freq = value
+
+    @property
+    def n_save_freq(self) -> int:
+        """save the imatrix every n_save_freq iterations"""
+        return self.p.n_save_freq
+
+    @n_save_freq.setter
+    def n_save_freq(self, value: int):
+        self.p.n_save_freq = value
+
+    @property
+    def i_chunk(self) -> int:
+        """start processing from this chunk"""
+        return self.p.i_chunk
+
+    @i_chunk.setter
+    def i_chunk(self, value: int):
+        self.p.i_chunk = value
+
+    @property
+    def process_output(self) -> bool:
+        """collect data for the output tensor"""
+        return self.p.process_output
+
+    @process_output.setter
+    def process_output(self, value: bool):
+        self.p.process_output = value
+
+    @property
+    def compute_ppl(self) -> bool:
+        """whether to compute perplexity"""
+        return self.p.compute_ppl
+
+    @compute_ppl.setter
+    def compute_ppl(self, value: bool):
+        self.p.compute_ppl = value
+
+    @property
+    def n_pca_batch(self) -> int:
+        """start processing from this chunk"""
+        return self.p.n_pca_batch
+
+    @n_pca_batch.setter
+    def n_pca_batch(self, value: int):
+        self.p.n_pca_batch = value
+
+    @property
+    def n_pca_iterations(self) -> int:
+        """start processing from this chunk"""
+        return self.p.n_pca_iterations
+
+    @n_pca_iterations.setter
+    def n_pca_iterations(self, value: int):
+        self.p.n_pca_iterations = value
 
     # // cvector-generator params
-    # int n_pca_batch = 100;
-    # int n_pca_iterations = 1000;
     # dimre_method cvector_dimre_method = DIMRE_METHOD_PCA;
-    # std::string cvector_outfile       = "control_vector.gguf";
+    # std::string cvector_outfile       =
     # std::string cvector_positive_file = "examples/cvector-generator/positive.txt";
     # std::string cvector_negative_file = "examples/cvector-generator/negative.txt";
 
