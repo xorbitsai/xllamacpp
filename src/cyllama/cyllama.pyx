@@ -38,6 +38,17 @@ from typing import Optional, Sequence, Callable
 
 
 
+# constants
+# -----------------------------------------------------------------------------
+
+cpdef enum:
+    GGML_DEFAULT_N_THREADS = 4
+    GGML_MAX_DIMS = 4
+    GGML_MAX_N_THREADS = 16
+    GGML_MAX_NAME = 64
+    GGML_MAX_OP_PARAMS = 64
+    GGML_MAX_SRC = 10
+
 # enums
 # -----------------------------------------------------------------------------
 
@@ -82,6 +93,43 @@ cpdef enum ggml_numa_strategy:
     GGML_NUMA_STRATEGY_NUMACTL    = 3
     GGML_NUMA_STRATEGY_MIRROR     = 4
     GGML_NUMA_STRATEGY_COUNT
+
+cpdef enum ggml_type:
+    GGML_TYPE_F32     = 0
+    GGML_TYPE_F16     = 1
+    GGML_TYPE_Q4_0    = 2
+    GGML_TYPE_Q4_1    = 3
+    # GGML_TYPE_Q4_2 = 4 support has been removed
+    # GGML_TYPE_Q4_3 = 5 support has been removed
+    GGML_TYPE_Q5_0    = 6
+    GGML_TYPE_Q5_1    = 7
+    GGML_TYPE_Q8_0    = 8
+    GGML_TYPE_Q8_1    = 9
+    GGML_TYPE_Q2_K    = 10
+    GGML_TYPE_Q3_K    = 11
+    GGML_TYPE_Q4_K    = 12
+    GGML_TYPE_Q5_K    = 13
+    GGML_TYPE_Q6_K    = 14
+    GGML_TYPE_Q8_K    = 15
+    GGML_TYPE_IQ2_XXS = 16
+    GGML_TYPE_IQ2_XS  = 17
+    GGML_TYPE_IQ3_XXS = 18
+    GGML_TYPE_IQ1_S   = 19
+    GGML_TYPE_IQ4_NL  = 20
+    GGML_TYPE_IQ3_S   = 21
+    GGML_TYPE_IQ2_S   = 22
+    GGML_TYPE_IQ4_XS  = 23
+    GGML_TYPE_I8      = 24
+    GGML_TYPE_I16     = 25
+    GGML_TYPE_I32     = 26
+    GGML_TYPE_I64     = 27
+    GGML_TYPE_F64     = 28
+    GGML_TYPE_IQ1_M   = 29
+    GGML_TYPE_BF16    = 30
+    GGML_TYPE_Q4_0_4_4 = 31
+    GGML_TYPE_Q4_0_4_8 = 32
+    GGML_TYPE_Q4_0_8_8 = 33
+    GGML_TYPE_COUNT
 
 cpdef enum llama_ftype:
     LLAMA_FTYPE_ALL_F32              = 0
@@ -2928,15 +2976,6 @@ cdef class ContextParams:
         wrapper.p = llama_cpp.common_context_params_to_llama(params.p)
         return wrapper
 
-    # @property
-    # def seed(self) -> int:
-    #     """RNG seed, -1 for random."""
-    #     return self.p.seed
-
-    # @seed.setter
-    # def seed(self, value: int):
-    #     self.p.seed = value
-
     @property
     def n_ctx(self) -> int:
         """text context, 0 = from model."""
@@ -3000,6 +3039,174 @@ cdef class ContextParams:
     def rope_scaling_type(self, llama_cpp.llama_rope_scaling_type value):
         self.p.rope_scaling_type = value
 
+    @property
+    def pooling_type(self) -> llama_cpp.llama_pooling_type:
+        """whether to pool (sum) embedding results by sequence id"""
+        return <llama_cpp.llama_pooling_type>self.p.pooling_type
+
+    @pooling_type.setter
+    def pooling_type(self, llama_cpp.llama_pooling_type value):
+        self.p.pooling_type = value
+
+    @property
+    def attention_type(self) -> llama_cpp.llama_attention_type:
+        """attention type to use for embeddings"""
+        return <llama_cpp.llama_attention_type>self.p.attention_type
+
+    @attention_type.setter
+    def attention_type(self, llama_cpp.llama_attention_type value):
+        self.p.attention_type = value
+
+    @property
+    def rope_freq_base(self) -> float:
+        """RoPE base frequency, 0 = from model"""
+        return self.p.rope_freq_base
+
+    @rope_freq_base.setter
+    def rope_freq_base(self, float value):
+        self.p.rope_freq_base = value
+
+    @property
+    def rope_freq_scale(self) -> float:
+        """RoPE frequency scaling factor."""
+        return self.p.rope_freq_scale
+
+    @rope_freq_scale.setter
+    def rope_freq_scale(self, value: float):
+        self.p.rope_freq_scale = value
+
+    @property
+    def yarn_ext_factor(self) -> float:
+        """YaRN extrapolation mix factor."""
+        return self.p.yarn_ext_factor
+
+    @yarn_ext_factor.setter
+    def yarn_ext_factor(self, value: float):
+        self.p.yarn_ext_factor = value
+
+    @property
+    def yarn_attn_factor(self) -> float:
+        """YaRN magnitude scaling factor."""
+        return self.p.yarn_attn_factor
+
+    @yarn_attn_factor.setter
+    def yarn_attn_factor(self, value: float):
+        self.p.yarn_attn_factor = value
+
+    @property
+    def yarn_beta_fast(self) -> float:
+        """YaRN low correction dim."""
+        return self.p.yarn_beta_fast
+
+    @yarn_beta_fast.setter
+    def yarn_beta_fast(self, value: float):
+        self.p.yarn_beta_fast = value
+
+    @property
+    def yarn_beta_slow(self) -> float:
+        """YaRN high correction dim."""
+        return self.p.yarn_beta_slow
+
+    @yarn_beta_slow.setter
+    def yarn_beta_slow(self, value: float):
+        self.p.yarn_beta_slow = value
+
+
+    @property
+    def yarn_orig_ctx(self) -> int:
+        """YaRN original context length."""
+        return self.p.yarn_orig_ctx
+
+    @yarn_orig_ctx.setter
+    def yarn_orig_ctx(self, value: int):
+        self.p.yarn_orig_ctx = value
+
+    @property
+    def defrag_thold(self) -> float:
+        """KV cache defragmentation threshold."""
+        return self.p.defrag_thold
+
+    @defrag_thold.setter
+    def defrag_thold(self, value: float):
+        self.p.defrag_thold = value
+
+    # ggml_backend_sched_eval_callback cb_eval;
+
+    # @property
+    # def cb_eval(self) -> py_sched_eval_callback:
+    #     """get/set python ggml backend sched eval callback."""
+    #     return <object>self.p.cb_eval_user_data
+
+    # @cb_eval.setter
+    # def cb_eval(self, object py_sched_eval_callback):
+    #     self.p.cb_eval_user_data = <void*>py_sched_eval_callback
+
+    @property
+    def type_k(self) -> llama_cpp.ggml_type:
+        """data type for K cache"""
+        return <llama_cpp.ggml_type>self.p.type_k
+
+    @type_k.setter
+    def type_k(self, llama_cpp.ggml_type value):
+        self.p.type_k = value
+
+    @property
+    def type_v(self) -> llama_cpp.ggml_type:
+        """data type for V cache"""
+        return <llama_cpp.ggml_type>self.p.type_v
+
+    @type_v.setter
+    def type_v(self, llama_cpp.ggml_type value):
+        self.p.type_v = value
+
+    @property
+    def logits_all(self) -> bool:
+        """the llama_decode() call computes all logits, not just the last one (DEPRECATED - set llama_batch.logits instead)"""
+        return self.p.logits_all
+
+    @logits_all.setter
+    def logits_all(self, value: bool):
+        self.p.logits_all = value
+
+    @property
+    def embeddings(self) -> bool:
+        """if true, extract embeddings (together with logits)"""
+        return self.p.embeddings
+
+    @embeddings.setter
+    def embeddings(self, value: bool):
+        self.p.embeddings = value
+
+    @property
+    def offload_kqv(self) -> bool:
+        """whether to offload the KQV ops (including the KV cache) to GPU"""
+        return self.p.offload_kqv
+
+    @offload_kqv.setter
+    def offload_kqv(self, value: bool):
+        self.p.offload_kqv = value
+
+    @property
+    def flash_attn(self) -> bool:
+        """whether to use flash attention [EXPERIMENTAL]"""
+        return self.p.flash_attn
+
+    @flash_attn.setter
+    def flash_attn(self, value: bool):
+        self.p.flash_attn = value
+
+    @property
+    def no_perf(self) -> bool:
+        """whether to measure performance timings"""
+        return self.p.no_perf
+
+    @no_perf.setter
+    def no_perf(self, value: bool):
+        self.p.no_perf = value
+
+    # ggml_abort_callback abort_callback;
+    # void *              abort_callback_data;
+
 
 cdef class LlamaContext:
     """Intermediate Python wrapper for a llama.cpp llama_context."""
@@ -3015,13 +3222,7 @@ cdef class LlamaContext:
         self.owner = True
         self.n_tokens = 0
 
-    def __init__(
-        self,
-        *,
-        model: LlamaModel,
-        params: Optional[ContextParams] = None,
-        verbose: bool = True,
-    ):
+    def __init__(self, model: LlamaModel, params: Optional[ContextParams] = None, verbose: bool = True):
         self.model = model
         self.params = params if params else ContextParams()
         self.verbose = verbose

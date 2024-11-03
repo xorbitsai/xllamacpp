@@ -12,6 +12,7 @@ cdef extern from "ggml.h":
 
     # constants
     cpdef enum:
+        GGML_DEFAULT_N_THREADS = 4
         GGML_MAX_DIMS = 4
         GGML_MAX_N_THREADS = 16
         GGML_MAX_NAME = 64

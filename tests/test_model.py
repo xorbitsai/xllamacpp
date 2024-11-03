@@ -20,3 +20,10 @@ def test_model_load_cancel(model_path):
     params.progress_callback = progress_callback
     model = cy.LlamaModel(model_path, params)
     cy.llama_backend_free()
+
+def test_autorelease(model_path):
+    # need to wrap in a thread here.
+    cy.llama_backend_init()    
+    model = cy.LlamaModel(model_path)
+    ctx = cy.LlamaContext(model)
+    cy.llama_backend_free()
