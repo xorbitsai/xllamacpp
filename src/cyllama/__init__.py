@@ -111,7 +111,7 @@ class Llama:
 
         # tokenize the prompt
         tokens_list: list[int] = cy.common_tokenize(self.ctx, self.params.prompt, True)
-        n_ctx: int = self.ctx.n_ctx()
+        n_ctx: int = self.ctx.n_ctx
         n_kv_req: int = len(tokens_list) + (n_predict - len(tokens_list))
 
         if not self.disable_log:

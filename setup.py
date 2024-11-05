@@ -112,7 +112,12 @@ setup(
     **common,
     ext_modules=cythonize(
         extensions,
-        language_level="3str",
+        compiler_directives = {
+            'language_level' : '3',
+            'embedsignature': False,     # default: False
+            'emit_code_comments': False, # default: True
+            'warn.unused': True,         # default: False
+        },
     ),
     package_dir={"": "src"},
 )

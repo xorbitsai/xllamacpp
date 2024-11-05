@@ -28,12 +28,8 @@ $(LIBLAMMA):
 
 build: $(LIBLAMMA)
 	@python3 setup.py build_ext --inplace
-	@rm -rf src/cyllama/cyllama.cpp
-
-# build: $(LIBLAMMA)
-# 	@rm -rf build src/cyllama/cyllama.cpp
-# 	@python3 setup.py build_ext --inplace
 # 	@rm -rf src/cyllama/cyllama.cpp
+
 
 wheel:
 	@echo "WITH_DYLIB=$(WITH_DYLIB)"

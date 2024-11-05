@@ -48,7 +48,7 @@ def test_lowlevel_simple(model_path):
 
     tokens_list: list[int] = cy.common_tokenize(ctx, params.prompt, True)
 
-    n_ctx: int = ctx.n_ctx()
+    n_ctx: int = ctx.n_ctx
 
     n_kv_req: int = len(tokens_list) + (n_predict - len(tokens_list))
 

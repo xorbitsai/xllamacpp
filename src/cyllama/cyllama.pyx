@@ -21,6 +21,7 @@ classes:
     ContextParams
     LlamaContext
     LlamaBatch
+    CommonInitResult
 
 
 """
@@ -51,6 +52,7 @@ cpdef enum:
     GGML_MAX_NAME = 64
     GGML_MAX_OP_PARAMS = 64
     GGML_MAX_SRC = 10
+
 
 # enums
 # -----------------------------------------------------------------------------
@@ -368,7 +370,7 @@ cdef class LlamaLogitBias:
 
     def __dealloc__(self):
         # De-allocate if not null and flag is set
-        if self.ptr is not NULL and self.ptr_owner is True:
+        if self.ptr is not NULL and self.owner is True:
             free(self.ptr)
             self.ptr = NULL
 
@@ -376,7 +378,7 @@ cdef class LlamaLogitBias:
     cdef LlamaLogitBias from_ptr(llama_cpp.llama_logit_bias *ptr, bint owner=False):
         cdef LlamaLogitBias wrapper = LlamaLogitBias.__new__(LlamaLogitBias)
         wrapper.ptr = ptr
-        wrapper.ptr_owner = owner
+        wrapper.owner = owner
         return wrapper
 
     @property
@@ -417,7 +419,7 @@ cdef class LlamaTokenData:
 
     def __dealloc__(self):
         # De-allocate if not null and flag is set
-        if self.ptr is not NULL and self.ptr_owner is True:
+        if self.ptr is not NULL and self.owner is True:
             free(self.ptr)
             self.ptr = NULL
 
@@ -426,7 +428,7 @@ cdef class LlamaTokenData:
         # Fast call to __new__() that bypasses the __init__() constructor.
         cdef LlamaTokenData wrapper = LlamaTokenData.__new__(LlamaTokenData)
         wrapper.ptr = ptr
-        wrapper.ptr_owner = owner
+        wrapper.owner = owner
         return wrapper
 
     @property
@@ -477,7 +479,7 @@ cdef class LlamaTokenDataArray:
 
     def __dealloc__(self):
         # De-allocate if not null and flag is set
-        if self.ptr is not NULL and self.ptr_owner is True:
+        if self.ptr is not NULL and self.owner is True:
             free(self.ptr)
             self.ptr = NULL
 
@@ -486,7 +488,7 @@ cdef class LlamaTokenDataArray:
         # Fast call to __new__() that bypasses the __init__() constructor.
         cdef LlamaTokenDataArray wrapper = LlamaTokenDataArray.__new__(LlamaTokenDataArray)
         wrapper.ptr = ptr
-        wrapper.ptr_owner = owner
+        wrapper.owner = owner
         return wrapper
 
     @property
@@ -537,15 +539,15 @@ cdef class LlamaTokenDataArray:
 
 cdef class LoraAdapter:
     cdef llama_cpp.llama_lora_adapter * ptr
-    cdef bint ptr_owner
+    cdef bint owner
 
     def __cinit__(self):
         self.ptr = NULL
-        self.ptr_owner = False
+        self.owner = False
 
     def __dealloc__(self):
         # De-allocate if not null and flag is set
-        if self.ptr is not NULL and self.ptr_owner is True:
+        if self.ptr is not NULL and self.owner is True:
             llama_cpp.llama_lora_adapter_free(self.ptr)
             self.ptr = NULL
 
@@ -559,7 +561,7 @@ cdef class LoraAdapter:
         # Fast call to __new__() that bypasses the __init__() constructor.
         cdef LoraAdapter wrapper = LoraAdapter.__new__(LoraAdapter)
         wrapper.ptr = ptr
-        wrapper.ptr_owner = owner
+        wrapper.owner = owner
         return wrapper
 
 
@@ -640,15 +642,15 @@ cdef class GGMLThreadPoolParams:
 
 cdef class GGMLTensor:
     cdef llama_cpp.ggml_tensor * ptr
-    cdef bint ptr_owner
+    cdef bint owner
 
     def __cinit__(self):
         self.ptr = NULL
-        self.ptr_owner = False
+        self.owner = False
 
     def __dealloc__(self):
         # De-allocate if not null and flag is set
-        if self.ptr is not NULL and self.ptr_owner is True:
+        if self.ptr is not NULL and self.owner is True:
             free(self.ptr)
             self.ptr = NULL
 
@@ -662,7 +664,7 @@ cdef class GGMLTensor:
         # Fast call to __new__() that bypasses the __init__() constructor.
         cdef GGMLTensor wrapper = GGMLTensor.__new__(GGMLTensor)
         wrapper.ptr = ptr
-        wrapper.ptr_owner = owner
+        wrapper.owner = owner
         return wrapper
 
     @staticmethod
@@ -2970,44 +2972,55 @@ cdef class LlamaModel:
     cdef LlamaModel from_ptr(llama_cpp.llama_model *ptr, bint owner=False):
         cdef LlamaModel wrapper = LlamaModel.__new__(LlamaModel)
         wrapper.ptr = ptr
-        wrapper.ptr_owner = owner
+        wrapper.owner = owner
         return wrapper
 
+    @property
     def vocab_type(self) -> llama_vocab_type:
         return llama_vocab_type(llama_cpp.get_llama_vocab_type(self.ptr))
 
+    @property
     def rope_type(self) -> llama_rope_type:
         return llama_rope_type(llama_cpp.get_llama_rope_type(self.ptr))
 
+    @property
     def n_vocab(self) -> int:
         return llama_cpp.llama_n_vocab(self.ptr)
 
+    @property
     def n_ctx_train(self) -> int:
         return llama_cpp.llama_n_ctx_train(self.ptr)
 
+    @property
     def n_embd(self) -> int:
         return llama_cpp.llama_n_embd(self.ptr)
 
+    @property
     def n_layer(self) -> int:
         return llama_cpp.llama_n_layer(self.ptr)
 
+    @property
     def n_head(self) -> int:
         return llama_cpp.llama_n_head(self.ptr)
 
+    @property
     def rope_freq_scale_train(self) -> float:
         """Get the model's RoPE frequency scaling factor"""
         return llama_cpp.llama_rope_freq_scale_train(self.ptr)
 
+    @property
     def desc(self) -> str:
         """Get a string describing the model type"""
         cdef char buf[1024]
         llama_cpp.llama_model_desc(self.ptr, buf, 1024)
         return buf.decode("utf-8")
 
+    @property
     def size(self) -> int:
         """Returns the total size of all the tensors in the model in bytes"""
         return llama_cpp.llama_model_size(self.ptr)
 
+    @property
     def n_params(self) -> int:
         """Returns the total number of parameters in the model"""
         return llama_cpp.llama_model_n_params(self.ptr)
@@ -3361,30 +3374,30 @@ cdef class ContextParams:
         self.p.n_threads_batch = value
 
     @property
-    def rope_scaling_type(self) -> llama_cpp.llama_rope_scaling_type:
+    def rope_scaling_type(self) -> llama_rope_scaling_type:
         """number of threads to use for batch processing"""
-        return <llama_cpp.llama_rope_scaling_type>self.p.rope_scaling_type
+        return <llama_rope_scaling_type>self.p.rope_scaling_type
 
     @rope_scaling_type.setter
-    def rope_scaling_type(self, llama_cpp.llama_rope_scaling_type value):
+    def rope_scaling_type(self, llama_rope_scaling_type value):
         self.p.rope_scaling_type = value
 
     @property
-    def pooling_type(self) -> llama_cpp.llama_pooling_type:
+    def pooling_type(self) -> llama_pooling_type:
         """whether to pool (sum) embedding results by sequence id"""
-        return <llama_cpp.llama_pooling_type>self.p.pooling_type
+        return <llama_pooling_type>self.p.pooling_type
 
     @pooling_type.setter
-    def pooling_type(self, llama_cpp.llama_pooling_type value):
+    def pooling_type(self, llama_pooling_type value):
         self.p.pooling_type = value
 
     @property
-    def attention_type(self) -> llama_cpp.llama_attention_type:
+    def attention_type(self) -> llama_attention_type:
         """attention type to use for embeddings"""
-        return <llama_cpp.llama_attention_type>self.p.attention_type
+        return <llama_attention_type>self.p.attention_type
 
     @attention_type.setter
-    def attention_type(self, llama_cpp.llama_attention_type value):
+    def attention_type(self, llama_attention_type value):
         self.p.attention_type = value
 
     @property
@@ -3575,26 +3588,31 @@ cdef class LlamaContext:
     cdef LlamaContext from_ptr(llama_cpp.llama_context *ptr, bint owner=False):
         cdef LlamaContext wrapper = LlamaContext.__new__(LlamaContext)
         wrapper.ptr = ptr
-        wrapper.ptr_owner = owner
+        wrapper.owner = owner
         return wrapper
 
     def close(self):
         self.__dealloc__()
 
+    @property
     def n_ctx(self) -> int:
         return llama_cpp.llama_n_ctx(self.ptr)
 
+    @property
     def n_batch(self) -> int:
         return llama_cpp.llama_n_batch(self.ptr)
 
+    @property
     def n_ubatch(self) -> int:
         return llama_cpp.llama_n_ubatch(self.ptr)
 
+    @property
     def n_seq_max(self) -> int:
         return llama_cpp.llama_n_seq_max(self.ptr)
 
+    @property
     def pooling_type(self) -> int:
-        return llama_cpp.get_llama_pooling_type(self.ptr)
+        return <llama_pooling_type>llama_cpp.get_llama_pooling_type(self.ptr)
 
     # Lora
     # -------------------------------------------------------------------------
@@ -3927,7 +3945,7 @@ cdef class LlamaContext:
         Rows: number of tokens for which llama_batch.logits[i] != 0
         Cols: n_vocab
         """
-        cdef int n_vocab = self.model.n_vocab()
+        cdef int n_vocab = self.model.n_vocab
         cdef float * logits = llama_cpp.llama_get_logits(self.ptr)
         cdef vector[float] vec
         for i in range(n_vocab):
@@ -4073,14 +4091,17 @@ cdef class CommonInitResult:
     def __init__(self, params: CommonParams):
         self.p = llama_cpp.common_init_from_params(params.p)
 
+    @property
     def model(self) -> LlamaModel:
-        return LlamaModel.from_ptr(self.p.model)
+        return LlamaModel.from_ptr(self.p.model, owner=True)
 
+    @property
     def context(self) -> LlamaContext:
-        return LlamaContext.from_ptr(self.p.context)
+        return LlamaContext.from_ptr(self.p.context, owner=True)
 
+    @property
     def lora_adapters(self):
-        return 1
+        return NotImplemented("Not yet at least..")
 
 
 

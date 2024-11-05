@@ -18,6 +18,7 @@ get_llamacpp() {
 		cd llama.cpp && \
 		cp common/*.h ${INCLUDE} && \
 		cp common/*.hpp ${INCLUDE} && \
+		cp ggml/include/*.h ${INCLUDE} && \
 		cp examples/llava/*.h ${INCLUDE} && \
 		mkdir -p build && \
 		cd build && \
