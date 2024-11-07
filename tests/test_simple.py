@@ -1,7 +1,7 @@
-import sys
-from pathlib import Path
-ROOT = Path.cwd()
-sys.path.insert(0, str(ROOT / 'src'))
+# import sys
+# from pathlib import Path
+# ROOT = Path.cwd()
+# sys.path.insert(0, str(ROOT / 'src'))
 
 import cyllama.cyllama as cy
 
@@ -36,7 +36,7 @@ def test_lowlevel_simple(model_path):
 
 
     # build sampler chain
-    sparams = cy.SamplerChainParams()
+    sparams = cy.LlamaSamplerChainParams()
     sparams.no_perf = False
 
     smplr = cy.LlamaSampler(sparams)

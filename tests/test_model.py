@@ -1,7 +1,3 @@
-import sys
-from pathlib import Path
-ROOT = Path.cwd()
-sys.path.insert(0, str(ROOT / 'src'))
 
 import cyllama.cyllama as cy
 
@@ -15,7 +11,7 @@ def test_model_instance(model_path):
 
 def test_model_load_cancel(model_path):
     cy.llama_backend_init()
-    params = cy.ModelParams()
+    params = cy.LlamaModelParams()
     params.use_mmap = False
     params.progress_callback = progress_callback
     model = cy.LlamaModel(model_path, params)

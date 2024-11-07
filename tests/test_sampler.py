@@ -1,13 +1,13 @@
-import sys
-from pathlib import Path
-ROOT = Path.cwd()
-sys.path.insert(0, str(ROOT / 'src'))
+# import sys
+# from pathlib import Path
+# ROOT = Path.cwd()
+# sys.path.insert(0, str(ROOT / 'src'))
 
 import cyllama.cyllama as cy
 
 
 def test_sampler_instance():
-    sparams = cy.SamplerChainParams()
+    sparams = cy.LlamaSamplerChainParams()
     sparams.no_perf = False
     smplr = cy.LlamaSampler(sparams)
     smplr.add_temp(1.5)

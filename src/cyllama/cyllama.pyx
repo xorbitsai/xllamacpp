@@ -6,21 +6,22 @@ classes:
     LlamaLogitBias
     LlamaTokenData
     LlamaTokenDataArray
-    LoraAdapter
+    LlamaLoraAdapter
     GGMLThreadPoolParams
+    GGMLThreadPool
     GGMLTensor
-    SamplerChainParams
+    LlamaSamplerChainParams
     LlamaSampler
     CommonSamplerParams
     CommonSampler
     CpuParams
     CommonParams
-    ModelParams
-    ModelQuantizeParams
+    LlamaModelParams
+    LlamaModelQuantizeParams
     LlamaModel
-    ContextParams
+    LlamaContextParams
     LlamaContext
-    LlamaBatch
+    LlamaBatch\
     CommonInitResult
 
 
@@ -537,7 +538,7 @@ cdef class LlamaTokenDataArray:
         self.ptr.sorted = value
 
 
-cdef class LoraAdapter:
+cdef class LlamaLoraAdapter:
     cdef llama_cpp.llama_lora_adapter * ptr
     cdef bint owner
 
@@ -557,25 +558,39 @@ cdef class LoraAdapter:
         raise TypeError("This class cannot be instantiated directly.")
 
     @staticmethod
-    cdef LoraAdapter from_ptr(llama_cpp.llama_lora_adapter *ptr, bint owner=False):
+    cdef LlamaLoraAdapter from_ptr(llama_cpp.llama_lora_adapter *ptr, bint owner=False):
         # Fast call to __new__() that bypasses the __init__() constructor.
-        cdef LoraAdapter wrapper = LoraAdapter.__new__(LoraAdapter)
+        cdef LlamaLoraAdapter wrapper = LlamaLoraAdapter.__new__(LlamaLoraAdapter)
         wrapper.ptr = ptr
         wrapper.owner = owner
         return wrapper
 
 
+
 cdef class GGMLThreadPoolParams:
+    # NOTE: should this be a * ptr
     cdef llama_cpp.ggml_threadpool_params p
+
 
     def __init__(self, int n_threads):
         self.p = llama_cpp.ggml_threadpool_params_default(n_threads)
+
+    # cdef void ggml_threadpool_params_init(ggml_threadpool_params * p, int n_threads)
 
     @staticmethod
     cdef GGMLThreadPoolParams from_instance(llama_cpp.ggml_threadpool_params params):
         cdef GGMLThreadPoolParams wrapper = GGMLThreadPoolParams.__new__(GGMLThreadPoolParams)
         wrapper.p = params
         return wrapper
+
+    @staticmethod
+    cdef GGMLThreadPoolParams from_cpu_params(CpuParams params):
+        cdef GGMLThreadPoolParams wrapper = GGMLThreadPoolParams.__new__(GGMLThreadPoolParams)
+        wrapper.p = llama_cpp.ggml_threadpool_params_from_cpu_params(params.ptr[0])
+        return wrapper
+
+    def match(self, GGMLThreadPoolParams other) -> bool:
+        return llama_cpp.ggml_threadpool_params_match(&self.p, &other.p)
 
     @property
     def cpumask(self) -> list[bool]:
@@ -640,6 +655,36 @@ cdef class GGMLThreadPoolParams:
         self.p.paused = value
 
 
+cdef class GGMLThreadPool:
+    cdef llama_cpp.ggml_threadpool * ptr
+    cdef bint owner
+
+    def __cinit__(self):
+        self.ptr = NULL
+        self.owner = False
+
+    def __init__(self, GGMLThreadPoolParams params):
+        self.ptr = llama_cpp.ggml_threadpool_new(&params.p)
+        if self.ptr is NULL:
+            raise MemoryError
+        self.owner = True
+
+    def __dealloc__(self):
+        # De-allocate if not null and flag is set
+        if self.ptr is not NULL and self.owner is True:
+            llama_cpp.ggml_threadpool_free(self.ptr)
+            self.ptr = NULL
+
+    # def get_n_threads(self) -> int:
+    #     return llama_cpp.ggml_threadpool_get_n_threads(self.ptr)
+
+    def pause(self):
+        return llama_cpp.ggml_threadpool_pause(self.ptr)
+
+    def resume(self):
+        return llama_cpp.ggml_threadpool_resume(self.ptr)
+
+
 cdef class GGMLTensor:
     cdef llama_cpp.ggml_tensor * ptr
     cdef bint owner
@@ -677,15 +722,15 @@ cdef class GGMLTensor:
         return GGMLTensor.from_ptr(ptr, owner=True)
 
 
-cdef class SamplerChainParams:
+cdef class LlamaSamplerChainParams:
     cdef llama_cpp.llama_sampler_chain_params p
 
     def __init__(self):
         self.p = llama_cpp.llama_sampler_chain_default_params()
 
     @staticmethod
-    cdef SamplerChainParams from_instance(llama_cpp.llama_sampler_chain_params params):
-        cdef SamplerChainParams wrapper = SamplerChainParams.__new__(SamplerChainParams)
+    cdef LlamaSamplerChainParams from_instance(llama_cpp.llama_sampler_chain_params params):
+        cdef LlamaSamplerChainParams wrapper = LlamaSamplerChainParams.__new__(LlamaSamplerChainParams)
         wrapper.p = params
         return wrapper
 
@@ -702,14 +747,14 @@ cdef class SamplerChainParams:
 cdef class LlamaSampler:
     """cython wrapper for llama_cpp.llama_sampler."""
     cdef llama_cpp.llama_sampler * ptr
-    cdef SamplerChainParams params
+    cdef LlamaSamplerChainParams params
     cdef bint owner
 
     def __cinit__(self):
         self.ptr = NULL
         self.owner = True
 
-    def __init__(self, params: Optional[SamplerChainParams] = None):
+    def __init__(self, params: Optional[LlamaSamplerChainParams] = None):
         if not params:
             self.ptr = llama_cpp.llama_sampler_chain_init(self.params.p)
         else:
@@ -2705,7 +2750,7 @@ cdef class CommonParams:
     # bool batched_bench_output_jsonl = false;
 
 
-cdef class ModelParams:
+cdef class LlamaModelParams:
     cdef llama_cpp.llama_model_params p
 
     def __init__(self):
@@ -2713,8 +2758,8 @@ cdef class ModelParams:
         # self.p.progress_callback = &progress_callback # FIXME: causes crash
 
     @staticmethod
-    cdef ModelParams from_instance(llama_cpp.llama_model_params params):
-        cdef ModelParams wrapper = ModelParams.__new__(ModelParams)
+    cdef LlamaModelParams from_instance(llama_cpp.llama_model_params params):
+        cdef LlamaModelParams wrapper = LlamaModelParams.__new__(LlamaModelParams)
         wrapper.p = params
         return wrapper
 
@@ -2837,15 +2882,15 @@ cdef class ModelParams:
         self.p.check_tensors = value
 
 
-cdef class ModelQuantizeParams:
+cdef class LlamaModelQuantizeParams:
     cdef llama_cpp.llama_model_quantize_params p
 
     def __init__(self):
         self.p = llama_cpp.llama_model_quantize_default_params()
 
     @staticmethod
-    cdef ModelQuantizeParams from_instance(llama_cpp.llama_model_quantize_params params):
-        cdef ModelQuantizeParams wrapper = ModelQuantizeParams.__new__(ModelQuantizeParams)
+    cdef LlamaModelQuantizeParams from_instance(llama_cpp.llama_model_quantize_params params):
+        cdef LlamaModelQuantizeParams wrapper = LlamaModelQuantizeParams.__new__(LlamaModelQuantizeParams)
         wrapper.p = params
         return wrapper
 
@@ -2937,7 +2982,7 @@ cdef class ModelQuantizeParams:
 cdef class LlamaModel:
     """cython wrapper for llama_cpp.cpp llama_model."""
     cdef llama_cpp.llama_model * ptr
-    cdef public ModelParams params
+    cdef public LlamaModelParams params
     cdef public str path_model
     cdef public bint verbose
     cdef bint owner
@@ -2946,9 +2991,9 @@ cdef class LlamaModel:
         self.ptr = NULL
         self.owner = True
 
-    def __init__(self, path_model: str, params: Optional[ModelParams] = None, verbose: bool = True):
+    def __init__(self, path_model: str, params: Optional[LlamaModelParams] = None, verbose: bool = True):
         self.path_model = path_model
-        self.params = params if params else ModelParams()
+        self.params = params if params else LlamaModelParams()
         self.verbose = verbose
 
         if not os.path.exists(path_model):
@@ -3033,14 +3078,14 @@ cdef class LlamaModel:
 
     # lora
 
-    def lora_adapter_init(self, str path_lora) -> LoraAdapter:
+    def lora_adapter_init(self, str path_lora) -> LlamaLoraAdapter:
         """Load a LoRA adapter from file
 
         The loaded adapter will be associated to the given model, and will be free when the model is deleted
         """
         cdef llama_cpp.llama_lora_adapter * ptr = llama_cpp.llama_lora_adapter_init(
             self.ptr, path_lora.encode())
-        cdef LoraAdapter adapter = LoraAdapter.from_ptr(ptr)
+        cdef LlamaLoraAdapter adapter = LlamaLoraAdapter.from_ptr(ptr)
         return adapter
 
     # metadata
@@ -3301,21 +3346,21 @@ cdef class LlamaModel:
         return metadata
 
     @staticmethod
-    def default_params() -> ModelParams:
+    def default_params() -> LlamaModelParams:
         """Get the default llama_model_params."""
         # return llama_cpp.llama_model_default_params()
-        return ModelParams()
+        return LlamaModelParams()
 
 
-cdef class ContextParams:
+cdef class LlamaContextParams:
     cdef llama_cpp.llama_context_params p
 
     def __init__(self):
         self.p = llama_cpp.llama_context_default_params()
 
     @staticmethod
-    cdef ContextParams from_common_params(CommonParams params):
-        cdef ContextParams wrapper = ContextParams.__new__(ContextParams)
+    cdef LlamaContextParams from_common_params(CommonParams params):
+        cdef LlamaContextParams wrapper = LlamaContextParams.__new__(LlamaContextParams)
         wrapper.p = llama_cpp.common_context_params_to_llama(params.p)
         return wrapper
 
@@ -3555,7 +3600,7 @@ cdef class LlamaContext:
     """Intermediate Python wrapper for a llama.cpp llama_context."""
     cdef llama_cpp.llama_context * ptr
     cdef public LlamaModel model
-    cdef public ContextParams params
+    cdef public LlamaContextParams params
     cdef public bint verbose
     cdef public int n_tokens
     cdef bint owner
@@ -3565,9 +3610,9 @@ cdef class LlamaContext:
         self.owner = True
         self.n_tokens = 0
 
-    def __init__(self, model: LlamaModel, params: Optional[ContextParams] = None, verbose: bool = True):
+    def __init__(self, model: LlamaModel, params: Optional[LlamaContextParams] = None, verbose: bool = True):
         self.model = model
-        self.params = params if params else ContextParams()
+        self.params = params if params else LlamaContextParams()
         self.verbose = verbose
 
         # self.ptr = None
@@ -3614,10 +3659,19 @@ cdef class LlamaContext:
     def pooling_type(self) -> int:
         return <llama_pooling_type>llama_cpp.get_llama_pooling_type(self.ptr)
 
+    # Manage Threadpools
+    # -------------------------------------------------------------------------
+
+    def attach_threadpool(self, GGMLThreadPool threadpool, GGMLThreadPool threadpool_batch):
+        llama_cpp.llama_attach_threadpool(self.ptr, threadpool.ptr, threadpool_batch.ptr)
+
+    def detach_threadpool(self):
+        llama_cpp.llama_detach_threadpool(self.ptr)
+
     # Lora
     # -------------------------------------------------------------------------
 
-    def lora_adapter_set(self, LoraAdapter adapter, float scale):
+    def lora_adapter_set(self, LlamaLoraAdapter adapter, float scale):
         """Add a loaded LoRA adapter to given context
         
         This will not modify model's weight
@@ -3627,7 +3681,7 @@ cdef class LlamaContext:
         if res == -1:
             raise ValueError(f"cannot load lora adapter to context")
 
-    def lora_adapter_remove(self, LoraAdapter adapter):
+    def lora_adapter_remove(self, LlamaLoraAdapter adapter):
         """Remove a specific LoRA adapter from given context
 
         Return -1 if the adapter is not present in the context
@@ -4124,12 +4178,12 @@ def llama_backend_init():
 def llama_numa_init(ggml_numa_strategy numa):
     llama_cpp.llama_numa_init(numa)
 
-def common_model_params_to_llama(CommonParams params) -> ModelParams:
+def common_model_params_to_llama(CommonParams params) -> LlamaModelParams:
     cdef llama_cpp.llama_model_params model_params = llama_cpp.common_model_params_to_llama(params.p)
-    return ModelParams.from_instance(model_params)
+    return LlamaModelParams.from_instance(model_params)
 
-def common_context_params_to_llama(CommonParams params) -> ContextParams:
-    return ContextParams.from_common_params(params)
+def common_context_params_to_llama(CommonParams params) -> LlamaContextParams:
+    return LlamaContextParams.from_common_params(params)
 
 def common_tokenize(LlamaContext ctx, str text, bint add_special, bint parse_special = False):
     return llama_cpp.common_tokenize(<const llama_cpp.llama_context *>ctx.ptr, <string>text.encode(), add_special, parse_special)
@@ -4145,6 +4199,9 @@ def common_batch_add(LlamaBatch batch, llama_cpp.llama_token id, llama_cpp.llama
 
 def ggml_time_us() -> int:
     return llama_cpp.ggml_time_us()
+
+def set_process_priority(ggml_sched_priority prio) -> bool:
+    return llama_cpp.set_process_priority(<ggml_sched_priority> prio)
 
 def llama_time_us() -> int:
     return llama_cpp.llama_time_us()
@@ -4163,6 +4220,12 @@ def llama_supports_gpu_offload() -> bool:
 
 def llama_supports_rpc() -> bool:
     return llama_cpp.llama_supports_rpc()
+
+def llama_attach_threadpool(LlamaContext ctx, GGMLThreadPool threadpool, GGMLThreadPool threadpool_batch):
+    llama_cpp.llama_attach_threadpool(ctx.ptr, threadpool.ptr, threadpool_batch.ptr)
+
+def llama_detach_threadpool(LlamaContext ctx):
+    llama_cpp.llama_detach_threadpool(ctx.ptr)
 
 def log_set_verbosity(int verbosity):
     llama_cpp.common_log_set_verbosity_thold(verbosity)

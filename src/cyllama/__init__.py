@@ -52,6 +52,20 @@ class Llama:
         cy.llama_backend_init()
         cy.llama_numa_init(self.params.numa)
 
+        # MOVE this as context is defined later
+        # tpp_batch = cy.GGMLThreadPoolParams.from_cpu_params(params.cpuparams_batch)
+        # tpp = cy.GGMLThreadPoolParams.from_cpu_params(params.cpuparams)
+
+        # cy.set_process_priority(params.cpuparams.priority)
+
+        # if tpp.match(ttp_batch):
+        #     threadpool_batch = cy.GGMLThreadPool(ttp_batch)
+        #     tpp.paused = True
+
+        # threadpool = cy.GGMLThreadPool(tpp)
+
+        # ctx.attach_threadpool(threadpool, threadpool_batch)
+
     def __del__(self):
         cy.llama_backend_free()
 
@@ -103,7 +117,7 @@ class Llama:
         self.ctx = cy.LlamaContext(model=self.model, params=ctx_params)
 
         # build sampler chain
-        sparams = cy.SamplerChainParams()
+        sparams = cy.LlamaSamplerChainParams()
         sparams.no_perf = False
 
         self.smplr = cy.LlamaSampler(sparams)

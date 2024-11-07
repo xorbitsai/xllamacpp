@@ -46,8 +46,8 @@ bind: build/include
 	@make -f scripts/bind/bind.mk bind
 
 
-.PHONY: test test_simple test_main test_retrieve test_model test_llava \
-		download download_all bump clean reset
+.PHONY: test test_simple test_main test_retrieve test_model test_llava test_lora \
+		coverage memray download download_all bump clean reset
 
 test:
 	@pytest
@@ -112,11 +112,23 @@ test_llava: $(MODEL_LLAVA)
 		--image tests/media/dice.jpg -c 4096 -e \
 		-p "<|start_header_id|>user<|end_header_id|>\n\n<image>\nDescribe this image<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
 
+test_lora:
+	@./bin/llama-cli -c 2048 -n 64 \
+	-p "What are your constraints?" \
+	-m models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf \
+	--lora models/Llama-3-Instruct-abliteration-LoRA-8B-f16.gguf
+
+coverage:
+	@pytest --cov=cyllama --cov-report html
+
+memray:
+	@pytest --memray --native tests
+
 bump:
 	@scripts/bump.sh
 
 clean:
-	@rm -rf build dist src/*.egg-info .pytest_cache
+	@rm -rf build dist src/*.egg-info .pytest_cache .coverage
 
 reset: clean
 	@rm -rf bin thirdparty 

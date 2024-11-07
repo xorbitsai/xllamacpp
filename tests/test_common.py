@@ -1,7 +1,3 @@
-import sys
-from pathlib import Path
-ROOT = Path.cwd()
-sys.path.insert(0, str(ROOT / 'src'))
 
 import cyllama.cyllama as cy
 

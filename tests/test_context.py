@@ -1,7 +1,3 @@
-import sys
-from pathlib import Path
-ROOT = Path.cwd()
-sys.path.insert(0, str(ROOT / 'src'))
 
 import cyllama.cyllama as cy
 
@@ -39,13 +35,13 @@ def test_context(model_path):
     cy.llama_backend_free()
 
 def test_context_params():
-    params = cy.ContextParams()
+    params = cy.LlamaContextParams()
     assert params.n_threads == 4
     assert params.n_batch == 2048
     assert params.n_ctx == 512
 
 def test_context_params_set():
-    params = cy.ContextParams()
+    params = cy.LlamaContextParams()
     params.n_threads = 8
     params.n_batch = 1024
     params.n_ctx = 1024

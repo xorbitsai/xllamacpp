@@ -1,20 +1,16 @@
 import platform
-import sys
-from pathlib import Path
 
 from pytest import approx
 
 PLATFORM = platform.system()
-ARCH = platform.machine()
-ROOT = Path.cwd()
-sys.path.insert(0, str(ROOT / 'src'))
+# ARCH = platform.machine()
 
 import cyllama.cyllama as cy
 
 
 def test_default_model_params():
-    params = cy.ModelParams()
-    if (PLATFORM, ARCH) == ("Darwin", "arm64"): # i.e. GGML_USE_METAL=ON
+    params = cy.LlamaModelParams()
+    if PLATFORM == "Darwin": # i.e. GGML_USE_METAL=ON
         assert params.n_gpu_layers == 999
     else:
         assert params.n_gpu_layers == 0
@@ -26,7 +22,7 @@ def test_default_model_params():
     assert params.check_tensors == False
 
 def test_default_context_params():
-    params = cy.ContextParams()
+    params = cy.LlamaContextParams()
     assert params.n_ctx               == 512
     assert params.n_batch             == 2048
     assert params.n_ubatch            == 512
@@ -57,7 +53,7 @@ def test_default_context_params():
     # assert params.abort_callback_data == nullptr
 
 def test_default_model_quantize_params():
-    params = cy.ModelQuantizeParams()
+    params = cy.LlamaModelQuantizeParams()
     assert params.nthread                     == 0
     assert params.ftype                       == cy.LLAMA_FTYPE_MOSTLY_Q5_1
     assert params.output_tensor_type          == cy.GGML_TYPE_COUNT

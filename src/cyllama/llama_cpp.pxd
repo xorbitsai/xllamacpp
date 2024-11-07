@@ -1684,13 +1684,13 @@ cdef extern from "common.h":
 
     cdef llama_model_params common_model_params_to_llama(const common_params & params)
     cdef llama_context_params common_context_params_to_llama(const common_params & params)
-    # ggml_threadpool_params ggml_threadpool_params_from_cpu_params(const cpu_params & params);
+    cdef ggml_threadpool_params ggml_threadpool_params_from_cpu_params(const cpu_params & params);
     
-    llama_model * common_load_model_from_url(const char * model_url, const char * path_model, const char * hf_token, const llama_model_params & params);
-    llama_model * common_load_model_from_hf(const char * repo, const char * file, const char * path_model, const char * hf_token, const llama_model_params & params);
+    cdef llama_model * common_load_model_from_url(const char * model_url, const char * path_model, const char * hf_token, const llama_model_params & params);
+    cdef llama_model * common_load_model_from_hf(const char * repo, const char * file, const char * path_model, const char * hf_token, const llama_model_params & params);
 
     # clear LoRA adapters from context, then apply new list of adapters
-    void common_lora_adapters_apply(llama_context * ctx, std_vector[common_lora_adapter_container] & lora_adapters)
+    cdef void common_lora_adapters_apply(llama_context * ctx, std_vector[common_lora_adapter_container] & lora_adapters)
 
     # -------------------------------------------------------------------------
     # Batch utils
