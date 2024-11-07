@@ -52,20 +52,6 @@ class Llama:
         cy.llama_backend_init()
         cy.llama_numa_init(self.params.numa)
 
-        # MOVE this as context is defined later
-        # tpp_batch = cy.GGMLThreadPoolParams.from_cpu_params(params.cpuparams_batch)
-        # tpp = cy.GGMLThreadPoolParams.from_cpu_params(params.cpuparams)
-
-        # cy.set_process_priority(params.cpuparams.priority)
-
-        # if tpp.match(ttp_batch):
-        #     threadpool_batch = cy.GGMLThreadPool(ttp_batch)
-        #     tpp.paused = True
-
-        # threadpool = cy.GGMLThreadPool(tpp)
-
-        # ctx.attach_threadpool(threadpool, threadpool_batch)
-
     def __del__(self):
         cy.llama_backend_free()
 
@@ -95,6 +81,21 @@ class Llama:
         self.log.critical(msg, *args)
         sys.exit(1)
 
+    def attach_threadpool(self, ctx: cy.LlamaContext):
+        # MOVE this as context is defined later
+        tpp_batch = cy.GGMLThreadPoolParams.from_cpu_params(self.params.cpuparams_batch)
+        tpp = cy.GGMLThreadPoolParams.from_cpu_params(self.params.cpuparams)
+
+        cy.set_process_priority(self.params.cpuparams.priority)
+
+        if tpp.match(tpp_batch):
+            threadpool_batch = cy.GGMLThreadPool(tpp_batch)
+            tpp.paused = True
+
+            threadpool = cy.GGMLThreadPool(tpp)
+
+            ctx.attach_threadpool(threadpool, threadpool_batch)
+
     def ask(self, prompt: str, n_predict: Optional[int] = None, n_ctx: Optional[int] = None):
         """prompt model"""
 
@@ -115,6 +116,9 @@ class Llama:
         # initialize the context
         ctx_params = cy.common_context_params_to_llama(self.params)
         self.ctx = cy.LlamaContext(model=self.model, params=ctx_params)
+
+        # attach threadpool
+        self.attach_threadpool(self.ctx)
 
         # build sampler chain
         sparams = cy.LlamaSamplerChainParams()

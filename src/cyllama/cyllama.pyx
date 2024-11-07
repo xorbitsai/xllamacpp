@@ -584,10 +584,9 @@ cdef class GGMLThreadPoolParams:
         return wrapper
 
     @staticmethod
-    cdef GGMLThreadPoolParams from_cpu_params(CpuParams params):
-        cdef GGMLThreadPoolParams wrapper = GGMLThreadPoolParams.__new__(GGMLThreadPoolParams)
-        wrapper.p = llama_cpp.ggml_threadpool_params_from_cpu_params(params.ptr[0])
-        return wrapper
+    def from_cpu_params(CpuParams params) -> GGMLThreadPoolParams:
+        cdef llama_cpp.ggml_threadpool_params tparams = llama_cpp.ggml_threadpool_params_from_cpu_params(params.ptr[0])
+        return GGMLThreadPoolParams.from_instance(tparams)
 
     def match(self, GGMLThreadPoolParams other) -> bool:
         return llama_cpp.ggml_threadpool_params_match(&self.p, &other.p)
