@@ -28,7 +28,7 @@ $(LIBLAMMA):
 
 build: $(LIBLAMMA)
 	@python3 setup.py build_ext --inplace
-# 	@rm -rf src/cyllama/cyllama.cpp
+	@git diff thirdparty > changes.diff
 
 
 wheel:

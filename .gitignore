@@ -5,6 +5,7 @@ models/
 thirdparty/llama-cpp-python
 src/cyllama/cyllama.cpp
 tests/cpp
+changes.diff
 
 # editor
 .vscode
