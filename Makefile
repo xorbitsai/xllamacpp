@@ -133,4 +133,4 @@ clean:
 reset: clean
 	@rm -rf bin thirdparty/llama.cpp/lib
 
-remake: test build reset
+remake: reset build test
