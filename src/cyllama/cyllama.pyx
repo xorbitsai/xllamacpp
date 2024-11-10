@@ -793,10 +793,18 @@ cdef class LlamaSampler:
         return llama_cpp.llama_sampler_get_seed(self.ptr)
 
     def add_greedy(self):
+        """Add greedy sampling chain link
+
+        This should be at the end of the chain.
+        """
         llama_cpp.llama_sampler_chain_add(
             self.ptr, llama_cpp.llama_sampler_init_greedy())
 
     def add_dist(self, uint32_t seed):
+        """Add dist sampling chain link
+
+        This should be at the end of the chain.
+        """
         llama_cpp.llama_sampler_chain_add(
             self.ptr, llama_cpp.llama_sampler_init_dist(seed))
 
@@ -807,44 +815,59 @@ cdef class LlamaSampler:
     #         self.ptr, llama_cpp.llama_sampler_init_softmax())
 
     def add_top_k(self, int32_t k):
-        """Top-K sampling described in academic paper "The Curious Case of Neural Text Degeneration" https:#arxiv.org/abs/1904.09751"""
+        """Add Top-K sampling chain link.
+
+        Described in academic paper "The Curious Case of Neural Text Degeneration" https:#arxiv.org/abs/1904.09751"""
         llama_cpp.llama_sampler_chain_add(
             self.ptr, llama_cpp.llama_sampler_init_top_k(k))
 
     def add_top_p(self, float p, size_t min_keep):
-        """Nucleus sampling described in academic paper "The Curious Case of Neural Text Degeneration" https:#arxiv.org/abs/1904.09751"""
+        """Add Nucleus sampling chain link.
+
+        Described in academic paper "The Curious Case of Neural Text Degeneration" https:#arxiv.org/abs/1904.09751"""
         llama_cpp.llama_sampler_chain_add(
             self.ptr, llama_cpp.llama_sampler_init_top_p(p, min_keep))
 
     def add_min_p(self, float p, size_t min_keep):
-        """Minimum P sampling as described in https:#github.com/ggerganov/llama.cpp/pull/3841"""
+        """Add Minimum P sampling.
+
+        Described in https:#github.com/ggerganov/llama.cpp/pull/3841"""
         llama_cpp.llama_sampler_chain_add(
             self.ptr, llama_cpp.llama_sampler_init_min_p(p, min_keep))
 
     def add_typical(self, float p, size_t min_keep):
-        """Locally Typical Sampling implementation described in the paper https:#arxiv.org/abs/2202.00666."""
+        """Add Locally Typical Sampling implementation.
+
+        Described in the paper https:#arxiv.org/abs/2202.00666."""
         llama_cpp.llama_sampler_chain_add(
             self.ptr, llama_cpp.llama_sampler_init_typical(p, min_keep))
 
     def add_temp(self, float t):
-        """Updates the logits `l_i = l_i/t`. When `t <= 0.0f`, the maximum logit is kept at it's original value, the rest are set to -inf"""
+        """Add temperature sampling chain link.
+
+        Updates the logits `l_i = l_i/t`. When `t <= 0.0f`,
+        the maximum logit is kept at its original value, the rest are set to -inf."""
         llama_cpp.llama_sampler_chain_add(
             self.ptr, llama_cpp.llama_sampler_init_temp(t))
 
     def add_temp_ext(self, float t, float delta, float exponent):
-        """Dynamic temperature implementation described in the paper https:#arxiv.org/abs/2309.02772."""
+        """Add Dynamic temperature implementation sampling chain link
+
+        Described in the paper https:#arxiv.org/abs/2309.02772."""
         llama_cpp.llama_sampler_chain_add(
             self.ptr, llama_cpp.llama_sampler_init_temp_ext(t, delta, exponent))
 
     def add_xtc(self, float p, float t, size_t min_keep, uint32_t seed):
-        """XTC sampler as described in https://github.com/oobabooga/text-generation-webui/pull/6335"""
+        """Add XTC sampler chain link
+
+        Described in https://github.com/oobabooga/text-generation-webui/pull/6335"""
         llama_cpp.llama_sampler_chain_add(
             self.ptr, llama_cpp.llama_sampler_init_xtc(p, t, min_keep, seed))
 
     # XXX: docstring incorrect
     def add_mirostat(self, int n_vocab, uint32_t seed, float tau, float eta, int m):
         """Mirostat 1.0 algorithm described in the paper https:#arxiv.org/abs/2007.14966. Uses tokens instead of words.
-    
+
         candidates: A vector of `llama_token_data` containing the candidate tokens, their probabilities (p), and log-odds (logit) for the current position in the generated text.
         tau:     The target cross-entropy (or surprise) value you want to achieve for the generated text. A higher value corresponds to more surprising or less predictable text, while a lower value corresponds to less surprising or more predictable text.
         eta:     The learning rate used to update `mu` based on the error between the target and observed surprisal of the sampled word. A larger learning rate will cause `mu` to be updated more quickly, while a smaller learning rate will result in slower updates.
@@ -856,7 +879,7 @@ cdef class LlamaSampler:
 
     def add_mirostat_v2(self, uint32_t seed, float tau, float eta):
         """Mirostat 2.0 algorithm described in the paper https:#arxiv.org/abs/2007.14966. Uses tokens instead of words.
-        
+
         candidates: A vector of `llama_token_data` containing the candidate tokens, their probabilities (p), and log-odds (logit) for the current position in the generated text.
         tau:  The target cross-entropy (or surprise) value you want to achieve for the generated text. A higher value corresponds to more surprising or less predictable text, while a lower value corresponds to less surprising or more predictable text.
         eta: The learning rate used to update `mu` based on the error between the target and observed surprisal of the sampled word. A larger learning rate will cause `mu` to be updated more quickly, while a smaller learning rate will result in slower updates.
@@ -906,9 +929,9 @@ cdef class LlamaSampler:
 
     def add_infill(self, LlamaModel model):
         """This sampler is meant to be used for fill-in-the-middle infilling
-        
+
         it's supposed to be used after top_k + top_p sampling
-        
+
         1. if the sum of the EOG probs times the number of candidates is higher than the sum of the other probs -> pick EOG
         2. combine probs of tokens that have the same prefix
         
@@ -933,9 +956,9 @@ cdef class LlamaSampler:
 
     def sample(self, LlamaContext ctx, int idx) -> int:
         """Sample and accept a token from the idx-th output of the last evaluation
-        
+
         Shorthand for:
-        
+
            const auto * logits = llama_get_logits_ith(ctx, idx)
            llama_token_data_array cur_p = { ... init from logits ... }
            llama_sampler_apply(smpl, &cur_p)

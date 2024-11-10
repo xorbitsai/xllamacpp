@@ -47,7 +47,7 @@ bind: build/include
 
 
 .PHONY: test test_simple test_main test_retrieve test_model test_llava test_lora \
-		coverage memray download download_all bump clean reset
+		coverage memray download download_all bump clean reset remake
 
 test:
 	@pytest
@@ -131,6 +131,6 @@ clean:
 	@rm -rf build dist src/*.egg-info .pytest_cache .coverage
 
 reset: clean
-	@rm -rf bin thirdparty 
+	@rm -rf bin thirdparty/llama.cpp/lib
 
-
+remake: test build reset
