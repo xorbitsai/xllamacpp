@@ -26,7 +26,7 @@ classes:
 
 
 """
-from libc.stdint cimport uint8_t, int32_t, int64_t, uint32_t
+from libc.stdint cimport uint8_t, int32_t, int64_t, uint32_t, uint64_t
 from libc.stdlib cimport malloc, calloc, realloc, free
 from libcpp.vector cimport vector
 from libcpp.string cimport string
@@ -3085,12 +3085,12 @@ cdef class LlamaModel:
     @property
     def size(self) -> int:
         """Returns the total size of all the tensors in the model in bytes"""
-        return llama_cpp.llama_model_size(self.ptr)
+        return <uint64_t>llama_cpp.llama_model_size(self.ptr)
 
     @property
     def n_params(self) -> int:
         """Returns the total number of parameters in the model"""
-        return llama_cpp.llama_model_n_params(self.ptr)
+        return <uint64_t>llama_cpp.llama_model_n_params(self.ptr)
 
     def get_tensor(self, name: str) -> GGMLTensor:
         """Get a llama model tensor"""

@@ -14,7 +14,9 @@ Development goals are to:
 
 - Learn about the internals of this popular C++/C LLM inference engine along the way. This is definitelythe most efficient way, for me at least, to learn about the underlying technologies.
 
-Given that there is a fairly mature, well-maintained and performant ctypes based wrapper provided by @abetlen's [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) project and that llm inference is gpu-driven rather than cpu-driven, this all may see quite redundant. Nonetheless, we anticipate some benefits to using compiled wrappers:
+Given that there is a fairly mature, well-maintained and performant ctypes-based wrapper provided by @abetlen's [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) project and that LLM inference is gpu-driven rather than cpu-driven, this all may see quite redundant. Nonetheless, we anticipate some benefits to using a compiled cython-based wrapper instead of ctypes:
+
+- Cython functions and extension classes can enforce strong type checking.
 
 - Packaging benefits with respect to self-contained statically compiled extension modules.
 
