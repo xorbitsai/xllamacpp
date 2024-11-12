@@ -129,6 +129,15 @@ test_platform:
 		tests/test_platform.cpp
 	@./build/test_platform
 
+test_platform_linux:
+	@g++ -static -std=c++14 -fopenmp -o build/test_platform \
+		-I $(LLAMACPP)/include -L $(LLAMACPP)/lib  \
+		tests/test_platform.cpp \
+		$(LLAMACPP)/lib/libllama.a \
+		$(LLAMACPP)/lib/libggml.a \
+		$(LLAMACPP)/lib/libcommon.a
+	@./build/test_platform
+
 coverage:
 	@pytest --cov=cyllama --cov-report html
 

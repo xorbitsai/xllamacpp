@@ -1,5 +1,7 @@
-
+import platform
 import cyllama.cyllama as cy
+
+PLATFORM = platform.system()
 
 def progress_callback(progress: float) -> bool:
     return progress > 0.50
@@ -31,8 +33,12 @@ def test_autorelease(model_path):
     assert model.n_head == 32
     assert model.rope_freq_scale_train == 1.0
     assert model.desc == "llama 1B Q8_0"
-    assert model.size == 1592336512 # 1313251456 on linux
-    assert model.n_params == 1498482720 # 1235814432 on linux
+    if PLATFORM == "Darwin":
+        assert model.size == 1592336512
+        assert model.n_params == 1498482720
+    elif PLATFORM == "Linux":
+        assert model.size == 1313251456
+        assert model.n_params == 1235814432
     assert model.has_decoder() == True
     assert model.has_encoder() == False
     assert model.is_recurrent() == False
