@@ -21,5 +21,21 @@ def test_autorelease(model_path):
     # need to wrap in a thread here.
     cy.llama_backend_init()    
     model = cy.LlamaModel(model_path)
+    assert model.vocab_type == cy.LLAMA_VOCAB_TYPE_BPE
+    # model params
+    assert model.rope_type == cy.LLAMA_ROPE_TYPE_NORM
+    assert model.n_vocab == 128256
+    assert model.n_ctx_train == 131072
+    assert model.n_embd == 2048
+    assert model.n_layer == 16
+    assert model.n_head == 32
+    assert model.rope_freq_scale_train == 1.0
+    assert model.desc == "llama 1B Q8_0"
+    assert model.size == 1592336512 # 1313251456 on linux
+    assert model.n_params == 1498482720 # 1235814432 on linux
+    assert model.has_decoder() == True
+    assert model.has_encoder() == False
+    assert model.is_recurrent() == False
     ctx = cy.LlamaContext(model)
+    assert model.n_vocab == len(ctx.get_logits())
     cy.llama_backend_free()

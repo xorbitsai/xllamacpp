@@ -47,7 +47,7 @@ bind: build/include
 
 
 .PHONY: test test_simple test_main test_retrieve test_model test_llava test_lora \
-		coverage memray download download_all bump clean reset remake
+		test_platform coverage memray download download_all bump clean reset remake
 
 test:
 	@pytest
@@ -117,6 +117,17 @@ test_lora:
 	-p "What are your constraints?" \
 	-m models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf \
 	--lora models/Llama-3-Instruct-abliteration-LoRA-8B-f16.gguf
+
+test_platform:
+	@g++ -std=c++14 -o build/test_platform \
+		-I $(LLAMACPP)/include -L $(LLAMACPP)/lib  \
+		-framework Foundation -framework Accelerate \
+		-framework Metal -framework MetalKit \
+		$(LLAMACPP)/lib/libllama.a \
+		$(LLAMACPP)/lib/libggml.a \
+		$(LLAMACPP)/lib/libcommon.a \
+		tests/test_platform.cpp
+	@./build/test_platform
 
 coverage:
 	@pytest --cov=cyllama --cov-report html
