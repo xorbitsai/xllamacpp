@@ -4023,42 +4023,65 @@ cdef class LlamaContext:
         """
         cdef int n_vocab = self.model.n_vocab
         cdef float * logits = llama_cpp.llama_get_logits(self.ptr)
+        if logits is NULL:
+            # TODO: should one just return [] here?
+            raise ValueError('no logits available')
         cdef vector[float] vec
         for i in range(n_vocab):
             vec.push_back(logits[i])
         return vec
 
-    # def get_logits_ith(self, int i):
-    #     """Logits for the ith token. For positive indices, 
+    def get_logits_ith(self, int i):
+        """Logits for the ith token. For positive indices, 
 
-    #     Equivalent to:
-    #     llama_get_logits(ctx) + ctx->output_ids[i]*n_vocab
-    #     Negative indicies can be used to access logits in reverse order, -1 is the last logit.
-    #     returns NULL for invalid ids.
-    #     """
-    #     cdef float * logits = llama_get_logits_ith( llama_context * ctx, int32_t i)
+        Equivalent to:
+        llama_get_logits(ctx) + ctx->output_ids[i]*n_vocab
+        Negative indicies can be used to access logits in reverse order, -1 is the last logit.
+        returns NULL for invalid ids.
+        """
+        cdef int n_vocab = self.model.n_vocab
+        cdef float * logits = llama_cpp.llama_get_logits_ith(self.ptr, i)
+        cdef vector[float] vec
+        if logits is NULL:
+            raise ValueError(f"{i} is an invalid id")
+        for i in range(n_vocab):
+            vec.push_back(logits[i])
+        return vec
 
-    # def get_embeddings(self):
-    #     """Get all output token embeddings.
+    def get_embeddings(self):
+        """Get all output token embeddings.
 
-    #     when pooling_type == LLAMA_POOLING_TYPE_NONE or when using a generative model,
-    #     the embeddings for which llama_batch.logits[i] != 0 are stored contiguously
-    #     in the order they have appeared in the batch.
-    #     shape: [n_outputs*n_embd]
-    #     Otherwise, returns NULL.
-    #     """
-    #     cdef float * embds = llama_cpp.llama_get_embeddings(self.ptr)
+        when pooling_type == LLAMA_POOLING_TYPE_NONE or when using a generative model,
+        the embeddings for which llama_batch.logits[i] != 0 are stored contiguously
+        in the order they have appeared in the batch.
+        shape: [n_outputs * n_embd]
+        Otherwise, returns NULL.
+        """
+        cdef int n_embd = self.model.n_embd
+        cdef float * embds = llama_cpp.llama_get_embeddings(self.ptr)
+        cdef vector[float] vec
+        if embds is NULL:
+            # TODO: should one just return [] here?
+            raise ValueError('no embeddings available')
+        for i in range(n_embd):
+            vec.push_back(embds[i])
+        return vec
 
-
-    # def get_embeddings_ith(self, int i):
-    #     """Get the embeddings for the ith token. For positive indices, Equivalent to:
+    def get_embeddings_ith(self, int i):
+        """Get the embeddings for the ith token. For positive indices, Equivalent to:
         
-    #     llama_get_embeddings(ctx) + ctx->output_ids[i]*n_embd
-    #     Negative indicies can be used to access embeddings in reverse order, -1 is the last embedding.
-    #     returns NULL for invalid ids.
-    #     """
-    #     cdef float * embds = llama_cpp.llama_get_embeddings_ith(self.ptr, i)
-
+        llama_get_embeddings(ctx) + ctx->output_ids[i]*n_embd
+        Negative indicies can be used to access embeddings in reverse order, -1 is the last embedding.
+        returns NULL for invalid ids.
+        """
+        cdef int n_embd = self.model.n_embd
+        cdef float * embds = llama_cpp.llama_get_embeddings_ith(self.ptr, i)
+        cdef vector[float] vec
+        if embds is NULL:
+            raise ValueError(f"{i} is an invalid id")
+        for i in range(n_embd):
+            vec.push_back(embds[i])
+        return vec
 
     # def get_embeddings_seq(self, int seq_id):
     #     """Get the embeddings for a sequence id

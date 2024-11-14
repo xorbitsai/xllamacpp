@@ -7,9 +7,7 @@
 
 
 int main() {
-    // path to the model gguf file
     std::string model_path = "models/Llama-3.2-1B-Instruct-Q8_0.gguf";
-    // prompt to generate text from
     std::string prompt = "Is Mathematics invented or discovered?";
     // number of layers to offload to the GPU
     int ngl = 99;
@@ -18,12 +16,11 @@ int main() {
 
 
     // initialize the model
-
     llama_model_params model_params = llama_model_default_params();
     model_params.n_gpu_layers = ngl;
-
     llama_model * model = llama_load_model_from_file(model_path.c_str(), model_params);
 
+    // model properties
     uint64_t n_params = llama_model_n_params(model);
     uint64_t size = llama_model_size(model);
 
