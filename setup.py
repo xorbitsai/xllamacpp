@@ -47,6 +47,10 @@ else:
         f'{LLAMACPP_LIBS_DIR}/libcommon.a', 
         f'{LLAMACPP_LIBS_DIR}/libllama.a', 
         f'{LLAMACPP_LIBS_DIR}/libggml.a',
+        f'{LLAMACPP_LIBS_DIR}/libggml-base.a',
+        f'{LLAMACPP_LIBS_DIR}/libggml-blas.a',
+        f'{LLAMACPP_LIBS_DIR}/libggml-cpu.a',
+        f'{LLAMACPP_LIBS_DIR}/libggml-metal.a',
     ])
 
 INCLUDE_DIRS.append(os.path.join(CWD, 'include'))

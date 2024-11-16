@@ -4281,3 +4281,8 @@ def common_batch_clear(LlamaBatch batch):
 def llama_backend_free():
     """Call once at the end of the program - currently only used for MPI"""
     llama_cpp.llama_backend_free()
+
+# cdef void ggml_abort(const char * file, int line, const char * fmt):
+#     llama_cpp.ggml_abort(file, line, fmt)
+
+

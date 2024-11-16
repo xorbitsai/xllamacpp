@@ -25,6 +25,10 @@ get_llamacpp() {
 		cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && \
 		cmake --build . --config Release && \
 		cmake --install . --prefix ${PREFIX} && \
+		cp ggml/src/libggml-base.a ${LIB} && \
+		cp ggml/src/ggml-blas/libggml-blas.a ${LIB} && \
+		cp ggml/src/ggml-cpu/libggml-cpu.a ${LIB} && \
+		cp ggml/src/ggml-metal/libggml-metal.a ${LIB} && \
 		cp common/libcommon.a ${LIB} && \
 		cp examples/llava/libllava_static.a ${LIB}/libllava.a && \
 		mv ${PREFIX}/bin ${CWD}/bin && \

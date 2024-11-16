@@ -252,6 +252,8 @@ cdef extern from "ggml.h":
     cdef int64_t ggml_cycles()
     cdef int64_t ggml_cycles_per_ms()
 
+    # cdef void ggml_abort(const char * file, int line, const char * fmt, ...)
+
 
 #------------------------------------------------------------------------------
 # ggml-backend.h

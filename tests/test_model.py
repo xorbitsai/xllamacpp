@@ -33,12 +33,8 @@ def test_autorelease(model_path):
     assert model.n_head == 32
     assert model.rope_freq_scale_train == 1.0
     assert model.desc == "llama 1B Q8_0"
-    if PLATFORM == "Darwin":
-        assert model.size == 1592336512
-        assert model.n_params == 1498482720
-    elif PLATFORM == "Linux":
-        assert model.size == 1313251456
-        assert model.n_params == 1235814432
+    assert model.size == 1313251456
+    assert model.n_params == 1235814432
     assert model.has_decoder() == True
     assert model.has_encoder() == False
     assert model.is_recurrent() == False
