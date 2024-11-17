@@ -27,8 +27,9 @@ $(LIBLAMMA):
 	@scripts/setup.sh
 
 build: $(LIBLAMMA)
-	@python3 setup.py build_ext --inplace
 	@git diff thirdparty > changes.diff
+	@python3 setup.py build_ext --inplace
+	
 
 
 wheel:

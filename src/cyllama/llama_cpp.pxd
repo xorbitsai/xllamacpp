@@ -1514,7 +1514,6 @@ cdef extern from "common.h":
         std_string path_prompt_cache    # path to file for saving/loading prompt eval state
         std_string input_prefix         # string to prefix user inputs with
         std_string input_suffix         # string to suffix user inputs with
-        std_string logdir               # directory in which to save YAML log files
         std_string lookup_cache_static  # path of static ngram cache file for lookup decoding
         std_string lookup_cache_dynamic # path of dynamic ngram cache file for lookup decoding
         std_string logits_file          # file for saving *all* logits

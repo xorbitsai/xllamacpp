@@ -167,7 +167,6 @@ def test_common_params():
     assert params.path_prompt_cache    == ""
     assert params.input_prefix         == ""
     assert params.input_suffix         == ""
-    assert params.logdir               == ""
     assert params.lookup_cache_static  == ""
     assert params.lookup_cache_dynamic == ""
     assert params.logits_file          == ""

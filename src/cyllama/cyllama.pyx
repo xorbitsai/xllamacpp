@@ -1850,15 +1850,6 @@ cdef class CommonParams:
         self.p.input_suffix = value.encode('utf8')
 
     @property
-    def logdir(self) -> str:
-        """directory in which to save YAML log files"""
-        return self.p.logdir.decode()
-
-    @logdir.setter
-    def logdir(self, value: str):
-        self.p.logdir = value.encode('utf8')
-
-    @property
     def lookup_cache_static(self) -> str:
         """path of static ngram cache file for lookup decoding"""
         return self.p.lookup_cache_static.decode()
