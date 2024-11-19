@@ -812,6 +812,9 @@ cdef extern from "llama.h":
     # Apply the KV cache updates (such as K-shifts, defragmentation, etc.)
     cdef void llama_kv_cache_update(llama_context * ctx)
 
+    # Check if the context supports KV cache shifting
+    cdef bint llama_kv_cache_can_shift(llama_context * ctx)
+
     # -------------------------------------------------------------------------
     # State / sessions
 

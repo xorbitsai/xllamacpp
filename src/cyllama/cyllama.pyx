@@ -3804,6 +3804,11 @@ cdef class LlamaContext:
         """Apply the KV cache updates (such as K-shifts, defragmentation, etc.)"""
         llama_cpp.llama_kv_cache_update(self.ptr)
 
+
+    def kv_cache_can_shift(self) -> bool:
+        """Check if the context supports KV cache shifting."""
+        return <bint>llama_cpp.llama_kv_cache_can_shift(self.ptr)
+
     # State / sessions
     # -------------------------------------------------------------------------
 
