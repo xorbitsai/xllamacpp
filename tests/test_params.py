@@ -75,8 +75,8 @@ def test_default_ggml_threadpool_params():
     assert params.paused == False
     assert params.cpumask == [False] * cy.GGML_MAX_N_THREADS
 
-def test_common_sampler_params():
-    params = cy.CommonSamplerParams()
+def test_common_params_sampling():
+    params = cy.CommonParamsSampling()
     assert params.seed == cy.LLAMA_DEFAULT_SEED
     assert params.n_prev             == 64
     assert params.n_probs            == 0
@@ -112,13 +112,12 @@ def test_common_params():
     assert params.n_batch              ==  2048
     assert params.n_ubatch             ==   512
     assert params.n_keep               ==     0
-    assert params.n_draft              ==     5
     assert params.n_chunks             ==    -1
     assert params.n_parallel           ==     1
     assert params.n_sequences          ==     1
-    assert params.p_split              ==   approx(0.1)
+    # assert params.p_split              ==   approx(0.1)
     assert params.n_gpu_layers         ==    -1
-    assert params.n_gpu_layers_draft   ==    -1
+    # assert params.n_gpu_layers_draft   ==    -1
     assert params.main_gpu             ==     0
     assert params.tensor_split         ==   [0]*128
     assert params.grp_attn_n           ==     1
@@ -156,7 +155,7 @@ def test_common_params():
     # common_sampler_params sparams
 
     assert params.model                == ""
-    assert params.model_draft          == ""
+    # assert params.model_draft          == ""
     assert params.model_alias          == "unknown"
     assert params.model_url            == ""
     assert params.hf_token             == ""

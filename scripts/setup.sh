@@ -1,6 +1,8 @@
 CWD=`pwd`
 THIRDPARTY=${CWD}/thirdparty
-LLAMACPP_VERSION="bdf314f"
+# LLAMACPP_VERSION="bdf314f"
+LLAMACPP_VERSION="b4230"
+#tag:b4230 short:0c39f44
 
 # git clone --depth 1 --branch ${LLAMACPP_VERSION} --recursive https://github.com/ggerganov/llama.cpp.git && \
 
@@ -13,7 +15,7 @@ get_llamacpp() {
 	mkdir -p build ${INCLUDE} && \
 		cd build && \
 		if [ ! -d "llama.cpp" ]; then
-			git clone --depth 1 --recursive https://github.com/ggerganov/llama.cpp.git
+			git clone --depth 1 --branch ${LLAMACPP_VERSION} --recursive https://github.com/ggerganov/llama.cpp.git
 		fi && \
 		cd llama.cpp && \
 		cp common/*.h ${INCLUDE} && \

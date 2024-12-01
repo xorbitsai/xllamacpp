@@ -12,7 +12,7 @@ def test_common(model_path):
     params.n_ctx = 512
     params.cpuparams.n_threads = 4
 
-    sparams = params.sparams
+    # sparams = params.sparams
 
     # total length of the sequence including the prompt
     n_predict: int = params.n_predict

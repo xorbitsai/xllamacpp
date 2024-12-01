@@ -12,10 +12,10 @@ classes:
     GGMLTensor
     LlamaSamplerChainParams
     LlamaSampler
-    CommonSamplerParams
     CommonSampler
     CpuParams
     CommonParams
+    CommonParamsSampling
     LlamaModelParams
     LlamaModelQuantizeParams
     LlamaModel
@@ -137,6 +137,7 @@ cpdef enum ggml_type:
     GGML_TYPE_Q4_0_8_8 = 33
     GGML_TYPE_TQ1_0   = 34
     GGML_TYPE_TQ2_0   = 35
+    GGML_TYPE_IQ4_NL_4_4 = 36
     GGML_TYPE_COUNT
 
 cpdef enum ggml_sched_priority:
@@ -566,6 +567,34 @@ cdef class LlamaLoraAdapter:
         return wrapper
 
 
+cdef class GgmlBackendDevice:
+    cdef llama_cpp.ggml_backend_device * ptr
+    cdef bint owner
+
+    def __cinit__(self):
+        self.ptr = NULL
+        self.owner = False
+
+    def __dealloc__(self):
+        # De-allocate if not null and flag is set
+        if self.ptr is not NULL and self.owner is True:
+            free(self.ptr)
+            self.ptr = NULL
+
+    def __init__(self):
+        # Prevent accidental instantiation from normal Python code
+        # since we cannot pass a struct pointer into a Python constructor.
+        raise TypeError("This class cannot be instantiated directly.")
+
+    @staticmethod
+    cdef GgmlBackendDevice from_ptr(llama_cpp.ggml_backend_device *ptr, bint owner=False):
+        # Fast call to __new__() that bypasses the __init__() constructor.
+        cdef GgmlBackendDevice wrapper = GgmlBackendDevice.__new__(GgmlBackendDevice)
+        wrapper.ptr = ptr
+        wrapper.owner = owner
+        return wrapper
+
+
 
 cdef class GGMLThreadPoolParams:
     # NOTE: should this be a * ptr
@@ -969,12 +998,12 @@ cdef class LlamaSampler:
         return llama_cpp.llama_sampler_sample(self.ptr, ctx.ptr, idx)
 
 
-cdef class CommonSamplerParams:
-    cdef llama_cpp.common_sampler_params p
+cdef class CommonParamsSampling:
+    cdef llama_cpp.common_params_sampling p
 
     @staticmethod
-    cdef CommonSamplerParams from_instance(llama_cpp.common_sampler_params params):
-        cdef CommonSamplerParams wrapper = CommonSamplerParams.__new__(CommonSamplerParams)
+    cdef CommonParamsSampling from_instance(llama_cpp.common_params_sampling params):
+        cdef CommonParamsSampling wrapper = CommonParamsSampling.__new__(CommonParamsSampling)
         wrapper.p = params
         return wrapper
 
@@ -1288,7 +1317,7 @@ cdef class CommonSampler:
         self.ptr = NULL
         self.owner = True
 
-    def __init__(self, LlamaModel model, CommonSamplerParams params):
+    def __init__(self, LlamaModel model, CommonParamsSampling params):
         self.ptr = llama_cpp.common_sampler_init(model.ptr, params.p)
 
         if self.ptr is NULL:
@@ -1320,6 +1349,29 @@ cdef class CommonSampler:
         useful in cases where all the resulting candidates (not just the sampled one) must fit the grammar
         """
         return llama_cpp.common_sampler_sample(self.ptr, ctx.ptr, idx, grammar_first)
+
+
+    # generalized version of common_sampler_sample
+    #
+    # will cross-reference the sampled tokens with a batch of draft tokens and accept those that match
+    # if the sampler disagrees at some point, we stop and return the accepted tokens up to now
+    #
+    #      common_sampler_sample_n(gsmpl, ctx, { idx }, {});
+    #
+    # is equivalent to
+    #
+    #      common_sampler_sample(gsmpl, ctx, idx);
+    #      common_sampler_accept(gsmpl, token, true);
+    #
+    # requires: idxs.size() == draft.size() + 1
+    #
+    # returns at least 1 token, up to idxs.size()
+    
+    # std_vector[llama_token] common_sampler_sample_and_accept_n(common_sampler * gsmpl, llama_context * ctx, const std_vector[int] & idxs, const llama_tokens & draft, bint grammar_first)
+
+    # assume idxs == [ 0, 1, 2, ..., draft.size() ]
+    # std_vector[llama_token] common_sampler_sample_and_accept_n(common_sampler * gsmpl, llama_context * ctx, const llama_tokens & draft, bint grammar_first)
+
 
     def get_seed(self) -> int:
         """get random seed"""
@@ -1423,12 +1475,91 @@ cdef class CpuParams:
         self.ptr.poll = value
 
 
+cdef class CommonParamsSpeculative:
+    cdef llama_cpp.common_params_speculative p
+    # cdef public CpuParams cpuparams
+    # cdef public CpuParams cpuparams_batch
+    # cdef vector[GgmlBackendDevice] devices
+
+    @staticmethod
+    cdef CommonParamsSpeculative from_instance(llama_cpp.common_params_speculative params):
+        cdef CommonParamsSpeculative wrapper = CommonParamsSpeculative.__new__(CommonParamsSpeculative)
+        wrapper.p = params
+        # wrapper.cpuparams = CpuParams.from_ptr(&wrapper.p.cpuparams, wrapper)
+        # wrapper.cpuparams_batch = CpuParams.from_ptr(&wrapper.p.cpuparams_batch, wrapper)
+        return wrapper
+
+    @property
+    def n_ctx(self) -> int:
+        """draft context size."""
+        return self.p.n_ctx
+
+    @n_ctx.setter
+    def n_ctx(self, value: int):
+        self.p.n_ctx = value
+
+    @property
+    def n_max(self) -> int:
+        """maximum number of tokens to draft during speculative decoding."""
+        return self.p.n_max
+
+    @n_max.setter
+    def n_max(self, value: int):
+        self.p.n_max = value
+
+    @property
+    def n_min(self) -> int:
+        """minimum number of draft tokens to use for speculative decoding."""
+        return self.p.n_min
+
+    @n_min.setter
+    def n_min(self, value: int):
+        self.p.n_min = value
+
+    @property
+    def n_gpu_layers(self) -> int:
+        """number of layers to store in VRAM (-1 - use default)."""
+        return self.p.n_gpu_layers
+
+    @n_gpu_layers.setter
+    def n_gpu_layers(self, value: int):
+        self.p.n_gpu_layers = value
+
+    @property
+    def p_split(self) -> float:
+        """speculative decoding split probability."""
+        return self.p.p_split
+
+    @p_split.setter
+    def p_split(self, value: float):
+        self.p.p_split = value
+
+    @property
+    def p_min(self) -> float:
+        """minimum speculative decoding probability (greedy)."""
+        return self.p.p_min
+
+    @p_min.setter
+    def p_min(self, value: float):
+        self.p.p_min = value
+
+    @property
+    def model(self) -> str:
+        """ draft model for speculative decoding."""
+        return self.p.model
+
+    @model.setter
+    def model(self, value: str):
+        self.p.model = value
+
+
 cdef class CommonParams:
     cdef llama_cpp.common_params p
     cdef public CpuParams cpuparams
     cdef public CpuParams cpuparams_batch
-    cdef public CpuParams draft_cpuparams
-    cdef public CpuParams draft_cpuparams_batch
+    # cdef public CpuParams draft_cpuparams
+    # cdef public CpuParams draft_cpuparams_batch
+    cdef list[GgmlBackendDevice] devices
 
     @staticmethod
     cdef CommonParams from_instance(llama_cpp.common_params p):
@@ -1436,16 +1567,16 @@ cdef class CommonParams:
         wrapper.p = p
         wrapper.cpuparams = CpuParams.from_ptr(&wrapper.p.cpuparams, wrapper)
         wrapper.cpuparams_batch = CpuParams.from_ptr(&wrapper.p.cpuparams_batch, wrapper)
-        wrapper.draft_cpuparams = CpuParams.from_ptr(&wrapper.p.draft_cpuparams, wrapper)
-        wrapper.draft_cpuparams_batch = CpuParams.from_ptr(&wrapper.p.draft_cpuparams_batch, wrapper)
+        # wrapper.draft_cpuparams = CpuParams.from_ptr(&wrapper.p.draft_cpuparams, wrapper)
+        # wrapper.draft_cpuparams_batch = CpuParams.from_ptr(&wrapper.p.draft_cpuparams_batch, wrapper)
         return wrapper
 
     def __cinit__(self):
         # self.p.cb_eval = &sched_eval_callback # set callback wrapper
         self.cpuparams = CpuParams.from_ptr(&self.p.cpuparams, self)
         self.cpuparams_batch = CpuParams.from_ptr(&self.p.cpuparams_batch, self)
-        self.draft_cpuparams = CpuParams.from_ptr(&self.p.draft_cpuparams, self)
-        self.draft_cpuparams_batch = CpuParams.from_ptr(&self.p.draft_cpuparams_batch, self)
+        # self.draft_cpuparams = CpuParams.from_ptr(&self.p.draft_cpuparams, self)
+        # self.draft_cpuparams_batch = CpuParams.from_ptr(&self.p.draft_cpuparams_batch, self)
 
     @property
     def n_predict(self) -> int:
@@ -1493,15 +1624,6 @@ cdef class CommonParams:
         self.p.n_keep = value
 
     @property
-    def n_draft(self) -> int:
-        """number of tokens to draft during speculative decoding."""
-        return self.p.n_draft
-
-    @n_draft.setter
-    def n_draft(self, value: int):
-        self.p.n_draft = value
-
-    @property
     def n_chunks(self) -> int:
         """max number of chunks to process (-1 = unlimited)."""
         return self.p.n_chunks
@@ -1527,56 +1649,6 @@ cdef class CommonParams:
     @n_sequences.setter
     def n_sequences(self, value: int):
         self.p.n_sequences = value
-
-    @property
-    def p_split(self) -> float:
-        """speculative decoding split probability."""
-        return self.p.p_split
-
-    @p_split.setter
-    def p_split(self, value: float):
-        self.p.p_split = value
-
-    @property
-    def n_gpu_layers(self) -> int:
-        """number of layers to store in VRAM (-1 - use default)."""
-        return self.p.n_gpu_layers
-
-    @n_gpu_layers.setter
-    def n_gpu_layers(self, value: int):
-        self.p.n_gpu_layers = value
-
-    @property
-    def n_gpu_layers_draft(self) -> int:
-        """number of layers to store in VRAM for the draft model (-1 - use default)."""
-        return self.p.n_gpu_layers_draft
-
-    @n_gpu_layers_draft.setter
-    def n_gpu_layers_draft(self, value: int):
-        self.p.n_gpu_layers_draft = value
-
-    @property
-    def main_gpu(self) -> int:
-        """he GPU that is used for scratch and small tensors"""
-        return self.p.main_gpu
-
-    @main_gpu.setter
-    def main_gpu(self, value: int):
-        self.p.main_gpu = value
-
-    @property
-    def tensor_split(self) -> list[float]:
-        """how split tensors should be distributed across GPUs."""
-        result = []
-        for i in range(128):
-            result.append(self.p.tensor_split[i])
-        return result
-
-    @tensor_split.setter
-    def tensor_split(self, value: list[float]):
-        assert len(value) == 128, "tensor must of length 128"
-        for i in range(128):
-            self.p.tensor_split[i] = value[i]
 
     @property
     def grp_attn_n(self) -> int:
@@ -1678,6 +1750,47 @@ cdef class CommonParams:
     def defrag_thold(self, value: float):
         self.p.defrag_thold = value
 
+    @property
+    def n_gpu_layers(self) -> int:
+        """number of layers to store in VRAM (-1 - use default)."""
+        return self.p.n_gpu_layers
+
+    @n_gpu_layers.setter
+    def n_gpu_layers(self, value: int):
+        self.p.n_gpu_layers = value
+
+    @property
+    def main_gpu(self) -> int:
+        """he GPU that is used for scratch and small tensors"""
+        return self.p.main_gpu
+
+    @main_gpu.setter
+    def main_gpu(self, value: int):
+        self.p.main_gpu = value
+
+    @property
+    def tensor_split(self) -> list[float]:
+        """how split tensors should be distributed across GPUs."""
+        result = []
+        for i in range(128):
+            result.append(self.p.tensor_split[i])
+        return result
+
+    @tensor_split.setter
+    def tensor_split(self, value: list[float]):
+        assert len(value) == 128, "tensor must of length 128"
+        for i in range(128):
+            self.p.tensor_split[i] = value[i]
+
+    @property
+    def split_mode(self) -> llama_split_mode:
+        """how to split the model across GPUs."""
+        return self.p.split_mode
+
+    @split_mode.setter
+    def split_mode(self, llama_split_mode value):
+        self.p.split_mode = value
+
     # @property
     # def cb_eval(self) -> py_sched_eval_callback:
     #     """get/set python ggml backend sched eval callback."""
@@ -1695,15 +1808,6 @@ cdef class CommonParams:
     @numa.setter
     def numa(self, value: ggml_numa_strategy):
         self.p.numa = value
-
-    @property
-    def split_mode(self) -> llama_split_mode:
-        """how to split the model across GPUs."""
-        return self.p.split_mode
-
-    @split_mode.setter
-    def split_mode(self, llama_split_mode value):
-        self.p.split_mode = value
 
     @property
     def rope_scaling_type(self) -> llama_rope_scaling_type:
@@ -1733,13 +1837,22 @@ cdef class CommonParams:
         self.p.attention_type = value
 
     @property
-    def sparams(self) -> llama_cpp.common_sampler_params:
-        """gpt sampler params."""
-        return self.p.sparams
+    def sampling(self) -> llama_cpp.common_params_sampling:
+        """common params sampling."""
+        return self.p.sampling
 
-    @sparams.setter
-    def sparams(self, value: llama_cpp.common_sampler_params):
-        self.p.sparams = value
+    @sampling.setter
+    def sampling(self, value: llama_cpp.common_params_sampling):
+        self.p.sampling = value
+
+    @property
+    def speculative(self) -> CommonParamsSpeculative:
+        """common params speculative."""
+        return CommonParamsSpeculative.from_instance(self.p.speculative)
+
+    @speculative.setter
+    def speculative(self, value: CommonParamsSpeculative):
+        self.p.speculative = value.p
 
     @property
     def model(self) -> str:
@@ -1749,15 +1862,6 @@ cdef class CommonParams:
     @model.setter
     def model(self, value: str):
         self.p.model = value.encode('utf8')
-
-    @property
-    def model_draft(self) -> str:
-        """draft model for speculative decoding"""
-        return self.p.model_draft.decode()
-
-    @model_draft.setter
-    def model_draft(self, value: str):
-        self.p.model_draft = value.encode('utf8')
 
     @property
     def model_alias(self) -> str:
@@ -2765,6 +2869,9 @@ cdef class CommonParams:
 
 cdef class LlamaModelParams:
     cdef llama_cpp.llama_model_params p
+
+    # NULL-terminated list of devices to use for offloading (if NULL, all available devices are used)
+    # cdef ggml_backend_dev_t * devices
 
     def __init__(self):
         self.p = llama_cpp.llama_model_default_params()

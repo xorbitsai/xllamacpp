@@ -115,6 +115,7 @@ cdef extern from "ggml.h":
         GGML_TYPE_Q4_0_8_8 = 33
         GGML_TYPE_TQ1_0   = 34
         GGML_TYPE_TQ2_0   = 35
+        GGML_TYPE_IQ4_NL_4_4 = 36
         GGML_TYPE_COUNT
         
 
@@ -261,6 +262,11 @@ cdef extern from "ggml.h":
 
 cdef extern from "ggml-backend.h":
     ctypedef bint (*ggml_backend_sched_eval_callback)(ggml_tensor * t, bint ask, void * user_data)
+
+    ctypedef struct ggml_backend_device: pass
+
+    ctypedef ggml_backend_device * ggml_backend_dev_t
+
 
 #------------------------------------------------------------------------------
 # llama.h
@@ -447,6 +453,7 @@ cdef extern from "llama.h":
         char    val_str[128]
 
     ctypedef struct llama_model_params:
+        ggml_backend_dev_t * devices   # NULL-terminated list of devices to use for offloading (if NULL, all available devices are used)
         int32_t n_gpu_layers           # number of layers to store in VRAM
         llama_split_mode split_mode    # how to split the model across multiple GPUs
         int32_t main_gpu               # the GPU that is used for the entire model when split_mode is LLAMA_SPLIT_MODE_NONE
@@ -1350,6 +1357,8 @@ cdef extern from "llama.h":
 
 cdef extern from "common.h":
 
+    ctypedef std_vector[llama_token] llama_tokens
+
     cdef cppclass common_lora_adapter_info:
         std_string path
         float scale
@@ -1419,7 +1428,7 @@ cdef extern from "common.h":
         DIMRE_METHOD_MEAN
 
     # sampler parameters
-    ctypedef struct common_sampler_params:
+    ctypedef struct common_params_sampling:
         uint32_t seed  # the seed used to initialize llama_sampler
 
         int32_t n_prev                     # number of previous tokens to remember
@@ -1459,6 +1468,23 @@ cdef extern from "common.h":
         # print the parameters into a string
         # std_string print() const
 
+    struct common_params_speculative:
+        std_vector[ggml_backend_dev_t] devices # devices to use for offloading
+        int32_t n_ctx           # draft context size
+        int32_t n_max           # maximum number of tokens to draft during speculative decoding
+        int32_t n_min           # minimum number of draft tokens to use for speculative decoding
+        int32_t n_gpu_layers    # number of layers to store in VRAM for the draft model (-1 - use default)
+        float   p_split         # speculative decoding split probability
+        float   p_min           # minimum speculative decoding probability (greedy)
+
+        cpu_params cpuparams
+        cpu_params cpuparams_batch
+
+        std_string model       # draft model for speculative decoding
+
+
+
+
     ctypedef struct common_params:
         llama_example curr_ex
 
@@ -1467,15 +1493,9 @@ cdef extern from "common.h":
         int32_t n_batch            # logical batch size for prompt processing (must be >=32 to use BLAS)
         int32_t n_ubatch           # physical batch size for prompt processing (must be >=32 to use BLAS)
         int32_t n_keep             # number of tokens to keep from initial prompt
-        int32_t n_draft            # number of tokens to draft during speculative decoding
         int32_t n_chunks           # max number of chunks to process (-1 = unlimited)
         int32_t n_parallel         # number of parallel sequences to decode
         int32_t n_sequences        # number of sequences to decode
-        float   p_split            # speculative decoding split probability
-        int32_t n_gpu_layers       # number of layers to store in VRAM (-1 - use default)
-        int32_t n_gpu_layers_draft # number of layers to store in VRAM for the draft model (-1 - use default)
-        int32_t main_gpu           # the GPU that is used for scratch and small tensors
-        float   tensor_split[128]  # how split tensors should be distributed across GPUs
         int32_t grp_attn_n         # group-attention factor
         int32_t grp_attn_w         # group-attention width
         int32_t n_print            # print token count every n tokens (-1 = disabled)
@@ -1488,25 +1508,29 @@ cdef extern from "common.h":
         int32_t yarn_orig_ctx      # YaRN original context length
         float   defrag_thold       # KV cache defragmentation threshold
 
+        std_vector[ggml_backend_dev_t] devices # devices to use for offloading
+        int32_t n_gpu_layers       # number of layers to store in VRAM (-1 - use default)
+        int32_t n_gpu_layers_draft # number of layers to store in VRAM for the draft model (-1 - use default)
+        int32_t main_gpu           # the GPU that is used for scratch and small tensors
+        float   tensor_split[128]  # how split tensors should be distributed across GPUs
+        llama_split_mode        split_mode         # how to split the model across GPUs
+
         cpu_params cpuparams
         cpu_params cpuparams_batch
-        cpu_params draft_cpuparams
-        cpu_params draft_cpuparams_batch
 
         ggml_backend_sched_eval_callback cb_eval
         void * cb_eval_user_data
 
         ggml_numa_strategy numa
 
-        llama_split_mode        split_mode         # how to split the model across GPUs
         llama_rope_scaling_type rope_scaling_type
         llama_pooling_type      pooling_type       # pooling type for embeddings
         llama_attention_type    attention_type     # attention type for embeddings
 
-        common_sampler_params sparams
+        common_params_sampling sampling
+        common_params_speculative speculative
 
         std_string model                # model path
-        std_string model_draft          # draft model for speculative decoding
         std_string model_alias          # model alias
         std_string model_url            # model url to download
         std_string hf_token             # HF token
@@ -1686,12 +1710,12 @@ cdef extern from "common.h":
 
     cdef common_init_result common_init_from_params(common_params & params)
 
-    cdef llama_model_params common_model_params_to_llama(const common_params & params)
+    cdef llama_model_params common_model_params_to_llama(common_params & params)
     cdef llama_context_params common_context_params_to_llama(const common_params & params)
     cdef ggml_threadpool_params ggml_threadpool_params_from_cpu_params(const cpu_params & params);
     
-    cdef llama_model * common_load_model_from_url(const char * model_url, const char * path_model, const char * hf_token, const llama_model_params & params);
-    cdef llama_model * common_load_model_from_hf(const char * repo, const char * file, const char * path_model, const char * hf_token, const llama_model_params & params);
+    cdef llama_model * common_load_model_from_url(const std_string & model_url, const std_string & local_path, const std_string & hf_token, const llama_model_params & params)
+    cdef llama_model * common_load_model_from_hf(const std_string & repo, const std_string & remote_path, const std_string & local_path, const std_string & hf_token, const llama_model_params & params)
 
     # clear LoRA adapters from context, then apply new list of adapters
     cdef void common_lora_adapters_apply(llama_context * ctx, std_vector[common_lora_adapter_container] & lora_adapters)
@@ -1702,6 +1726,16 @@ cdef extern from "common.h":
     cdef void common_batch_add(llama_batch & batch, llama_token id, llama_pos pos, const std_vector[llama_seq_id] & seq_ids, bint logits)
 
     cdef void common_batch_clear(llama_batch & batch)
+
+    # -------------------------------------------------------------------------
+    # Token utils
+
+    # longest common prefix
+    cdef size_t common_lcp(const llama_tokens & a, const llama_tokens & b)
+
+    # longet common subsequence
+    cdef size_t common_lcs(const llama_tokens & a, const llama_tokens & b)
+
 
     # -------------------------------------------------------------------------
     # Vocab utils
@@ -1794,7 +1828,7 @@ cdef extern from "sampling.h": # optional llama_sampler extensions
 
     # llama_sampler API overloads
 
-    cdef common_sampler * common_sampler_init(const llama_model * model, const common_sampler_params & params)
+    cdef common_sampler * common_sampler_init(const llama_model * model, const common_params_sampling & params)
 
     void common_sampler_free(common_sampler * gsmpl);
 
@@ -1817,6 +1851,27 @@ cdef extern from "sampling.h": # optional llama_sampler extensions
     # useful in cases where all the resulting candidates (not just the sampled one) must fit the grammar
     #
     llama_token common_sampler_sample(common_sampler * gsmpl, llama_context * ctx, int idx, bint grammar_first)
+
+    # generalized version of common_sampler_sample
+    #
+    # will cross-reference the sampled tokens with a batch of draft tokens and accept those that match
+    # if the sampler disagrees at some point, we stop and return the accepted tokens up to now
+    #
+    #      common_sampler_sample_n(gsmpl, ctx, { idx }, {});
+    #
+    # is equivalent to
+    #
+    #      common_sampler_sample(gsmpl, ctx, idx);
+    #      common_sampler_accept(gsmpl, token, true);
+    #
+    # requires: idxs.size() == draft.size() + 1
+    #
+    # returns at least 1 token, up to idxs.size()
+    #
+    std_vector[llama_token] common_sampler_sample_and_accept_n(common_sampler * gsmpl, llama_context * ctx, const std_vector[int] & idxs, const llama_tokens & draft, bint grammar_first)
+
+    # assume idxs == [ 0, 1, 2, ..., draft.size() ]
+    std_vector[llama_token] common_sampler_sample_and_accept_n(common_sampler * gsmpl, llama_context * ctx, const llama_tokens & draft, bint grammar_first)
 
     uint32_t common_sampler_get_seed(const common_sampler * gsmpl)
 
