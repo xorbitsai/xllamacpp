@@ -1106,6 +1106,9 @@ cdef extern from "llama.h":
                                   char * buf,
                                int32_t   length)
 
+    # Get list of built-in chat templates
+    cdef int32_t llama_chat_builtin_templates(const char ** output, size_t len)
+
     # -------------------------------------------------------------------------
     # Sampling API
  
@@ -1483,8 +1486,6 @@ cdef extern from "common.h":
         std_string model       # draft model for speculative decoding
 
 
-
-
     ctypedef struct common_params:
         llama_example curr_ex
 
@@ -1698,6 +1699,28 @@ cdef extern from "common.h":
     # cdef bint parse_cpu_mask(const std_string & mask, bool(&boolmask)[GGML_MAX_N_THREADS])
     cdef void postprocess_cpu_params(cpu_params & cpuparams, const cpu_params * role_model)
     cdef bint set_process_priority(ggml_sched_priority prio)
+
+    cdef llama_model * common_load_model_from_url(
+        const std_string & model_url,
+        const std_string & local_path,
+        const std_string & hf_token,
+        const llama_model_params & params)
+
+    cdef llama_model * common_load_model_from_hf(
+        const std_string & repo,
+        const std_string & remote_path,
+        const std_string & local_path,
+        const std_string & hf_token,
+        const llama_model_params & params)
+
+    # Token utils
+    
+    # longest common prefix
+    cdef size_t common_lcp(const llama_tokens & a, const llama_tokens & b)
+    
+    # longet common subsequence
+    cdef size_t common_lcs(const llama_tokens & a, const llama_tokens & b)
+    
 
     # -------------------------------------------------------------------------
     # Model utils
