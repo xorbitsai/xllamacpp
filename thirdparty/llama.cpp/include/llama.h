@@ -272,6 +272,9 @@ extern "C" {
     };
 
     struct llama_model_params {
+        // NULL-terminated list of devices to use for offloading (if NULL, all available devices are used)
+        ggml_backend_dev_t * devices;
+
         int32_t n_gpu_layers; // number of layers to store in VRAM
         enum llama_split_mode split_mode; // how to split the model across multiple GPUs
 
@@ -986,6 +989,9 @@ extern "C" {
                                   bool   add_ass,
                                   char * buf,
                                int32_t   length);
+
+    // Get list of built-in chat templates
+    int32_t llama_chat_builtin_templates(const char ** output, size_t len);
 
     //
     // Sampling API
