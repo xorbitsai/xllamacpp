@@ -3439,7 +3439,6 @@ cdef class LlamaModel:
     #     return result
 
 
-
     # Extra
 
     def metadata(self) -> dict[str, str]:
@@ -3479,6 +3478,17 @@ cdef class LlamaModel:
         """Get the default llama_model_params."""
         # return llama_cpp.llama_model_default_params()
         return LlamaModelParams()
+
+
+
+def chat_builtin_templates() -> list[str]:
+    """Get list of built-in chat templates"""
+    cdef vector[const char *] supported_tmpl
+    cdef int32_t res = llama_cpp.llama_chat_builtin_templates(NULL, 0)
+    assert res > 0
+    supported_tmpl.resize(res)
+    res = llama_cpp.llama_chat_builtin_templates(supported_tmpl.data(), supported_tmpl.size())
+    return [name.decode() for name in supported_tmpl]
 
 
 cdef class LlamaContextParams:
