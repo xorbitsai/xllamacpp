@@ -156,7 +156,7 @@ def test_common_params():
 
     assert params.model                == ""
     # assert params.model_draft          == ""
-    assert params.model_alias          == "unknown"
+    assert params.model_alias          == ""
     assert params.model_url            == ""
     assert params.hf_token             == ""
     assert params.hf_repo              == ""
