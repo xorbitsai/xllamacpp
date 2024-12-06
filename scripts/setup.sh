@@ -2,7 +2,7 @@ CWD=`pwd`
 THIRDPARTY=${CWD}/thirdparty
 LAST_WORKING="b4260"
 LLAMACPP_VERSION="${1:-${LAST_WORKING}}"
-GET_LAST_WORKING=1
+GET_LAST_WORKING=0
 
 if [ $GET_LAST_WORKING = 1 ]
 then
@@ -33,8 +33,8 @@ get_llamacpp() {
 		cmake --build . --config Release && \
 		cmake --install . --prefix ${PREFIX} && \
 		cp ggml/src/libggml-base.a ${LIB} && \
+		cp ggml/src/libggml-cpu.a ${LIB} && \
 		cp ggml/src/ggml-blas/libggml-blas.a ${LIB} && \
-		cp ggml/src/ggml-cpu/libggml-cpu.a ${LIB} && \
 		cp ggml/src/ggml-metal/libggml-metal.a ${LIB} && \
 		cp common/libcommon.a ${LIB} && \
 		cp examples/llava/libllava_static.a ${LIB}/libllava.a && \

@@ -321,6 +321,7 @@ cdef extern from "llama.h":
         LLAMA_VOCAB_PRE_TYPE_GPT3_FINNISH
         LLAMA_VOCAB_PRE_TYPE_EXAONE
         LLAMA_VOCAB_PRE_TYPE_CHAMELEON
+        LLAMA_VOCAB_PRE_TYPE_MINERVA
 
     cdef enum llama_rope_type:
         LLAMA_ROPE_TYPE_NONE = -1
@@ -395,7 +396,8 @@ cdef extern from "llama.h":
         LLAMA_ROPE_SCALING_TYPE_NONE        = 0
         LLAMA_ROPE_SCALING_TYPE_LINEAR      = 1
         LLAMA_ROPE_SCALING_TYPE_YARN        = 2
-        LLAMA_ROPE_SCALING_TYPE_MAX_VALUE   = 2
+        LLAMA_ROPE_SCALING_TYPE_LONGROPE    = 3
+        LLAMA_ROPE_SCALING_TYPE_MAX_VALUE   = LLAMA_ROPE_SCALING_TYPE_LONGROPE
 
     cdef enum llama_pooling_type:
         LLAMA_POOLING_TYPE_UNSPECIFIED = -1
