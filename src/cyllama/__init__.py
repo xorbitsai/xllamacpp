@@ -40,6 +40,8 @@ class Llama:
         self.ctx: Optional[cy.LlamaContext] = None
         self.smplr: Optional[cy.LlamaSampler] = None
 
+        self.chat_msgs: list[cy.CommonChatMsg] = []
+
         if self.disable_log:
             cy.log_set_verbosity(self.params.verbosity)
 

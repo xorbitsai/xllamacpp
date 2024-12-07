@@ -12,6 +12,7 @@ classes:
     GGMLTensor
     LlamaSamplerChainParams
     LlamaSampler
+    CommonChatMsg
     CommonSampler
     CpuParams
     CommonParams
@@ -605,7 +606,6 @@ cdef class GgmlBackendDevice:
         return wrapper
 
 
-
 cdef class GGMLThreadPoolParams:
     # NOTE: should this be a * ptr
     cdef llama_cpp.ggml_threadpool_params p
@@ -1008,6 +1008,37 @@ cdef class LlamaSampler:
         return llama_cpp.llama_sampler_sample(self.ptr, ctx.ptr, idx)
 
 
+cdef class CommonChatMsg:
+    """cython wrapper for llama_cpp.common_chat_msg"""
+    cdef llama_cpp.common_chat_msg p
+
+    def __init__(self, role: str, content: str):
+        self.p.role = role
+        self.p.content = content
+
+    @staticmethod
+    cdef CommonChatMsg from_instance(llama_cpp.common_chat_msg msg):
+        cdef CommonChatMsg wrapper = CommonChatMsg.__new__(CommonChatMsg)
+        wrapper.p = msg
+        return wrapper
+
+    @property
+    def role(self) -> str:
+        return self.p.role
+
+    @property
+    def content(self) -> str:
+        return self.p.content
+
+    @role.setter
+    def role(self, str value):
+        self.p.role = value
+
+    @content.setter
+    def content(self, str value):
+        self.p.content = value
+
+
 cdef class CommonParamsSampling:
     cdef llama_cpp.common_params_sampling p
 
@@ -1408,7 +1439,6 @@ cdef class CommonSampler:
 
     # std_vector[common_sampler_type] common_sampler_types_from_names(const std_vector[std_string] & names, bint allow_alt_names)
     # std_vector[common_sampler_type] common_sampler_types_from_chars(const std_string & chars)
-
 
 
 cdef class CpuParams:
