@@ -111,14 +111,17 @@ cdef extern from "ggml.h":
         GGML_TYPE_F64     = 28
         GGML_TYPE_IQ1_M   = 29
         GGML_TYPE_BF16    = 30
-        GGML_TYPE_Q4_0_4_4 = 31
-        GGML_TYPE_Q4_0_4_8 = 32
-        GGML_TYPE_Q4_0_8_8 = 33
+        # GGML_TYPE_Q4_0_4_4 = 31 # support has been removed from gguf files
+        # GGML_TYPE_Q4_0_4_8 = 32
+        # GGML_TYPE_Q4_0_8_8 = 33
         GGML_TYPE_TQ1_0   = 34
         GGML_TYPE_TQ2_0   = 35
         GGML_TYPE_IQ4_NL_4_4 = 36
-        GGML_TYPE_COUNT
-        
+        # GGML_TYPE_IQ4_NL_4_4 = 36
+        # GGML_TYPE_IQ4_NL_4_8 = 37
+        # GGML_TYPE_IQ4_NL_8_8 = 38
+        GGML_TYPE_COUNT = 39
+
 
     cdef enum ggml_op:
         GGML_OP_NONE = 0
@@ -384,9 +387,9 @@ cdef extern from "llama.h":
         LLAMA_FTYPE_MOSTLY_IQ4_XS        = 30
         LLAMA_FTYPE_MOSTLY_IQ1_M         = 31
         LLAMA_FTYPE_MOSTLY_BF16          = 32
-        LLAMA_FTYPE_MOSTLY_Q4_0_4_4      = 33
-        LLAMA_FTYPE_MOSTLY_Q4_0_4_8      = 34
-        LLAMA_FTYPE_MOSTLY_Q4_0_8_8      = 35
+        # LLAMA_FTYPE_MOSTLY_Q4_0_4_4      = 33, # removed from gguf files, use Q4_0 and runtime repack
+        # LLAMA_FTYPE_MOSTLY_Q4_0_4_8      = 34, # removed from gguf files, use Q4_0 and runtime repack
+        # LLAMA_FTYPE_MOSTLY_Q4_0_8_8      = 35, # removed from gguf files, use Q4_0 and runtime repack
         LLAMA_FTYPE_MOSTLY_TQ1_0         = 36 # except 1d tensors
         LLAMA_FTYPE_MOSTLY_TQ2_0         = 37 # except 1d tensors
         LLAMA_FTYPE_GUESSED              = 1024
