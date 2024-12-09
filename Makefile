@@ -50,7 +50,7 @@ bind: build/include
 .PHONY: test test_simple test_main test_retrieve test_model test_llava test_lora \
 		test_platform coverage memray download download_all bump clean reset remake
 
-test:
+test: build
 	@pytest
 
 test_simple:
