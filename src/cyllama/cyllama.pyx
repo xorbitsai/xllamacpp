@@ -12,6 +12,7 @@ classes:
     GGMLTensor
     LlamaSamplerChainParams
     LlamaSampler
+    LlamaChatMessage
     CommonChatMsg
     CommonSampler
     CpuParams
@@ -29,6 +30,7 @@ classes:
 """
 from libc.stdint cimport uint8_t, int32_t, int64_t, uint32_t, uint64_t
 from libc.stdlib cimport malloc, calloc, realloc, free
+from libc.string cimport strcpy, strlen, strncpy
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp cimport bool as cppbool # required for func pointer sigs
@@ -1012,13 +1014,49 @@ cdef class LlamaSampler:
         return llama_cpp.llama_sampler_sample(self.ptr, ctx.ptr, idx)
 
 
+
+cdef class LlamaChatMessage:
+    """cython wrapper for llama_cpp.llama_chat_message
+
+    members role and content are const char *
+    """
+    cdef llama_cpp.llama_chat_message p
+
+    # def __cinit__(self, role: str, content: str):
+    #     cdef int role_len = len(role) + 1
+    #     cdef int content_len = len(content) + 1
+    #     cdef char* role_ptr = <char*>malloc(sizeof(char)*role_len)
+    #     cdef char* content_ptr = <char*>malloc(sizeof(char)*content_len)
+    #     strcpy(role_ptr, role.encode())
+    #     strcpy(content_ptr, content.encode())
+    #     self.p.role = role_ptr
+    #     self.p.content = content_ptr
+
+    @staticmethod
+    cdef LlamaChatMessage from_instance(llama_cpp.llama_chat_message msg):
+        cdef LlamaChatMessage wrapper = LlamaChatMessage.__new__(LlamaChatMessage)
+        wrapper.p = msg
+        return wrapper
+
+    @property
+    def role(self) -> str:
+        """readonly chat role"""
+        return self.p.role.decode()
+
+    @property
+    def content(self) -> str:
+        """readonly chat content"""
+        return self.p.content.decode()
+
+
+
 cdef class CommonChatMsg:
     """cython wrapper for llama_cpp.common_chat_msg"""
     cdef llama_cpp.common_chat_msg p
 
-    def __init__(self, role: str, content: str):
-        self.p.role = role
-        self.p.content = content
+    def __init__(self, str role, str content):
+        self.p.role = role.encode()
+        self.p.content = content.encode()
 
     @staticmethod
     cdef CommonChatMsg from_instance(llama_cpp.common_chat_msg msg):
@@ -1028,19 +1066,20 @@ cdef class CommonChatMsg:
 
     @property
     def role(self) -> str:
-        return self.p.role
-
-    @property
-    def content(self) -> str:
-        return self.p.content
+        return self.p.role.decode()
 
     @role.setter
     def role(self, str value):
-        self.p.role = value
+        self.p.role = value.encode()
+
+    @property
+    def content(self) -> str:
+        return self.p.content.decode()
 
     @content.setter
     def content(self, str value):
-        self.p.content = value
+        self.p.content = value.encode()
+
 
 
 cdef class CommonParamsSampling:
@@ -3452,26 +3491,29 @@ cdef class LlamaModel:
     # chat template
 
 
-    # def chat_apply_template(self, str tmpl, str chat, size_t n_msg, bint add_ass) -> str:
-    #     """Apply chat template. Inspired by hf apply_chat_template() on python.
+    def chat_apply_template(self, str tmpl, list[LlamaChatMessage] msgs, bint add_assistant_msg) -> str:
+        """Apply chat template. Inspired by hf apply_chat_template() on python.
         
-    #     Both "model" and "custom_template" are optional, but at least one is required. "custom_template" has higher precedence than "model"
-    #     NOTE: This function does not use a jinja parser. It only support a pre-defined list of template. See more: https://github.com/ggerganov/llama.cpp/wiki/Templates-supported-by-llama_chat_apply_template
-    #     @param tmpl A Jinja template to use for this chat. If this is nullptr, the model’s default chat template will be used instead.
-    #     @param chat Pointer to a list of multiple llama_chat_message
-    #     @param n_msg Number of llama_chat_message in this chat
-    #     @param add_ass Whether to end the prompt with the token(s) that indicate the start of an assistant message.
-    #     @param buf A buffer to hold the output formatted prompt. The recommended alloc size is 2 * (total number of characters of all messages)
-    #     @param length The size of the allocated buffer
-    #     @return The total number of bytes of the formatted prompt. If is it larger than the size of buffer, you may need to re-alloc it and then re-apply the template.
-    #     """
-    #     cdef char * buf = NULL
-    #     cdef int length = 0
-    #     cdef int bytes = llama_cpp.llama_chat_apply_template(
-    #         self.ptr, tmpl.encode(), chat.encode(), n_msg, add_ass, buf, length)
-    #     cdef str result = buf.decode()
-    #     free(buf)
-    #     return result
+        Both "model" and "custom_template" are optional, but at least one is required. "custom_template" has higher precedence than "model"
+        NOTE: This function does not use a jinja parser. It only support a pre-defined list of template. See more: https://github.com/ggerganov/llama.cpp/wiki/Templates-supported-by-llama_chat_apply_template
+        @param tmpl A Jinja template to use for this chat. If this is nullptr, the model’s default chat template will be used instead.
+        @param chat Pointer to a list of multiple llama_chat_message
+        @param n_msg Number of llama_chat_message in this chat
+        @param add_ass Whether to end the prompt with the token(s) that indicate the start of an assistant message.
+        @param buf A buffer to hold the output formatted prompt. The recommended alloc size is 2 * (total number of characters of all messages)
+        @param length The size of the allocated buffer
+        @return The total number of bytes of the formatted prompt. If is it larger than the size of buffer, you may need to re-alloc it and then re-apply the template.
+        """
+        cdef vector[llama_cpp.llama_chat_message] vec
+        cdef char * buf = NULL
+        cdef int length = 0
+        for i in range(len(msgs)):
+            vec.push_back(msgs[i].p)
+        cdef int n_bytes = llama_cpp.llama_chat_apply_template(
+            self.ptr, tmpl.encode(), vec.data(), vec.size(), add_assistant_msg, buf, length)
+        cdef str result = buf.decode()
+        free(buf)
+        return result
 
 
     # Extra
