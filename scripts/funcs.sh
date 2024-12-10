@@ -14,3 +14,5 @@ srv() {
     ./bin/llama-server -c ${N_CONTEXT} -n ${N_PREDICT} --repeat-penalty 1.15 --repeat-last-n 128 -m $1
 }
 
+
+alias i="ipython -i scripts/start.py"

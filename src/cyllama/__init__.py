@@ -25,7 +25,6 @@ class Llama:
         self.model_path = Path(model_path)
         self.disable_log = disable_log
         self.log = log.config(self.__class__.__name__)
-        # self.log = logging.getLogger()
         if not self.model_path.exists():
             raise SystemExit(f"Provided model does not exist: {model_path}")
 
@@ -111,13 +110,20 @@ class Llama:
         # total length of the sequence including the prompt
         n_predict: int = self.params.n_predict
 
-        # initialize the model
-        model_params = cy.common_model_params_to_llama(self.params)
-        self.model = cy.LlamaModel(path_model=self.params.model, params=model_params)
+        # FIXME: PICK ONE, both ways work!
+        if 0:
+            # initialize the model
+            model_params = cy.common_model_params_to_llama(self.params)
+            self.model = cy.LlamaModel(path_model=self.params.model, params=model_params)
 
-        # initialize the context
-        ctx_params = cy.common_context_params_to_llama(self.params)
-        self.ctx = cy.LlamaContext(model=self.model, params=ctx_params)
+            # initialize the context
+            ctx_params = cy.common_context_params_to_llama(self.params)
+            self.ctx = cy.LlamaContext(model=self.model, params=ctx_params)
+        else:
+            # load the model and apply lora adapter, if any
+            llama_init = cy.CommonInitResult(self.params)
+            self.model = llama_init.model
+            self.ctx = llama_init.context
 
         # attach threadpool
         self.attach_threadpool(self.ctx)
@@ -131,7 +137,23 @@ class Llama:
 
         # tokenize the prompt
         tokens_list: list[int] = cy.common_tokenize(self.ctx, self.params.prompt, True)
+        n_ctx_train: int = self.model.n_ctx_train
         n_ctx: int = self.ctx.n_ctx
+
+        if n_ctx > n_ctx_train:
+            self.log.warn("model was trained on only %d context tokens (%d specified)", n_ctx_train, n_ctx)
+
+        # print chat template example in conversation mode
+        if self.params.conversation:
+            if self.params.enable_chat_template:
+                self.log.info("chat template example:\n%s\n", cy.common_chat_format_example(self.model, self.params.chat_template))
+            else:
+                self.log.info("in-suffix/prefix is specified, chat template will be disabled.")
+
+        if not self.disable_log:
+            # print system information
+            self.log.info("\n%s\n", cy.common_params_get_system_info(self.params))
+
         n_kv_req: int = len(tokens_list) + (n_predict - len(tokens_list))
 
         if not self.disable_log:

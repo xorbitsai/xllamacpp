@@ -4441,6 +4441,13 @@ def common_token_to_piece(LlamaContext ctx, int token, bint special = True) -> s
 def common_batch_add(LlamaBatch batch, llama_cpp.llama_token id, llama_cpp.llama_pos pos, list[int] seq_ids, bint logits):
     return llama_cpp.common_batch_add(batch.p, id, pos, seq_ids, logits)
 
+def common_chat_format_example(LlamaModel model, str tmpl) -> str:
+    """Returns an example of formatted chat"""
+    return llama_cpp.common_chat_format_example(model.ptr, tmpl.encode()).decode()
+
+def common_params_get_system_info(CommonParams params) -> str:
+    return llama_cpp.common_params_get_system_info(params.p).decode()
+
 def ggml_time_us() -> int:
     return llama_cpp.ggml_time_us()
 
