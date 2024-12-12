@@ -1,14 +1,23 @@
-CWD=`pwd`
+# scripts/setup.sh [download_last_working] [release-tag]
+#
+# setup.sh 			: (default run) downloads, builds and install last working release of llama.cpp
+# setup.sh 1 		: like default
+# setup.sh 0    	: downloads, builds and install bleeding edge llama.cpp from repo
+# setup.sh 1 <tag>	: downloads, builds and install <tag> release of llama.cpp
+
+CWD=$(pwd)
 THIRDPARTY=${CWD}/thirdparty
 LAST_WORKING="b4295"
-LLAMACPP_VERSION="${1:-${LAST_WORKING}}"
-GET_LAST_WORKING=1
+LLAMACPP_VERSION="${2:-${LAST_WORKING}}"
+STABLE_BUILD=0
+GET_LAST_WORKING="${1:-$STABLE_BUILD}"
 
-if [ $GET_LAST_WORKING = 1 ]
-then
-BRANCH="--branch ${LLAMACPP_VERSION}"
+if [ $GET_LAST_WORKING = 1 ]; then
+	echo "get last working release: ${LAST_WORKING}"
+	BRANCH="--branch ${LLAMACPP_VERSION}"
 else
-BRANCH= # bleeding edge (llama.cpp main)
+	echo "get bleeding edge llama.cpp from main"
+	BRANCH= # bleeding edge (llama.cpp main)
 fi
 
 

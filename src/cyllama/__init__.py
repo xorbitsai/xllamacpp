@@ -41,6 +41,10 @@ class Llama:
 
         self.chat_msgs: list[cy.CommonChatMsg] = []
 
+        self.path_session = Path(self.params.path_prompt_cache)
+        self.session_tokens = []
+        self.add_bos: bool = False
+
         if self.disable_log:
             cy.log_set_verbosity(self.params.verbosity)
 
@@ -96,6 +100,13 @@ class Llama:
             threadpool = cy.GGMLThreadPool(tpp)
 
             ctx.attach_threadpool(threadpool, threadpool_batch)
+
+    def chat_add_and_format(self, chat_msgs: list[cy.CommonChatMsg], role: str, content: str) -> str:
+        new_msg = cy.CommonChatMsg(role, content)
+        formatted = cy.common_chat_format_single(self.model, self.chat_template, chat_msgs, new_msg, role == "user");
+        chat_msgs.append(CommonChatMsg(role, content))
+        self.log.debug("formatted: '%s'\n", formatted)
+        return formatted
 
     def ask(self, prompt: str, n_predict: Optional[int] = None, n_ctx: Optional[int] = None):
         """prompt model"""
@@ -153,6 +164,47 @@ class Llama:
         if not self.disable_log:
             # print system information
             self.log.info("\n%s\n", cy.common_params_get_system_info(self.params))
+
+        if self.path_session.name: # is not empty
+            self.log.info("attempting to load saved session from '%s'\n", self.path_session)
+            if not self.path_session.exists():
+                self.log.info("session file does not exist, will create.")
+            elif self.path_session.read_text()=='':
+                self.log.info("The session file is empty. A new session will be initialized.")
+            else:
+                # The file exists and is not empty
+                self.session_tokens = self.ctx.load_state_file(path_session=self.path_session, max_n_tokens=n_ctx)
+                self.log.info("loaded a session with prompt size of %d tokens", len(self.session_tokens));
+
+        self.add_bos = self.model.add_bos_token()
+
+        if not self.model.has_encoder():
+            self.model.add_eos_token()
+
+        self.log.debug("n_ctx: %d, add_bos: %d\n", n_ctx, self.add_bos)
+
+        embd_inp = []
+
+        if self.params.conversation and self.params.enable_chat_template and not self.params.prompt:
+            # format the system prompt in conversation mode
+            prompt = self.chat_add_and_format(self.chat_msgs, "system", self.params.prompt)
+        else:
+            prompt = self.params.prompt
+
+
+        # if self.params.interactive_first or not self.params.prompt or not self.session_tokens:
+        #     self.log.debug("tokenize the prompt")
+        #     embd_inp = common_tokenize(ctx, prompt, True, True)
+        # else:
+        #     self.log.debug("use session tokens")
+        #     embd_inp = session_tokens
+
+        # self.log.debug("prompt: \"%s\"\n", prompt)
+        # self.log.debug("tokens: %s\n", string_from(ctx, embd_inp).c_str())
+
+
+
+
 
         n_kv_req: int = len(tokens_list) + (n_predict - len(tokens_list))
 

@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ## [0.0.x]
 
+- Added unit tests
 
 - Changed cyllama.pyx and tests to apply more consistent naming of Llama-type classes.
 

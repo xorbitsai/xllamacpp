@@ -4448,6 +4448,13 @@ def common_chat_format_example(LlamaModel model, str tmpl) -> str:
 def common_params_get_system_info(CommonParams params) -> str:
     return llama_cpp.common_params_get_system_info(params.p).decode()
 
+def common_chat_format_single(LlamaModel model, tmpl: str, past_msg: list[CommonChatMsg], new_msg: CommonChatMsg, add_ass: bool):
+    """Format single message, while taking into account the position of that message in chat history"""
+    cdef vector[llama_cpp.common_chat_msg] vec
+    for msg in past_msg:
+        vec.push_back(msg.p)
+    return llama_cpp.common_chat_format_single(model.ptr, str.encode(), vec, new_msg.p, add_ass).decode()
+
 def ggml_time_us() -> int:
     return llama_cpp.ggml_time_us()
 

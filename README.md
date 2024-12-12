@@ -30,16 +30,14 @@ Given that there is a fairly mature, well-maintained and performant ctypes-based
 
 Development only on macOS to keep things simple. The following table provide an overview of the current wrapping/dev status:
 
-
 | status                       | cyllama       |
 | :--------------------------- | :-----------: |
-| wrapper-type                 | cython 	   |
-| wrap llama.h         		   | yes		   |
-| wrap high-level simple-cli   | yes		   |
-| wrap low-level simple-cli    | yes		   |
-| wrap low-level llama-cli     | WIP 		   |
+| wrapper-type                 | cython        |
+| wrap llama.h                 | yes           |
+| wrap high-level simple-cli   | yes           |
+| wrap low-level simple-cli    | yes           |
+| wrap low-level llama-cli     | WIP           |
   
-
 The initial milestone entailed creating a high-level wrapper of the `simple.cpp` llama.cpp example, followed by a low-level one. The high-level wrapper c++ code is placed in `llamalib.h` single-header library. The final objective is to fully wrap the functionality of `llama-cli`.
 
 It goes without saying that any help / collaboration / contributions to accelerate the above would be welcome!
@@ -54,35 +52,32 @@ As the intent is to provide a very thin wrapping layer and play to the strengths
 
 - Minimize non-wrapper python code.
 
-
 ## Setup
 
 To build `cyllama`:
 
 1. A recent version of `python3` (testing on python 3.12)
 
-
 2. Git clone the latest version of `cyllama`:
 
-```sh
-git clone https://github.com/shakfu/cyllama.git
-cd cyllama
-```
+ ```sh
+ git clone https://github.com/shakfu/cyllama.git
+ cd cyllama
+ ```
 
 3. Install dependencies of `cython`, `setuptools`, `numpy` and `pytest` for testing:
 
-```sh
-pip install -r requirements.txt
-```
+ ```sh
+ pip install -r requirements.txt
+ ```
 
-3. Type `make` in the terminal.
+4. Type `make` in the terminal.
 
 This will:
 
 1. Download and build `llama.cpp`
 2. Install it into `bin`, `include`, and `lib` in the cloned `cyllama` folder
 3. Build `cyllama`
-
 
 ## Testing
 
@@ -108,7 +103,7 @@ Now you can test it using `llama-cli` or `llama-simple`:
 
 ```sh
 bin/llama-cli -c 512 -n 32 -m models/Llama-3.2-1B-Instruct-Q8_0.gguf \
-	-p "Is mathematics discovered or invented?"
+ -p "Is mathematics discovered or invented?"
 ```
 
 Now, you will need `pytest` installed to run tests:
@@ -118,7 +113,6 @@ pytest
 ```
 
 If all tests pass, feel free to `cd` into the `tests` directory and run some examples directly, for example:
-
 
 ```sh
 cd tests && python3 simple.py`
@@ -135,4 +129,3 @@ cd tests && python3 simple.py`
 - [ ] wrap [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
 
 - [ ] wrap [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
-
