@@ -191,16 +191,30 @@ class Llama:
         else:
             prompt = self.params.prompt
 
+        if self.params.interactive_first or not self.params.prompt or not self.session_tokens:
+            self.log.debug("tokenize the prompt")
+            embd_inp = cy.common_tokenize(self.ctx, prompt, True, True)
+        else:
+            self.log.debug("use session tokens")
+            embd_inp = self.session_tokens
 
-        # if self.params.interactive_first or not self.params.prompt or not self.session_tokens:
-        #     self.log.debug("tokenize the prompt")
-        #     embd_inp = common_tokenize(ctx, prompt, True, True)
-        # else:
-        #     self.log.debug("use session tokens")
-        #     embd_inp = session_tokens
+        self.log.debug('prompt: "%s"\n', prompt)
+        self.log.debug("tokens: %s\n", cy.string_from_tokens(self.ctx, embd_inp))
 
-        # self.log.debug("prompt: \"%s\"\n", prompt)
-        # self.log.debug("tokens: %s\n", string_from(ctx, embd_inp).c_str())
+        # Should not run without any tokens
+        if not embd_inp:
+            if self.add_bos:
+                embd_inp.append(self.model.token_bos())
+                self.log.warn("embd_inp was considered empty and bos was added: %s\n", cy.string_from_tokens(self.ctx, embd_inp))
+            else:
+                self.log.error("input is empty\n")
+                raise SystemExit
+
+        # Tokenize negative prompt
+        if len(embd_inp) > n_ctx - 4:
+            self.log.error("prompt is too long (%d tokens, max %d)\n", len(embd_inp), n_ctx - 4)
+            raise SystemExit
+
 
 
 

@@ -1730,6 +1730,14 @@ cdef extern from "common.h":
     
 
     # -------------------------------------------------------------------------
+    # String utils    
+
+    cdef std_string string_from(bint value)
+    cdef std_string string_from(const std_vector[int] & values)
+    cdef std_string string_from(const llama_context * ctx, const std_vector[llama_token] & tokens)
+    cdef std_string string_from(const llama_context * ctx, const llama_batch & batch)
+
+    # -------------------------------------------------------------------------
     # Model utils
 
     ctypedef struct common_init_result:

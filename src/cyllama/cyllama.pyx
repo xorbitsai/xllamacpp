@@ -4455,6 +4455,24 @@ def common_chat_format_single(LlamaModel model, tmpl: str, past_msg: list[Common
         vec.push_back(msg.p)
     return llama_cpp.common_chat_format_single(model.ptr, str.encode(), vec, new_msg.p, add_ass).decode()
 
+def string_from_bool(bint value) -> str:
+    return llama_cpp.string_from(value).decode()
+
+def string_from_ints(values: list[int]) -> str:
+    cdef vector[int] vec
+    for i in values:
+        vec.push_back(i)
+    return llama_cpp.string_from(vec).decode()
+
+def string_from_tokens(LlamaContext ctx, tokens: list[int]) -> str:
+    cdef vector[llama_cpp.llama_token] vec
+    for i in tokens:
+        vec.push_back(<llama_cpp.llama_token>i)
+    return llama_cpp.string_from(ctx.ptr, vec).decode()
+
+def string_from_batch(LlamaContext ctx, LlamaBatch batch) -> str:
+    return llama_cpp.string_from(ctx.ptr, batch.p).decode()
+
 def ggml_time_us() -> int:
     return llama_cpp.ggml_time_us()
 
