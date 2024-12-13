@@ -2516,22 +2516,22 @@ cdef class CommonParams:
         self.p.check_tensors = value
 
     @property
-    def cache_type_k(self) -> str:
-        """validate tensor data"""
-        return self.p.cache_type_k.decode()
+    def cache_type_k(self) -> ggml_type:
+        """data type for K cache"""
+        return <ggml_type>self.p.cache_type_k
 
     @cache_type_k.setter
-    def cache_type_k(self, value: str):
-        self.p.cache_type_k = value.encode()
+    def cache_type_k(self, ggml_type value):
+        self.p.cache_type_k = value
 
     @property
-    def cache_type_v(self) -> str:
-        """validate tensor data"""
-        return self.p.cache_type_v.decode()
+    def cache_type_v(self) -> ggml_type:
+        """data type for V cache"""
+        return <ggml_type>self.p.cache_type_v
 
     @cache_type_v.setter
-    def cache_type_v(self, value: str):
-        self.p.cache_type_v = value.encode()
+    def cache_type_v(self, ggml_type value):
+        self.p.cache_type_v = value
 
     @property
     def mmproj(self) -> str:

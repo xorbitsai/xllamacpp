@@ -1611,11 +1611,11 @@ cdef extern from "common.h":
         bint warmup                 # warmup run
         bint check_tensors          # validate tensor data
 
-        std_string cache_type_k    # KV cache data type for the K
-        std_string cache_type_v    # KV cache data type for the V
+        ggml_type cache_type_k      # KV cache data type for the K
+        ggml_type cache_type_v      # KV cache data type for the V
 
         # multimodal models (see examples/llava)
-        std_string mmproj          # path to multimodal projector
+        std_string mmproj           # path to multimodal projector
         std_vector[std_string] image # path to image file(s)
 
         # embedding

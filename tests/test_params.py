@@ -210,8 +210,8 @@ def test_common_params():
     assert params.warmup               == True  
     assert params.check_tensors        == False 
 
-    assert params.cache_type_k         == "f16"
-    assert params.cache_type_v         == "f16"
+    assert params.cache_type_k         == cy.GGML_TYPE_F16
+    assert params.cache_type_v         == cy.GGML_TYPE_F16
 
     assert params.mmproj               == ""
     assert params.image                == []
