@@ -12,8 +12,8 @@ auditwheel; sys_platform == 'linux'
 # windows fix wheel tool
 delvewheel; sys_platform == 'win32'
 
-# runtime requirements
-numpy
+# runtime requirements (optional)
+# numpy
 
 # testing tools (optional)
 pytest pytest-cov pytest-memray

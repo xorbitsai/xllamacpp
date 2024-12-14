@@ -65,6 +65,15 @@ GGML_MAX_SRC = 10
 #     GGML_MAX_OP_PARAMS = 64
 #     GGML_MAX_SRC = 10
 
+# build info
+# -----------------------------------------------------------------------------
+
+BUILD_INFO = {
+    'build_number': llama_cpp.LLAMA_BUILD_NUMBER,
+    'commit': llama_cpp.LLAMA_COMMIT.decode(),
+    'compiler': llama_cpp.LLAMA_COMPILER.decode(),
+    'build_target': llama_cpp.LLAMA_BUILD_TARGET.decode(),
+}
 
 # enums
 # -----------------------------------------------------------------------------

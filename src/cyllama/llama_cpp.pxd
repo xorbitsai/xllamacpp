@@ -1387,6 +1387,14 @@ cdef extern from "common.h":
     ctypedef struct common_control_vector_load_info: pass
 
     # -------------------------------------------------------------------------
+    # Build info
+
+    cdef int LLAMA_BUILD_NUMBER
+    cdef const char * LLAMA_COMMIT
+    cdef const char * LLAMA_COMPILER
+    cdef const char * LLAMA_BUILD_TARGET
+
+    # -------------------------------------------------------------------------
     # CPU utils
 
     ctypedef struct cpu_params:

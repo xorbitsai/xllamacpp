@@ -7,7 +7,8 @@ authors = [
     { name = "Shakeeb Alireza", email = "me@example.org" }
 ]
 requires-python = ">=3.8"
-dependencies = ["numpy >= 2"]
+# dependencies = ["numpy >= 2"]
+dependencies = []
 
 [project.optional-dependencies]
 test = ['pytest', 'pytest-cov']

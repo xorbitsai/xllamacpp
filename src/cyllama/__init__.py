@@ -215,6 +215,64 @@ class Llama:
             self.log.error("prompt is too long (%d tokens, max %d)\n", len(embd_inp), n_ctx - 4)
             raise SystemExit
 
+        # debug message about similarity of saved session, if applicable
+        n_matching_session_tokens = 0
+        if not self.session_tokens:
+            for token in self.session_tokens:
+                if n_matching_session_tokens >= len(embd_inp) or token != embd_inp[n_matching_session_tokens]:
+                    break
+
+                n_matching_session_tokens += 1
+
+            if not self.params.prompt and n_matching_session_tokens == len(embd_inp):
+                self.log.info("using full prompt from session file")
+            elif n_matching_session_tokens >= len(embd_inp):
+                self.log.info("session file has exact match for prompt!")
+            elif n_matching_session_tokens < (len(embd_inp) / 2):
+                self.log.warning("session file has low similarity to prompt (%d / %d tokens); will mostly be reevaluated",
+                    n_matching_session_tokens, len(embd_inp))
+            else:
+                self.log.info("session file matches %d / %d tokens of prompt",
+                        n_matching_session_tokens, len(embd_inp))
+
+            # remove any "future" tokens that we might have inherited from the previous session
+            self.ctx.kv_cache_seq_rm(-1, n_matching_session_tokens, -1)
+
+        self.log.debug("recalculate the cached logits (check): embd_inp.size() %d, n_matching_session_tokens %zu, embd_inp.size() %d, session_tokens.size() %d",
+             len(embd_inp), n_matching_session_tokens, len(embd_inp), len(self.session_tokens))
+
+        # if we will use the cache for the full prompt without reaching the end of the cache, force
+        # reevaluation of the last token to recalculate the cached logits
+        if not embd_inp and n_matching_session_tokens == len(embd_inp) and len(self.session_tokens) > len(embd_inp):
+            self.log.debug("recalculate the cached logits (do): session_tokens.resize( %d )", len(embd_inp) - 1)
+
+            self.session_tokens = self.session_tokens[:len(embd_inp)-1]
+
+        # number of tokens to keep when resetting context
+        if self.params.n_keep < 0 or self.params.n_keep > len(embd_inp):
+            self.params.n_keep = len(embd_inp)
+        else:
+            self.params.n_keep += int(self.add_bos) # always keep the BOS token
+
+        if self.params.conversation:
+            self.params.interactive_first = True
+
+        # enable interactive mode if interactive start is specified
+        if self.params.interactive_first:
+            self.params.interactive = True
+
+        if self.params.verbose_prompt:
+            self.log.info("prompt: '%s'", self.params.prompt)
+            self.log.info("number of tokens in prompt = %d", len(embd_inp))
+            for i in range(len(embd_inp)):
+                self.log.info("%d -> '%s'", embd_inp[i],  self.ctx.token_to_piece(embd_inp[i]))
+
+            if self.params.n_keep > self.add_bos:
+                self.log.info("static prompt based on n_keep: '")
+                for i in range(self.params.n_keep):
+                    self.log.info("%s", self.ctx.token_to_piece(embd_inp[i]))
+                self.log.info("")
+            self.log.info("")
 
 
 
