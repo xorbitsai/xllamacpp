@@ -122,7 +122,7 @@ cd tests && python3 simple.py`
 
 - [x] wrap llama-simple
 
-- [ ] wrap llama-cli
+- [ ] wrap llama-cli (WIP: see: `cyllama.__init__`)
 
 - [ ] wrap llama-llava-cli
 

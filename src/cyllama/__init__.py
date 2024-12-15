@@ -1,4 +1,5 @@
 import os
+import signal
 import sys
 import datetime
 from pathlib import Path
@@ -60,6 +61,10 @@ class Llama:
     def __del__(self):
         cy.llama_backend_free()
 
+    def _termination_handler(self):
+        """handle termination by ctrl-c"""
+        print("TERMINATION...")
+
     def check_params(self):
         if self.params.logits_all:
             self.fail("please use the 'perplexity' tool for perplexity calculations")
@@ -101,14 +106,20 @@ class Llama:
 
             ctx.attach_threadpool(threadpool, threadpool_batch)
 
-    def chat_add_and_format(self, chat_msgs: list[cy.CommonChatMsg], role: str, content: str) -> str:
+    def chat_add_and_format(
+        self, chat_msgs: list[cy.CommonChatMsg], role: str, content: str
+    ) -> str:
         new_msg = cy.CommonChatMsg(role, content)
-        formatted = cy.common_chat_format_single(self.model, self.chat_template, chat_msgs, new_msg, role == "user");
+        formatted = cy.common_chat_format_single(
+            self.model, self.chat_template, chat_msgs, new_msg, role == "user"
+        )
         chat_msgs.append(CommonChatMsg(role, content))
         self.log.debug("formatted: '%s'\n", formatted)
         return formatted
 
-    def ask(self, prompt: str, n_predict: Optional[int] = None, n_ctx: Optional[int] = None):
+    def ask(
+        self, prompt: str, n_predict: Optional[int] = None, n_ctx: Optional[int] = None
+    ):
         """prompt model"""
 
         self.params.prompt = prompt
@@ -125,7 +136,9 @@ class Llama:
         if 0:
             # initialize the model
             model_params = cy.common_model_params_to_llama(self.params)
-            self.model = cy.LlamaModel(path_model=self.params.model, params=model_params)
+            self.model = cy.LlamaModel(
+                path_model=self.params.model, params=model_params
+            )
 
             # initialize the context
             ctx_params = cy.common_context_params_to_llama(self.params)
@@ -152,29 +165,49 @@ class Llama:
         n_ctx: int = self.ctx.n_ctx
 
         if n_ctx > n_ctx_train:
-            self.log.warn("model was trained on only %d context tokens (%d specified)", n_ctx_train, n_ctx)
+            self.log.warn(
+                "model was trained on only %d context tokens (%d specified)",
+                n_ctx_train,
+                n_ctx,
+            )
 
         # print chat template example in conversation mode
         if self.params.conversation:
             if self.params.enable_chat_template:
-                self.log.info("chat template example:\n%s\n", cy.common_chat_format_example(self.model, self.params.chat_template))
+                self.log.info(
+                    "chat template example:\n%s\n",
+                    cy.common_chat_format_example(
+                        self.model, self.params.chat_template
+                    ),
+                )
             else:
-                self.log.info("in-suffix/prefix is specified, chat template will be disabled.")
+                self.log.info(
+                    "in-suffix/prefix is specified, chat template will be disabled."
+                )
 
         if not self.disable_log:
             # print system information
             self.log.info("\n%s\n", cy.common_params_get_system_info(self.params))
 
-        if self.path_session.name: # is not empty
-            self.log.info("attempting to load saved session from '%s'\n", self.path_session)
+        if self.path_session.name:  # is not empty
+            self.log.info(
+                "attempting to load saved session from '%s'\n", self.path_session
+            )
             if not self.path_session.exists():
                 self.log.info("session file does not exist, will create.")
-            elif self.path_session.read_text()=='':
-                self.log.info("The session file is empty. A new session will be initialized.")
+            elif self.path_session.read_text() == "":
+                self.log.info(
+                    "The session file is empty. A new session will be initialized."
+                )
             else:
                 # The file exists and is not empty
-                self.session_tokens = self.ctx.load_state_file(path_session=self.path_session, max_n_tokens=n_ctx)
-                self.log.info("loaded a session with prompt size of %d tokens", len(self.session_tokens));
+                self.session_tokens = self.ctx.load_state_file(
+                    path_session=self.path_session, max_n_tokens=n_ctx
+                )
+                self.log.info(
+                    "loaded a session with prompt size of %d tokens",
+                    len(self.session_tokens),
+                )
 
         self.add_bos = self.model.add_bos_token()
 
@@ -185,13 +218,23 @@ class Llama:
 
         embd_inp = []
 
-        if self.params.conversation and self.params.enable_chat_template and not self.params.prompt:
+        if (
+            self.params.conversation
+            and self.params.enable_chat_template
+            and not self.params.prompt
+        ):
             # format the system prompt in conversation mode
-            prompt = self.chat_add_and_format(self.chat_msgs, "system", self.params.prompt)
+            prompt = self.chat_add_and_format(
+                self.chat_msgs, "system", self.params.prompt
+            )
         else:
             prompt = self.params.prompt
 
-        if self.params.interactive_first or not self.params.prompt or not self.session_tokens:
+        if (
+            self.params.interactive_first
+            or not self.params.prompt
+            or not self.session_tokens
+        ):
             self.log.debug("tokenize the prompt")
             embd_inp = cy.common_tokenize(self.ctx, prompt, True, True)
         else:
@@ -205,21 +248,29 @@ class Llama:
         if not embd_inp:
             if self.add_bos:
                 embd_inp.append(self.model.token_bos())
-                self.log.warn("embd_inp was considered empty and bos was added: %s\n", cy.string_from_tokens(self.ctx, embd_inp))
+                self.log.warn(
+                    "embd_inp was considered empty and bos was added: %s\n",
+                    cy.string_from_tokens(self.ctx, embd_inp),
+                )
             else:
                 self.log.error("input is empty\n")
                 raise SystemExit
 
         # Tokenize negative prompt
         if len(embd_inp) > n_ctx - 4:
-            self.log.error("prompt is too long (%d tokens, max %d)\n", len(embd_inp), n_ctx - 4)
+            self.log.error(
+                "prompt is too long (%d tokens, max %d)\n", len(embd_inp), n_ctx - 4
+            )
             raise SystemExit
 
         # debug message about similarity of saved session, if applicable
         n_matching_session_tokens = 0
         if not self.session_tokens:
             for token in self.session_tokens:
-                if n_matching_session_tokens >= len(embd_inp) or token != embd_inp[n_matching_session_tokens]:
+                if (
+                    n_matching_session_tokens >= len(embd_inp)
+                    or token != embd_inp[n_matching_session_tokens]
+                ):
                     break
 
                 n_matching_session_tokens += 1
@@ -229,30 +280,48 @@ class Llama:
             elif n_matching_session_tokens >= len(embd_inp):
                 self.log.info("session file has exact match for prompt!")
             elif n_matching_session_tokens < (len(embd_inp) / 2):
-                self.log.warning("session file has low similarity to prompt (%d / %d tokens); will mostly be reevaluated",
-                    n_matching_session_tokens, len(embd_inp))
+                self.log.warning(
+                    "session file has low similarity to prompt (%d / %d tokens); will mostly be reevaluated",
+                    n_matching_session_tokens,
+                    len(embd_inp),
+                )
             else:
-                self.log.info("session file matches %d / %d tokens of prompt",
-                        n_matching_session_tokens, len(embd_inp))
+                self.log.info(
+                    "session file matches %d / %d tokens of prompt",
+                    n_matching_session_tokens,
+                    len(embd_inp),
+                )
 
             # remove any "future" tokens that we might have inherited from the previous session
             self.ctx.kv_cache_seq_rm(-1, n_matching_session_tokens, -1)
 
-        self.log.debug("recalculate the cached logits (check): embd_inp.size() %d, n_matching_session_tokens %zu, embd_inp.size() %d, session_tokens.size() %d",
-             len(embd_inp), n_matching_session_tokens, len(embd_inp), len(self.session_tokens))
+        self.log.debug(
+            "recalculate the cached logits (check): embd_inp.size() %d, n_matching_session_tokens %zu, embd_inp.size() %d, session_tokens.size() %d",
+            len(embd_inp),
+            n_matching_session_tokens,
+            len(embd_inp),
+            len(self.session_tokens),
+        )
 
         # if we will use the cache for the full prompt without reaching the end of the cache, force
         # reevaluation of the last token to recalculate the cached logits
-        if not embd_inp and n_matching_session_tokens == len(embd_inp) and len(self.session_tokens) > len(embd_inp):
-            self.log.debug("recalculate the cached logits (do): session_tokens.resize( %d )", len(embd_inp) - 1)
+        if (
+            not embd_inp
+            and n_matching_session_tokens == len(embd_inp)
+            and len(self.session_tokens) > len(embd_inp)
+        ):
+            self.log.debug(
+                "recalculate the cached logits (do): session_tokens.resize( %d )",
+                len(embd_inp) - 1,
+            )
 
-            self.session_tokens = self.session_tokens[:len(embd_inp)-1]
+            self.session_tokens = self.session_tokens[: len(embd_inp) - 1]
 
         # number of tokens to keep when resetting context
         if self.params.n_keep < 0 or self.params.n_keep > len(embd_inp):
             self.params.n_keep = len(embd_inp)
         else:
-            self.params.n_keep += int(self.add_bos) # always keep the BOS token
+            self.params.n_keep += int(self.add_bos)  # always keep the BOS token
 
         if self.params.conversation:
             self.params.interactive_first = True
@@ -265,7 +334,9 @@ class Llama:
             self.log.info("prompt: '%s'", self.params.prompt)
             self.log.info("number of tokens in prompt = %d", len(embd_inp))
             for i in range(len(embd_inp)):
-                self.log.info("%d -> '%s'", embd_inp[i],  self.ctx.token_to_piece(embd_inp[i]))
+                self.log.info(
+                    "%d -> '%s'", embd_inp[i], self.ctx.token_to_piece(embd_inp[i])
+                )
 
             if self.params.n_keep > self.add_bos:
                 self.log.info("static prompt based on n_keep: '")
@@ -273,6 +344,71 @@ class Llama:
                     self.log.info("%s", self.ctx.token_to_piece(embd_inp[i]))
                 self.log.info("")
             self.log.info("")
+
+        # handle ctrl-c
+        signal.signal(signal.SIGINT, lambda signal, frame: self._termination_handler())
+
+        if self.params.interactive:
+            self.log.info("interactive mode on.\n")
+
+            if self.params.antiprompt:
+                for antiprompt in self.params.antiprompt:
+                    self.log.info("Reverse prompt: '%s'\n", antiprompt)
+                    if self.params.verbose_prompt:
+                        tmp = self.ctx.tokenize(antiprompt, False, True)
+                        for i in range(len(tmp)):
+                            self.log.info(
+                                "%6d -> '%s'\n", tmp[i], self.ctx.token_to_piece(tmp[i])
+                            )
+
+            if self.params.input_prefix_bos:
+                self.log.info("Input prefix with BOS\n")
+
+            if self.params.input_prefix:
+                self.log.info("Input prefix: '%s'\n", self.params.input_prefix)
+                if self.params.verbose_prompt:
+                    tmp = self.ctx.tokenize(self.params.input_prefix, True, True)
+                    for i in range(len(tmp)):
+                        self.log.info(
+                            "%6d -> '%s'\n", tmp[i], self.ctx.token_to_piece(tmp[i])
+                        )
+
+            # this looks redundnat
+            if self.params.input_prefix:
+                self.log.info("Input prefix: '%s'\n", self.params.input_prefix)
+                if self.params.verbose_prompt:
+                    tmp = self.ctx.tokenize(self.params.input_prefix, False, True)
+                    for i in range(len(tmp)):
+                        self.log.info(
+                            "%6d -> '%s'\n", tmp[i], self.ctx.token_to_piece(tmp[i])
+                        )
+
+        sparams = self.params.sampling
+        smpl = self.model.sampler_init(sparams)
+        if not smpl:
+            self.fail("failed to initialize sampling subsystem\n")
+
+        self.log.info("sampler seed: %u\n", smpl.get_seed())
+        self.log.info("sampler params: \n%s\n", sparams.print())
+        self.log.info("sampler chain: %s\n", smpl.print())
+
+        self.log.info(
+            "generate: n_ctx = %d, n_batch = %d, n_predict = %d, n_keep = %d\n",
+            n_ctx,
+            self.params.n_batch,
+            self.params.n_predict,
+            self.params.n_keep,
+        )
+
+
+
+
+
+
+
+
+
+
 
 
 

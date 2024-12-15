@@ -7,19 +7,22 @@ import datetime
 # ----------------------------------------------------------------------------
 # env helpers
 
+
 def getenv(key: str, default: bool = False) -> bool:
     """convert '0','1' env values to bool {True, False}"""
     return bool(int(os.getenv(key, default)))
+
 
 # ----------------------------------------------------------------------------
 # constants
 
 PY_VER_MINOR = sys.version_info.minor
-DEBUG = getenv('DEBUG', default=True)
-COLOR = getenv('COLOR', default=True)
+DEBUG = getenv("DEBUG", default=True)
+COLOR = getenv("COLOR", default=True)
 
 # ----------------------------------------------------------------------------
 # logging config
+
 
 class CustomFormatter(logging.Formatter):
     """custom logging formatting class"""
@@ -33,10 +36,12 @@ class CustomFormatter(logging.Formatter):
     bold_red = "\x1b[31;1m"
     reset = "\x1b[0m"
     fmt = "%(delta)s - %(levelname)s - %(name)s.%(funcName)s - %(message)s"
-    cfmt = (f"{white}%(delta)s{reset} - "
-            f"{{}}%(levelname)s{{}} - "
-            f"{white}%(name)s.%(funcName)s{reset} - "
-            f"{grey}%(message)s{reset}")
+    cfmt = (
+        f"{white}%(delta)s{reset} - "
+        f"{{}}%(levelname)s{{}} - "
+        f"{white}%(name)s.%(funcName)s{reset} - "
+        f"{grey}%(message)s{reset}"
+    )
 
     FORMATS = {
         logging.DEBUG: cfmt.format(grey, reset),
@@ -60,8 +65,7 @@ class CustomFormatter(logging.Formatter):
                 record.relativeCreated / 1000, datetime.UTC
             )
         else:
-            duration = datetime.datetime.utcfromtimestamp(
-                record.relativeCreated / 1000)
+            duration = datetime.datetime.utcfromtimestamp(record.relativeCreated / 1000)
         record.delta = duration.strftime("%H:%M:%S")
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)

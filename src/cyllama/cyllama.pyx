@@ -49,21 +49,19 @@ from typing import Optional, Sequence, Callable
 
 LLAMA_DEFAULT_SEED = 0xFFFFFFFF
 
-GGML_DEFAULT_N_THREADS = 4
-GGML_MAX_DIMS = 4
-GGML_MAX_N_THREADS = 16
-GGML_MAX_NAME = 64
-GGML_MAX_OP_PARAMS = 64
-GGML_MAX_SRC = 10
+cpdef enum:
+    GGML_DEFAULT_N_THREADS = 4
+    GGML_MAX_DIMS = 4
+    GGML_MAX_N_THREADS = 16
+    GGML_MAX_NAME = 64
+    GGML_MAX_OP_PARAMS = 64
+    GGML_MAX_SRC = 10
 
+cpdef enum:
+    GGML_ROPE_TYPE_NEOX   = 2
+    GGML_ROPE_TYPE_MROPE  = 8
+    GGML_ROPE_TYPE_VISION = 24
 
-# cpdef enum:
-#     GGML_DEFAULT_N_THREADS = 4
-#     GGML_MAX_DIMS = 4
-#     GGML_MAX_N_THREADS = 16
-#     GGML_MAX_NAME = 64
-#     GGML_MAX_OP_PARAMS = 64
-#     GGML_MAX_SRC = 10
 
 # build info
 # -----------------------------------------------------------------------------
@@ -95,9 +93,11 @@ cpdef enum llama_vocab_type:
     LLAMA_VOCAB_TYPE_RWKV # RWKV tokenizer based on greedy tokenization
 
 cpdef enum llama_rope_type:
-    LLAMA_ROPE_TYPE_NONE = -1
-    LLAMA_ROPE_TYPE_NORM =  0
-    LLAMA_ROPE_TYPE_NEOX =  2
+    LLAMA_ROPE_TYPE_NONE   = -1
+    LLAMA_ROPE_TYPE_NORM   = 0
+    LLAMA_ROPE_TYPE_NEOX   = GGML_ROPE_TYPE_NEOX
+    LLAMA_ROPE_TYPE_MROPE  = GGML_ROPE_TYPE_MROPE
+    LLAMA_ROPE_TYPE_VISION = GGML_ROPE_TYPE_VISION
 
 cpdef enum llama_token_attr:
     LLAMA_TOKEN_ATTR_UNDEFINED    = 0
@@ -1100,6 +1100,19 @@ cdef class CommonParamsSampling:
         wrapper.p = params
         return wrapper
 
+    def print(self) -> str:
+        """print the parameters into a string"""
+        return ( 
+            "\trepeat_last_n = %d, repeat_penalty = %.3f, frequency_penalty = %.3f, presence_penalty = %.3f\n"
+            "\tdry_multiplier = %.3f, dry_base = %.3f, dry_allowed_length = %d, dry_penalty_last_n = %d\n"
+            "\ttop_k = %d, top_p = %.3f, min_p = %.3f, xtc_probability = %.3f, xtc_threshold = %.3f, typical_p = %.3f, temp = %.3f\n"
+            "\tmirostat = %d, mirostat_lr = %.3f, mirostat_ent = %.3f" % (
+                self.penalty_last_n, self.penalty_repeat, self.penalty_freq, self.penalty_present,
+                self.dry_multiplier, self.dry_base, self.dry_allowed_length, self.dry_penalty_last_n,
+                self.top_k, self.top_p, self.min_p, self.xtc_probability, self.xtc_threshold, self.typ_p, self.temp,
+                self.mirostat, self.mirostat_eta, self.mirostat_tau)
+        )
+
     @property
     def seed(self) -> int:
         """the seed used to initialize llama_sampler."""
@@ -1397,8 +1410,7 @@ cdef class CommonParamsSampling:
             vec.push_back(elem.ptr[0])
         self.p.logit_bias = vec
 
-    # # print the parameters into a string
-    # # std_string print() const
+
 
 
 cdef class CommonSampler:
@@ -1478,7 +1490,7 @@ cdef class CommonSampler:
         """get the last accepted token"""
         return llama_cpp.common_sampler_last(self.ptr)
 
-    def to_string(self) -> str:
+    def print(self) -> str:
         """print the sampler chain into a string"""
         return llama_cpp.common_sampler_print(self.ptr).decode()
 
@@ -1929,13 +1941,13 @@ cdef class CommonParams:
         self.p.attention_type = value
 
     @property
-    def sampling(self) -> llama_cpp.common_params_sampling:
+    def sampling(self) -> CommonParamsSampling:
         """common params sampling."""
-        return self.p.sampling
+        return CommonParamsSampling.from_instance(self.p.sampling)
 
     @sampling.setter
-    def sampling(self, value: llama_cpp.common_params_sampling):
-        self.p.sampling = value
+    def sampling(self, value: CommonParamsSampling):
+        self.p.sampling = value.p
 
     @property
     def speculative(self) -> CommonParamsSpeculative:
@@ -3232,6 +3244,7 @@ cdef class LlamaModel:
         wrapper.owner = owner
         return wrapper
 
+
     @property
     def vocab_type(self) -> llama_vocab_type:
         return llama_vocab_type(llama_cpp.get_llama_vocab_type(self.ptr))
@@ -3287,6 +3300,12 @@ cdef class LlamaModel:
         cdef llama_cpp.ggml_tensor * tensor = llama_cpp.llama_get_model_tensor(
             self.ptr, name.encode("utf-8"))
         return GGMLTensor.from_ptr(tensor)
+
+    # sampling
+
+    def sampler_init(self, CommonParamsSampling params) -> CommonSampler:
+        """initialize common_sampler"""
+        return CommonSampler(self, params)
 
     # lora
 

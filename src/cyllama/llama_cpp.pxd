@@ -18,6 +18,10 @@ cpdef enum:
     GGML_MAX_OP_PARAMS = 64
     GGML_MAX_SRC = 10
 
+cpdef enum:
+    GGML_ROPE_TYPE_NEOX   = 2
+    GGML_ROPE_TYPE_MROPE  = 8
+    GGML_ROPE_TYPE_VISION = 24
 
 #------------------------------------------------------------------------------
 # ggml-cpu.h
@@ -327,9 +331,11 @@ cdef extern from "llama.h":
         LLAMA_VOCAB_PRE_TYPE_MINERVA
 
     cdef enum llama_rope_type:
-        LLAMA_ROPE_TYPE_NONE = -1
-        LLAMA_ROPE_TYPE_NORM =  0
-        LLAMA_ROPE_TYPE_NEOX =  2
+        LLAMA_ROPE_TYPE_NONE   = -1
+        LLAMA_ROPE_TYPE_NORM   = 0
+        LLAMA_ROPE_TYPE_NEOX   = GGML_ROPE_TYPE_NEOX
+        LLAMA_ROPE_TYPE_MROPE  = GGML_ROPE_TYPE_MROPE
+        LLAMA_ROPE_TYPE_VISION = GGML_ROPE_TYPE_VISION
 
     cdef enum llama_token_type:
         LLAMA_TOKEN_TYPE_UNDEFINED    = 0
