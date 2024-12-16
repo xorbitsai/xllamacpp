@@ -122,6 +122,7 @@ class Llama:
     ):
         """prompt model"""
 
+        is_interacting = False
         self.params.prompt = prompt
 
         if n_predict:
@@ -400,17 +401,86 @@ class Llama:
             self.params.n_keep,
         )
 
+        # group-attention state
+        # number of grouped KV tokens so far (used only if params.grp_attn_n > 1)
+        ga_i: int = 0
 
+        ga_n: int = self.params.grp_attn_n
+        ga_w: int = self.params.grp_attn_w
 
+        if ga_n != 1:
+            assert ga_n > 0,"grp_attn_n must be positive"
+            assert ga_w % ga_n == 0, "grp_attn_w must be a multiple of grp_attn_n"
+            # assert n_ctx_train % ga_w == 0, "n_ctx_train must be a multiple of grp_attn_w"
+            # assert n_ctx >= n_ctx_train * ga_n, "n_ctx must be at least n_ctx_train * grp_attn_n"
+            self.log.info("self-extend: n_ctx_train = %d, grp_attn_n = %d, grp_attn_w = %d\n", n_ctx_train, ga_n, ga_w)
+        self.log.info("")
 
+        if self.params.interactive:
+            if self.params.multiline_input:
+                control_message = (
+                    " - To return control to the AI, end your input with '\\'.\n"
+                    " - To return control without starting a new line, end your input with '/'.\n"
+                )
+            else:
+                control_message = (
+                    " - Press Return to return control to the AI.\n"
+                    " - To return control without starting a new line, end your input with '/'.\n"
+                    " - If you want to submit another line, end your input with '\\'.\n"
+                )
+            self.log.info("== Running in interactive mode. ==\n");
+            self.log.info(" - Press Ctrl+C to interject at any time.\n");
+            self.log.info("%s\n", control_message);
 
+            is_interacting = self.params.interactive_first;
 
+        is_antiprompt        : bool = False
+        input_echo           : bool = True
+        display              : bool = True
+        need_to_save_session : bool = self.path_session and n_matching_session_tokens < len(embd_inp)
 
+        n_past               : int = 0
+        n_remain             : int = self.params.n_predict
+        n_consumed           : int = 0
+        n_session_consumed   : int = 0
 
+        input_tokens: list[int] = []
+        g_input_tokens  = input_tokens
 
+        output_tokens: list[int] = []
+        g_output_tokens = output_tokens
 
+        # ostringstream output_ss
+        # g_output_ss     = &output_ss
+        # ostringstream assistant_ss # for storing current assistant message, used in conversation mode
 
+        # the first thing we will do is to output the prompt, so set color accordingly
+        # console::set_display(console::prompt)
+        display = self.params.display_prompt
 
+        embd: list[int] = [] # vector[llama_token]
+
+        # tokenized antiprompts
+        antiprompt_ids: list[list[int]] = [] # vector[vector[llama_token]]
+
+        for antiprompt in self.params.antiprompt:
+            antiprompt_ids.append(self.ctx.tokenize(antiprompt, False, True))
+
+        # if self.model.has_encoder():
+        #     enc_input_size: int = len(embd_inp)
+        #     llama_token * enc_input_buf = embd_inp.data();
+
+        #     if (llama_encode(ctx, llama_batch_get_one(enc_input_buf, enc_input_size))) {
+        #         self.fail("failed to eval\n")
+
+        #     llama_token decoder_start_token_id = llama_model_decoder_start_token(model);
+        #     if (decoder_start_token_id == -1) {
+        #         decoder_start_token_id = llama_token_bos(model);
+        #     }
+
+        #     embd_inp.clear();
+        #     embd_inp.push_back(decoder_start_token_id);
+        # }
 
 
 
