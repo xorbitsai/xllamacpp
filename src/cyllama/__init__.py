@@ -468,19 +468,17 @@ class Llama:
 
         # if self.model.has_encoder():
         #     enc_input_size: int = len(embd_inp)
-        #     llama_token * enc_input_buf = embd_inp.data();
+        #     llama_token * enc_input_buf = embd_inp.data()
 
-        #     if (llama_encode(ctx, llama_batch_get_one(enc_input_buf, enc_input_size))) {
+        #     if (llama_encode(ctx, llama_batch_get_one(enc_input_buf, enc_input_size))):
         #         self.fail("failed to eval\n")
 
-        #     llama_token decoder_start_token_id = llama_model_decoder_start_token(model);
-        #     if (decoder_start_token_id == -1) {
-        #         decoder_start_token_id = llama_token_bos(model);
-        #     }
+        #     decoder_start_token_id: cy.llama_token = self.model.decoder_start_token()
+        #     if (decoder_start_token_id == -1):
+        #         decoder_start_token_id = llama_token_bos(model)
 
-        #     embd_inp.clear();
-        #     embd_inp.push_back(decoder_start_token_id);
-        # }
+        #     embd_inp.clear()
+        #     embd_inp.push_back(decoder_start_token_id)
 
 
 

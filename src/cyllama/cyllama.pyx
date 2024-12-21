@@ -247,6 +247,7 @@ cpdef enum common_sampler_type:
     COMMON_SAMPLER_TYPE_TEMPERATURE = 7
     COMMON_SAMPLER_TYPE_XTC         = 8
     COMMON_SAMPLER_TYPE_INFILL      = 9
+    COMMON_SAMPLER_TYPE_PENALTIES   = 10
 
 # callbacks
 # -----------------------------------------------------------------------------
@@ -949,28 +950,18 @@ cdef class LlamaSampler:
                 model.ptr, grammar_str.encode(), grammar_root.encode()))
 
     def add_penalties(self,
-        int n_vocab,                          # llama_n_vocab()
-        llama_cpp.llama_token special_eos_id, # llama_token_eos()
-        llama_cpp.llama_token linefeed_id,    # llama_token_nl()
-                         int penalty_last_n,  # last n tokens to penalize (0 = disable penalty, -1 = context size)
-                       float penalty_repeat,  # 1.0 = disabled
-                       float penalty_freq,    # 0.0 = disabled
-                       float penalty_present, # 0.0 = disabled
-                        bint penalize_nl,     # consider newlines as a repeatable token
-                        bint ignore_eos):     # ignore the end-of-sequence token
+                         int penalty_last_n,   # last n tokens to penalize (0 = disable penalty, -1 = context size)
+                       float penalty_repeat,   # 1.0 = disabled
+                       float penalty_freq,     # 0.0 = disabled
+                       float penalty_present): # 0.0 = disabled
 
         """Add penalties chain link"""
         llama_cpp.llama_sampler_chain_add(
             self.ptr, llama_cpp.llama_sampler_init_penalties(
-                n_vocab, 
-                special_eos_id,
-                linefeed_id,
                 penalty_last_n,
                 penalty_repeat,
                 penalty_freq,
                 penalty_present,
-                penalize_nl,
-                ignore_eos,
             ))
 
     # XXX FIXME:
@@ -1344,14 +1335,14 @@ cdef class CommonParamsSampling:
     def mirostat_eta(self, float value):
         self.p.mirostat_eta = value
 
-    @property
-    def penalize_nl(self) -> bool:
-        """consider newlines as a repeatable token"""
-        return self.p.penalize_nl
+    # @property
+    # def penalize_nl(self) -> bool:
+    #     """consider newlines as a repeatable token"""
+    #     return self.p.penalize_nl
 
-    @penalize_nl.setter
-    def penalize_nl(self, bint value):
-        self.p.penalize_nl = value
+    # @penalize_nl.setter
+    # def penalize_nl(self, bint value):
+    #     self.p.penalize_nl = value
 
     @property
     def ignore_eos(self) -> bool:
@@ -1657,6 +1648,58 @@ cdef class CommonParamsSpeculative:
         self.p.model = value
 
 
+cdef class CommonParamsVocoder:
+    cdef llama_cpp.common_params_vocoder p
+
+    def __init__(self, hf_repo: str = "", hf_file: str = "", model: str = "", model_url: str = ""):
+        self.hf_repo = hf_repo
+        self.hf_file = hf_file
+        self.model = model
+        self.model_url = model_url
+
+    @staticmethod
+    cdef CommonParamsVocoder from_instance(llama_cpp.common_params_vocoder params):
+        cdef CommonParamsVocoder wrapper = CommonParamsVocoder.__new__(CommonParamsVocoder)
+        wrapper.p = params
+        return wrapper
+
+    @property
+    def hf_repo(self) -> str:
+        """HF repo"""
+        return self.p.hf_repo.decode()
+
+    @hf_repo.setter
+    def hf_repo(self, value: str):
+        self.p.hf_repo = value.encode()
+
+    @property
+    def hf_file(self) -> str:
+        """HF file"""
+        return self.p.hf_file.decode()
+
+    @hf_file.setter
+    def hf_file(self, value: str):
+        self.p.hf_file = value.encode()
+
+    @property
+    def model(self) -> str:
+        """model path"""
+        return self.p.model.decode()
+
+    @model.setter
+    def model(self, value: str):
+        self.p.model = value.encode()
+
+    @property
+    def model_url(self) -> str:
+        """model url to download."""
+        return self.p.model_url.decode()
+
+    @model_url.setter
+    def model_url(self, value: str):
+        self.p.model_url = value.encode()
+
+
 cdef class CommonParams:
     cdef llama_cpp.common_params p
     cdef public CpuParams cpuparams
@@ -1957,6 +2000,15 @@ cdef class CommonParams:
     @speculative.setter
     def speculative(self, value: CommonParamsSpeculative):
         self.p.speculative = value.p
+
+    @property
+    def vocoder(self) -> CommonParamsVocoder:
+        """common params vocoder."""
+        return CommonParamsVocoder.from_instance(self.p.vocoder)
+
+    @vocoder.setter
+    def vocoder(self, value: CommonParamsVocoder):
+        self.p.vocoder = value.p
 
     @property
     def model(self) -> str:
@@ -3295,11 +3347,11 @@ cdef class LlamaModel:
         """Returns the total number of parameters in the model"""
         return <uint64_t>llama_cpp.llama_model_n_params(self.ptr)
 
-    def get_tensor(self, name: str) -> GGMLTensor:
-        """Get a llama model tensor"""
-        cdef llama_cpp.ggml_tensor * tensor = llama_cpp.llama_get_model_tensor(
-            self.ptr, name.encode("utf-8"))
-        return GGMLTensor.from_ptr(tensor)
+    # def get_tensor(self, name: str) -> GGMLTensor:
+    #     """Get a llama model tensor"""
+    #     cdef llama_cpp.ggml_tensor * tensor = llama_cpp.llama_get_model_tensor(
+    #         self.ptr, name.encode("utf-8"))
+    #     return GGMLTensor.from_ptr(tensor)
 
     # sampling
 
@@ -4349,6 +4401,14 @@ cdef class LlamaBatch:
     cdef bint owner
 
     def __init__(self, *, n_tokens: int, embd: int, n_seq_max: int, verbose: bool = True):
+        """Allocates a batch of tokens on the heap that can hold a maximum of `n_tokens`
+        
+        Each token can be assigned up to `n_seq_max sequence` ids
+
+        If `embd != 0`, `llama_batch.embd` will be allocated with size of `n_tokens * embd * sizeof(float)`
+        Otherwise, `llama_batch.token` will be allocated to store `n_tokens llama_token`
+        The rest of the llama_batch members are allocated with size `n_tokens`
+        """
         self._n_tokens = n_tokens
         self.embd = embd
         self.n_seq_max = n_seq_max
@@ -4360,6 +4420,7 @@ cdef class LlamaBatch:
         )
 
     def __dealloc__(self):
+        """The batch has to be freed with `llama_batch_free()`"""
         if self.owner is True:
             llama_cpp.llama_batch_free(self.p)
 

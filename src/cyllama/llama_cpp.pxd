@@ -646,7 +646,7 @@ cdef extern from "llama.h":
     cdef uint64_t llama_model_n_params(const llama_model * model)
 
     # Get a llama model tensor
-    cdef ggml_tensor * llama_get_model_tensor(llama_model * model, const char * name)
+    # cdef ggml_tensor * llama_get_model_tensor(llama_model * model, const char * name)
 
     # Returns true if the model contains an encoder that requires llama_encode() call
     cdef bint llama_model_has_encoder(const llama_model * model)
@@ -918,7 +918,7 @@ cdef extern from "llama.h":
     #
     # NOTE: this is a helper function to facilitate transition to the new batch API - avoid using it
     #
-    cdef  llama_batch llama_batch_get_one(llama_token * tokens, int32_t n_tokens)
+    cdef llama_batch llama_batch_get_one(llama_token * tokens, int32_t n_tokens)
 
 
     # Allocates a batch of tokens on the heap that can hold a maximum of n_tokens
@@ -928,7 +928,7 @@ cdef extern from "llama.h":
     # Otherwise, llama_batch.token will be allocated to store n_tokens llama_token
     # The rest of the llama_batch members are allocated with size n_tokens
     # All members are left uninitialized
-    cdef  llama_batch llama_batch_init(
+    cdef llama_batch llama_batch_init(
             int32_t n_tokens,
             int32_t embd,
             int32_t n_seq_max)
@@ -1256,16 +1256,12 @@ cdef extern from "llama.h":
                           const char * grammar_str,
                           const char * grammar_root)
 
+    # NOTE: Avoid using on the full vocabulary as searching for repeated tokens can become slow. For example, apply top-k or top-p sampling first.
     cdef llama_sampler * llama_sampler_init_penalties(
-                             int32_t   n_vocab,         # llama_n_vocab()
-                         llama_token   special_eos_id,  # llama_token_eos()
-                         llama_token   linefeed_id,     # llama_token_nl()
-                             int32_t   penalty_last_n,  # last n tokens to penalize (0 = disable penalty, -1 = context size)
-                               float   penalty_repeat,  # 1.0 = disabled
-                               float   penalty_freq,    # 0.0 = disabled
-                               float   penalty_present, # 0.0 = disabled
-                                bint   penalize_nl,     # consider newlines as a repeatable token
-                                bint   ignore_eos)      # ignore the end-of-sequence token
+                             int32_t   penalty_last_n,   # last n tokens to penalize (0 = disable penalty, -1 = context size)
+                               float   penalty_repeat,   # 1.0 = disabled
+                               float   penalty_freq,     # 0.0 = disabled
+                               float   penalty_present)  # 0.0 = disabled
 
     cdef llama_sampler * llama_sampler_init_logit_bias(
                              int32_t   n_vocab,
@@ -1433,6 +1429,9 @@ cdef extern from "common.h":
         LLAMA_EXAMPLE_CVECTOR_GENERATOR
         LLAMA_EXAMPLE_EXPORT_LORA
         LLAMA_EXAMPLE_LLAVA
+        LLAMA_EXAMPLE_LOOKUP
+        LLAMA_EXAMPLE_PARALLEL
+        LLAMA_EXAMPLE_TTS
         LLAMA_EXAMPLE_COUNT
 
     cdef enum common_sampler_type:
@@ -1445,6 +1444,7 @@ cdef extern from "common.h":
         COMMON_SAMPLER_TYPE_TEMPERATURE = 7
         COMMON_SAMPLER_TYPE_XTC         = 8
         COMMON_SAMPLER_TYPE_INFILL      = 9
+        COMMON_SAMPLER_TYPE_PENALTIES   = 10
 
     # dimensionality reduction methods, used by cvector-generator
     cdef enum dimre_method:
@@ -1479,7 +1479,6 @@ cdef extern from "common.h":
         int32_t mirostat                   # 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
         float   mirostat_tau               # target entropy
         float   mirostat_eta               # learning rate
-        bint    penalize_nl                # consider newlines as a repeatable token
         bint    ignore_eos                 # ignore end-of-sentence
         bint    no_perf                    # disable performance metrics
 
@@ -1492,7 +1491,7 @@ cdef extern from "common.h":
         # print the parameters into a string
         # std_string print() const
 
-    struct common_params_speculative:
+    ctypedef struct common_params_speculative:
         std_vector[ggml_backend_dev_t] devices # devices to use for offloading
         int32_t n_ctx           # draft context size
         int32_t n_max           # maximum number of tokens to draft during speculative decoding
@@ -1505,6 +1504,14 @@ cdef extern from "common.h":
         cpu_params cpuparams_batch
 
         std_string model       # draft model for speculative decoding
+
+
+    ctypedef struct common_params_vocoder:
+        std_string hf_repo   # HF repo                                                     // NOLINT
+        std_string hf_file   # HF file                                                     // NOLINT
+
+        std_string model     # model path                                                // NOLINT
+        std_string model_url # model url to download                                     // NOLINT
 
 
     ctypedef struct common_params:
@@ -1551,6 +1558,7 @@ cdef extern from "common.h":
 
         common_params_sampling sampling
         common_params_speculative speculative
+        common_params_vocoder     vocoder
 
         std_string model                # model path
         std_string model_alias          # model alias
@@ -1842,6 +1850,7 @@ cdef extern from "common.h":
     # -------------------------------------------------------------------------
     # Embedding utils
 
+    # TODO: repace embd_norm with an enum
     cdef void common_embd_normalize(const float * inp, float * out, int n, int embd_norm)
     cdef float common_embd_similarity_cos(const float * embd1, const float * embd2, int n)
 
