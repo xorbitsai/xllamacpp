@@ -101,7 +101,6 @@ def test_common_params_sampling():
     assert params.mirostat           == 0
     assert params.mirostat_tau       == approx(5.00)
     assert params.mirostat_eta       == approx(0.10)
-    assert params.penalize_nl        == False
     assert params.ignore_eos         == False
     assert params.no_perf            == False
 
