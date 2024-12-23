@@ -117,7 +117,7 @@ If all tests pass, you can type `python3 -i scripts/start.py` or `ipython -i scr
 ```python
 >>> from cyllama import Llama
 >>> llm = Llama(model_path='models/Llama-3.2-1B-Instruct-Q8_0.gguf')
->>> ç
+>>> llm.ask("what is the age of the universe?")
 'estimated age of the universe\nThe estimated age of the universe is around 13.8 billion years'
 ```
 
