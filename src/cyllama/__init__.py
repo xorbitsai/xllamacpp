@@ -56,12 +56,11 @@ class Llama:
         cy.llama_backend_init()
         cy.llama_numa_init(self.params.numa)
 
-    def __del__(self):
-        cy.llama_backend_free()
-
     def _termination_handler(self):
         """handle termination by ctrl-c"""
         print("TERMINATION...")
+        cy.llama_backend_free()
+        sys.exit(0)
 
     def check_params(self):
         if self.params.logits_all:
@@ -213,7 +212,7 @@ class Llama:
         if not self.model.has_encoder():
             self.model.add_eos_token()
 
-        self.log.debug("n_ctx: %d, add_bos: %d\n", n_ctx, self.add_bos)
+        self.log.debug("n_ctx: %d, add_bos: %d", n_ctx, self.add_bos)
 
         embd_inp = []
 
@@ -240,15 +239,15 @@ class Llama:
             self.log.debug("use session tokens")
             embd_inp = self.session_tokens
 
-        self.log.debug('prompt: "%s"\n', prompt)
-        self.log.debug("tokens: %s\n", cy.string_from_tokens(self.ctx, embd_inp))
+        self.log.debug('prompt: "%s"', prompt)
+        self.log.debug("tokens: %s", cy.string_from_tokens(self.ctx, embd_inp))
 
         # Should not run without any tokens
         if not embd_inp:
             if self.add_bos:
                 embd_inp.append(self.model.token_bos())
                 self.log.warn(
-                    "embd_inp was considered empty and bos was added: %s\n",
+                    "embd_inp was considered empty and bos was added: %s",
                     cy.string_from_tokens(self.ctx, embd_inp),
                 )
             else:
@@ -258,7 +257,7 @@ class Llama:
         # Tokenize negative prompt
         if len(embd_inp) > n_ctx - 4:
             self.log.error(
-                "prompt is too long (%d tokens, max %d)\n", len(embd_inp), n_ctx - 4
+                "prompt is too long (%d tokens, max %d)", len(embd_inp), n_ctx - 4
             )
             raise SystemExit
 
@@ -295,7 +294,7 @@ class Llama:
             self.ctx.kv_cache_seq_rm(-1, n_matching_session_tokens, -1)
 
         self.log.debug(
-            "recalculate the cached logits (check): embd_inp.size() %d, n_matching_session_tokens %zu, embd_inp.size() %d, session_tokens.size() %d",
+            "recalculate the cached logits (check): embd_inp.size() %d, n_matching_session_tokens %d, embd_inp.size() %d, session_tokens.size() %d",
             len(embd_inp),
             n_matching_session_tokens,
             len(embd_inp),
@@ -352,7 +351,7 @@ class Llama:
 
             if self.params.antiprompt:
                 for antiprompt in self.params.antiprompt:
-                    self.log.info("Reverse prompt: '%s'\n", antiprompt)
+                    self.log.info("Reverse prompt: '%s'", antiprompt)
                     if self.params.verbose_prompt:
                         tmp = self.ctx.tokenize(antiprompt, False, True)
                         for i in range(len(tmp)):
@@ -361,25 +360,25 @@ class Llama:
                             )
 
             if self.params.input_prefix_bos:
-                self.log.info("Input prefix with BOS\n")
+                self.log.info("Input prefix with BOS")
 
             if self.params.input_prefix:
-                self.log.info("Input prefix: '%s'\n", self.params.input_prefix)
+                self.log.info("Input prefix: '%s'", self.params.input_prefix)
                 if self.params.verbose_prompt:
                     tmp = self.ctx.tokenize(self.params.input_prefix, True, True)
                     for i in range(len(tmp)):
                         self.log.info(
-                            "%6d -> '%s'\n", tmp[i], self.ctx.token_to_piece(tmp[i])
+                            "%6d -> '%s'", tmp[i], self.ctx.token_to_piece(tmp[i])
                         )
 
             # this looks redundnat
             if self.params.input_prefix:
-                self.log.info("Input prefix: '%s'\n", self.params.input_prefix)
+                self.log.info("Input prefix: '%s'", self.params.input_prefix)
                 if self.params.verbose_prompt:
                     tmp = self.ctx.tokenize(self.params.input_prefix, False, True)
                     for i in range(len(tmp)):
                         self.log.info(
-                            "%6d -> '%s'\n", tmp[i], self.ctx.token_to_piece(tmp[i])
+                            "%6d -> '%s'", tmp[i], self.ctx.token_to_piece(tmp[i])
                         )
 
         sparams = self.params.sampling
@@ -387,12 +386,12 @@ class Llama:
         if not smpl:
             self.fail("failed to initialize sampling subsystem\n")
 
-        self.log.info("sampler seed: %u\n", smpl.get_seed())
-        self.log.info("sampler params: \n%s\n", sparams.print())
-        self.log.info("sampler chain: %s\n", smpl.print())
+        self.log.info("sampler seed: %u", smpl.get_seed())
+        self.log.info("sampler params: %s", sparams.print())
+        self.log.info("sampler chain: %s", smpl.print())
 
         self.log.info(
-            "generate: n_ctx = %d, n_batch = %d, n_predict = %d, n_keep = %d\n",
+            "generate: n_ctx = %d, n_batch = %d, n_predict = %d, n_keep = %d",
             n_ctx,
             self.params.n_batch,
             self.params.n_predict,
@@ -411,7 +410,7 @@ class Llama:
             assert ga_w % ga_n == 0, "grp_attn_w must be a multiple of grp_attn_n"
             # assert n_ctx_train % ga_w == 0, "n_ctx_train must be a multiple of grp_attn_w"
             # assert n_ctx >= n_ctx_train * ga_n, "n_ctx must be at least n_ctx_train * grp_attn_n"
-            self.log.info("self-extend: n_ctx_train = %d, grp_attn_n = %d, grp_attn_w = %d\n", n_ctx_train, ga_n, ga_w)
+            self.log.info("self-extend: n_ctx_train = %d, grp_attn_n = %d, grp_attn_w = %d", n_ctx_train, ga_n, ga_w)
         self.log.info("")
 
         if self.params.interactive:
