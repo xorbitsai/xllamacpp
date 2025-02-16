@@ -3,7 +3,7 @@
 # ROOT = Path.cwd()
 # sys.path.insert(0, str(ROOT / 'src'))
 
-import cyllama.cyllama as cy
+import pyllama.pyllama as cy
 
 
 def test_sampler_instance():

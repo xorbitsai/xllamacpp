@@ -64,7 +64,7 @@ To build `cyllama`:
 
  ```sh
  git clone https://github.com/shakfu/cyllama.git
- cd cyllama
+ cd pyllama
  ```
 
 3. Install dependencies of `cython`, `setuptools`, and `pytest` for testing:
@@ -94,7 +94,7 @@ make download
 This basically just does:
 
 ```sh
-cd cyllama
+cd pyllama
 mkdir models && cd models
 wget https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf 
 ```
@@ -115,9 +115,9 @@ make test
 If all tests pass, you can type `python3 -i scripts/start.py` or `ipython -i scripts/start.py` and explore the `cyllama` library with a pre-configured repl:
 
 ```python
->>> from cyllama import Llama
->>> llm = Llama(model_path='models/Llama-3.2-1B-Instruct-Q8_0.gguf')
->>> llm.ask("what is the age of the universe?")
+>> > from pyllama import Llama
+>> > llm = Llama(model_path='models/Llama-3.2-1B-Instruct-Q8_0.gguf')
+>> > llm.ask("what is the age of the universe?")
 'estimated age of the universe\nThe estimated age of the universe is around 13.8 billion years'
 ```
 

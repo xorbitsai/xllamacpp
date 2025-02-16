@@ -5,7 +5,7 @@ from pytest import approx
 PLATFORM = platform.system()
 # ARCH = platform.machine()
 
-import cyllama.cyllama as cy
+import pyllama.pyllama as cy
 
 
 def test_default_model_params():

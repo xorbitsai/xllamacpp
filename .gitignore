@@ -3,7 +3,7 @@
 bin/
 models/
 thirdparty/llama-cpp-python
-src/cyllama/cyllama.cpp
+src/pyllama/pyllama.cpp
 tests/cpp
 changes.diff
 

@@ -26,7 +26,7 @@ EXTRA_COMPILE_ARGS = ['-std=c++14']
 EXTRA_LINK_ARGS = []
 EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
-    "src/cyllama",
+    "src/pyllama",
     LLAMACPP_INCLUDE,
 ]
 LIBRARY_DIRS = [
@@ -89,7 +89,7 @@ def mk_extension(name, sources, define_macros=None):
 # COMMON SETUP CONFIG
 
 common = {
-    "name": "cyllama",
+    "name": "pyllama",
     "version": VERSION,
     "description": "A cython wrapper of the llama.cpp inference engine.",
     "python_requires": ">=3.8",
@@ -98,18 +98,18 @@ common = {
 
 
 # forces cythonize in this case
-subprocess.call("cythonize *.pyx", cwd="src/cyllama", shell=True)
+subprocess.call("cythonize *.pyx", cwd="src/pyllama", shell=True)
 
 if not os.path.exists('MANIFEST.in'):
     with open("MANIFEST.in", "w") as f:
-        f.write("exclude src/cyllama/*.pxd\n")
-        f.write("exclude src/cyllama/*.pyx\n")
-        f.write("exclude src/cyllama/*.cpp\n")
-        f.write("exclude src/cyllama/*.h\n")
-        f.write("exclude src/cyllama/py.typed\n")
+        f.write("exclude src/pyllama/*.pxd\n")
+        f.write("exclude src/pyllama/*.pyx\n")
+        f.write("exclude src/pyllama/*.cpp\n")
+        f.write("exclude src/pyllama/*.h\n")
+        f.write("exclude src/pyllama/py.typed\n")
 
 extensions = [
-    mk_extension("cyllama.cyllama", sources=["src/cyllama/cyllama.pyx"]),
+    mk_extension("pyllama.pyllama", sources=["src/pyllama/pyllama.pyx"]),
 ]
 
 setup(

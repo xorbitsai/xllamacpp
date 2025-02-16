@@ -1,5 +1,5 @@
 
-import cyllama.cyllama as cy
+import pyllama.pyllama as cy
 
 def test_common(model_path):
 

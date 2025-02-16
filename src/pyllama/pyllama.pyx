@@ -1,6 +1,6 @@
 # distutils: language = c++
 """
-cyllama: a thin cython wrapper of llama.cpp
+pyllama: a thin cython wrapper of llama.cpp
 
 classes:
     LlamaLogitBias

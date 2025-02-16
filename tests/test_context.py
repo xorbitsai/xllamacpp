@@ -1,6 +1,6 @@
 import platform
 
-import cyllama.cyllama as cy
+import pyllama.pyllama as cy
 
 PLATFORM = platform.system()
 

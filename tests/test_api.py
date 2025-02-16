@@ -2,7 +2,7 @@ import platform
 
 import pytest
 
-from cyllama import Llama
+from pyllama import Llama
 
 PLATFORM = platform.system()
 ARCH = platform.machine()

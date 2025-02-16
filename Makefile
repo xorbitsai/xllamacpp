@@ -140,7 +140,7 @@ test_platform_linux:
 	@./build/test_platform
 
 coverage:
-	@pytest --cov=cyllama --cov-report html
+	@pytest --cov=pyllama --cov-report html
 
 memray:
 	@pytest --memray --native tests

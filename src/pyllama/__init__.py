@@ -6,7 +6,7 @@ from typing import Union, Optional
 
 Pathlike = Union[str, Path]
 
-from . import cyllama as cy
+from . import pyllama as cy
 from . import log
 
 

@@ -1,5 +1,5 @@
 
-from cyllama.cyllama import ask
+from pyllama.pyllama import ask
 
 
 def test_ask(model_path):
