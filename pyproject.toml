@@ -1,7 +1,7 @@
 [project]
 name = "pyllama"
 version = "0.1.0"
-description = "A cython wrapper of llama.cpp"
+description = "A Python wrapper of llama.cpp"
 readme = "README.md"
 authors = [
     { name = "Shakeeb Alireza", email = "me@example.org" }
