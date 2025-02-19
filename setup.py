@@ -18,8 +18,7 @@ PLATFORM = platform.system()
 
 WITH_DYLIB = os.getenv("WITH_DYLIB", False)
 
-LLAMACPP_INCLUDE = os.path.join(CWD, "thirdparty/llama.cpp/include")
-LLAMACPP_LIBS_DIR = os.path.join(CWD, "thirdparty/llama.cpp/lib")
+LLAMACPP_LIBS_DIR = os.path.join(CWD, "thirdparty/llama.cpp/dist/lib")
 
 DEFINE_MACROS = []
 EXTRA_COMPILE_ARGS = ['-std=c++14']
@@ -27,7 +26,10 @@ EXTRA_LINK_ARGS = []
 EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
     "src/pyllama",
-    LLAMACPP_INCLUDE,
+    os.path.join(CWD, "thirdparty/llama.cpp/include"),
+    os.path.join(CWD, "thirdparty/llama.cpp/common"),
+    os.path.join(CWD, "thirdparty/llama.cpp/ggml/include"),
+    os.path.join(CWD, "thirdparty/llama.cpp/examples/llava"),
 ]
 LIBRARY_DIRS = [
     LLAMACPP_LIBS_DIR,

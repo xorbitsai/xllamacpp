@@ -149,7 +149,7 @@ bump:
 	@scripts/bump.sh
 
 clean:
-	@rm -rf build dist src/*.egg-info .pytest_cache .coverage
+	@rm -rf build thirdparty/llama.cpp/build dist thirdparty/llama.cpp/dist src/*.egg-info .pytest_cache .coverage
 
 reset: clean
 	@rm -rf bin thirdparty/llama.cpp/lib
