@@ -1,4 +1,9 @@
 # distutils: language = c++
+# cython: profile=False
+# cython: embedsignature = True
+# cython: language_level = 3
+# cython: c_string_encoding = default
+
 """
 pyllama: a thin cython wrapper of llama.cpp
 
@@ -34,8 +39,10 @@ from libc.string cimport strcpy, strlen, strncpy
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp cimport bool as cppbool # required for func pointer sigs
+from libcpp.memory cimport shared_ptr, make_shared
 
 cimport llama_cpp
+from server cimport CServer
 
 # import numpy as np
 
@@ -4606,3 +4613,16 @@ def llama_backend_free():
 #     llama_cpp.ggml_abort(file, line, fmt)
 
 
+cdef void callback_wrapper(const string &data, void *py_cb) noexcept nogil:
+    with gil:
+        (<object>py_cb)(data)
+
+
+cdef class Server:
+    cdef shared_ptr[CServer] svr
+
+    def __cinit__(self, CommonParams common_params):
+        self.svr = make_shared[CServer](common_params.p)
+
+    def handle_completions(self, string prompt_json_str, res_error, res_ok):
+        return self.svr.get().handle_completions(prompt_json_str, callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)

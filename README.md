@@ -65,6 +65,8 @@ To build `pyllama`:
  ```sh
  git clone https://github.com/shakfu/pyllama.git
  cd pyllama
+ git submodule init
+ git submodule update
  ```
 
 3. Install dependencies of `cython`, `setuptools`, and `pytest` for testing:

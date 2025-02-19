@@ -30,6 +30,7 @@ INCLUDE_DIRS = [
     os.path.join(CWD, "thirdparty/llama.cpp/common"),
     os.path.join(CWD, "thirdparty/llama.cpp/ggml/include"),
     os.path.join(CWD, "thirdparty/llama.cpp/examples/llava"),
+    os.path.join(CWD, "thirdparty/llama.cpp/examples/server"),
 ]
 LIBRARY_DIRS = [
     LLAMACPP_LIBS_DIR,
@@ -55,7 +56,7 @@ else:
         f'{LLAMACPP_LIBS_DIR}/libggml-metal.a',
     ])
 
-INCLUDE_DIRS.append(os.path.join(CWD, 'include'))
+INCLUDE_DIRS.append(os.path.join(CWD, 'src/pyllama'))
 
 if PLATFORM == 'Darwin':
     EXTRA_LINK_ARGS.append('-mmacosx-version-min=14.7')
@@ -111,7 +112,7 @@ if not os.path.exists('MANIFEST.in'):
         f.write("exclude src/pyllama/py.typed\n")
 
 extensions = [
-    mk_extension("pyllama.pyllama", sources=["src/pyllama/pyllama.pyx"]),
+    mk_extension("pyllama.pyllama", sources=["src/pyllama/pyllama.pyx", "src/pyllama/server.cpp"]),
 ]
 
 setup(
