@@ -44,26 +44,26 @@ jobs:
             requires-python: ">=3.12,<3.13"
 
           # Linux aarch64
-          - os: ubuntu-latest
-            arch: aarch64
-            platform-id: manylinux_aarch64
-            python: 39
-            requires-python: ">=3.9,<3.10"
-          - os: ubuntu-latest
-            arch: aarch64
-            platform-id: manylinux_aarch64
-            python: 310
-            requires-python: ">=3.10,<3.11"
-          - os: ubuntu-latest
-            arch: aarch64
-            platform-id: manylinux_aarch64
-            python: 311
-            requires-python: ">=3.11,<3.12"
-          - os: ubuntu-latest
-            arch: aarch64
-            platform-id: manylinux_aarch64
-            python: 312
-            requires-python: ">=3.12,<3.13"
+          # - os: ubuntu-latest
+          #   arch: aarch64
+          #   platform-id: manylinux_aarch64
+          #   python: 39
+          #   requires-python: ">=3.9,<3.10"
+          # - os: ubuntu-latest
+          #   arch: aarch64
+          #   platform-id: manylinux_aarch64
+          #   python: 310
+          #   requires-python: ">=3.10,<3.11"
+          # - os: ubuntu-latest
+          #   arch: aarch64
+          #   platform-id: manylinux_aarch64
+          #   python: 311
+          #   requires-python: ">=3.11,<3.12"
+          # - os: ubuntu-latest
+          #   arch: aarch64
+          #   platform-id: manylinux_aarch64
+          #   python: 312
+          #   requires-python: ">=3.12,<3.13"
 
           # macOS x86_64
           - os: macos-13
