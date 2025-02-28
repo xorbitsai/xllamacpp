@@ -68,7 +68,7 @@ else:
 INCLUDE_DIRS.append(os.path.join(CWD, "src/pyllama"))
 
 if PLATFORM == "Darwin":
-    EXTRA_LINK_ARGS.append("-mmacosx-version-min=14.7")
+    EXTRA_LINK_ARGS.append("-mmacosx-version-min=11")
     # add local rpath
     EXTRA_LINK_ARGS.append("-Wl,-rpath," + LLAMACPP_LIBS_DIR)
     os.environ["LDFLAGS"] = " ".join(
