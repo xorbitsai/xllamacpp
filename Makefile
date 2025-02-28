@@ -24,7 +24,7 @@ endif
 all: build
 
 build_llama_cpp:
-	@scripts/setup.sh
+	@bash scripts/setup.sh
 
 build: build_llama_cpp
 	@git diff thirdparty > changes.diff
