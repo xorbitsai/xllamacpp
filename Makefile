@@ -13,9 +13,9 @@ LLAMACPP := $(THIRDPARTY)/llama.cpp
 MIN_OSX_VER := -mmacosx-version-min=13.6
 
 ifeq ($(WITH_DYLIB),1)
-	LIBLAMMA := $(LLAMACPP)/lib/libllama.dylib
+	LIBLAMMA := $(LLAMACPP)/dist/lib/libllama.dylib
 else
-	LIBLAMMA := $(LLAMACPP)/lib/libllama.a	
+	LIBLAMMA := $(LLAMACPP)/dist/lib/libllama.a
 endif
 
 
@@ -23,10 +23,10 @@ endif
 
 all: build
 
-$(LIBLAMMA):
+build_llama_cpp:
 	@scripts/setup.sh
 
-build: $(LIBLAMMA)
+build: build_llama_cpp
 	@git diff thirdparty > changes.diff
 	@python3 setup.py build_ext --inplace
 	
