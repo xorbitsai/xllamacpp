@@ -164,6 +164,7 @@ jobs:
           CIBW_BUILD_VERBOSITY: 1
         with:
           package-dir: ./
+        run: make
 
       - uses: actions/upload-artifact@v4
         with:
@@ -180,12 +181,12 @@ jobs:
           submodules: recursive
 
       - name: Build sdist
-        run: cd python && pipx run build --sdist
+        run: pipx run build --sdist
 
       - uses: actions/upload-artifact@v4
         with:
           name: artifacts
-          path: ./python/dist/*.tar.gz
+          path: ./dist/*.tar.gz
 
   upload_pypi:
     needs: [build_wheels, build_sdist]
