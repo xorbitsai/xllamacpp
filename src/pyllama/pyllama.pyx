@@ -4606,4 +4606,5 @@ cdef class Server:
         self.svr = make_shared[CServer](common_params.p)
 
     def handle_completions(self, string prompt_json_str, res_error, res_ok):
-        return self.svr.get().handle_completions(prompt_json_str, callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
+        with nogil:
+            self.svr.get().handle_completions(prompt_json_str, callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
