@@ -163,7 +163,7 @@ jobs:
           CIBW_TEST_REQUIRES: pytest requests pytest-asyncio pytest-timeout
           CIBW_BUILD_VERBOSITY: 1
         with:
-          package-dir: ./python/
+          package-dir: ./
 
       - uses: actions/upload-artifact@v4
         with:
