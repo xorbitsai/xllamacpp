@@ -161,10 +161,10 @@ jobs:
           # CIBW_BEFORE_BUILD_WINDOWS: pip install -r CI/requirements-wheel.txt
           # CIBW_TEST_COMMAND: pytest {project}/CI/test_functionality.py --capture=no 
           CIBW_TEST_REQUIRES: pytest requests pytest-asyncio pytest-timeout
+          CIBW_BEFORE_BUILD: make
           CIBW_BUILD_VERBOSITY: 1
         with:
           package-dir: ./
-        run: make
 
       - uses: actions/upload-artifact@v4
         with:
