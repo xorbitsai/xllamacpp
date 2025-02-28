@@ -284,25 +284,6 @@ cdef cppbool progress_callback(float progress, void * py_progress_callback) noex
     return (<object>py_progress_callback)(progress)
 
 
-# high-level api
-# -----------------------------------------------------------------------------
-
-
-def ask(str prompt, str model, n_predict=512, n_ctx=2048, disable_log=True, n_threads=4) -> str:
-    """ask/prompt a llama model"""
-
-    cdef str result = llama_cpp.simple_prompt(
-        model.encode(),
-        prompt.encode(),
-        n_predict,
-        n_ctx,
-        disable_log,
-        n_threads).decode()
-    return result.strip()
-
-
-
-
 # wrapper classes
 # -----------------------------------------------------------------------------
 

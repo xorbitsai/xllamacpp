@@ -2110,11 +2110,3 @@ cdef extern from "llava.h":
     # on completion, n_past points to the next position in the context after the image embed.
     cdef bint llava_eval_image_embed(llama_context * ctx_llama, const llava_image_embed * embed, int n_batch, int * n_past)
 
-
-#------------------------------------------------------------------------------
-# llamalib.h
-
-cdef extern from "llamalib.h":
-    cdef std_string simple_prompt(const std_string model_path, const std_string prompt, const int n_predict, const int n_ctx, bint disable_log, int n_threads)
-
-

@@ -32,4 +32,8 @@ def test_llama_server(model_path):
     )
 
     prompt["stream"] = True
-    server.handle_completions(json.dumps(prompt), print, print)
+    server.handle_completions(
+        json.dumps(prompt),
+        lambda s: pprint.pprint(json.loads(s)),
+        lambda s: pprint.pprint(json.loads(s)),
+    )
