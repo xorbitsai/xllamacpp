@@ -5,6 +5,8 @@ build/
 models/
 
 src/pyllama/pyllama.cpp
+src/llama.cpp/bin/
+src/llama.cpp/lib/
 src/llama.cpp/include/base64.hpp
 src/llama.cpp/include/console.h
 src/llama.cpp/include/json.hpp
