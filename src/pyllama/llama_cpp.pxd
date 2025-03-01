@@ -1964,40 +1964,6 @@ cdef extern from "log.h":
     cdef void common_log_set_verbosity_thold(int verbosity)
 
 #------------------------------------------------------------------------------
-# arg.h
-
-cdef extern from "arg.h":      
-
-    ctypedef struct common_arg:
-        std_set[llama_example] examples
-        std_vector[const char *] args
-        const char * value_hint_2   # help text or example for arg value
-        const char * value_hint_2   # for second arg value
-        const char * env
-        std_string help
-        bint is_sparam              # is current arg a sampling param?
-        void (*handler_void)   (common_params & params)
-        void (*handler_string) (common_params & params, const std_string &)
-        void (*handler_str_str)(common_params & params, const std_string &, const std_string &)
-        void (*handler_int)    (common_params & params, int)
-
-    ctypedef struct common_params_context:
-        llama_example ex
-        # common_params& params
-        common_params params
-        std_vector[common_arg] options
-        void(*print_usage)(int, char **)
-
-    ctypedef void(*print_usage)(int, char **)
-
-    # parse input arguments from CLI
-    # if one argument has invalid value, it will automatically display usage of the specific argument (and not the full usage message)
-    cdef bint common_params_parse(int argc, char ** argv, common_params & params, llama_example ex, print_usage callback)
-
-    # function to be used by test-arg-parser
-    cdef common_params_context common_params_parser_init(common_params & params, llama_example ex, print_usage callback)    
-
-#------------------------------------------------------------------------------
 cdef extern from "clip.h":
 
     # added this (it's in clip.cpp) ---------

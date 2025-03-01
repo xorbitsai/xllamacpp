@@ -11,10 +11,14 @@ THIRDPARTY=${CWD}/thirdparty
 build_llamacpp() {
 	echo "update from llama.cpp main repo"
 	PROJECT=${THIRDPARTY}/llama.cpp
-	PREFIX=${PROJECT}/dist
+	PREFIX=${CWD}/src/llama.cpp
+	INCLUDE=${PREFIX}/include
 	LIB=${PREFIX}/lib
 	cd ${PROJECT} && \
-		mkdir -p build &&
+		mkdir -p build ${INCLUDE} &&
+    cp common/*.h ${INCLUDE} && \
+		cp common/*.hpp ${INCLUDE} && \
+		cp examples/llava/*.h ${INCLUDE} && \
 		cd build && \
 		cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib && \
 		cmake --build . --config Release && \
