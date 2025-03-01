@@ -789,7 +789,13 @@ cdef class CommonParamsSpeculative:
 
 
 cdef class CommonParamsVocoder:
-    cdef llama_cpp.common_params_vocoder p
+    cdef llama_cpp.common_params_vocoder *p
+
+    @staticmethod
+    cdef CommonParamsVocoder from_ptr(llama_cpp.common_params_vocoder *params):
+        cdef CommonParamsVocoder wrapper = CommonParamsVocoder.__new__(CommonParamsVocoder)
+        wrapper.p = params
+        return wrapper
 
     @property
     def hf_repo(self) -> str:
@@ -1126,11 +1132,11 @@ cdef class CommonParams:
     @property
     def vocoder(self) -> CommonParamsVocoder:
         """common params vocoder."""
-        return CommonParamsVocoder.from_instance(self.p.vocoder)
+        return CommonParamsVocoder.from_ptr(&self.p.vocoder)
 
     @vocoder.setter
     def vocoder(self, value: CommonParamsVocoder):
-        self.p.vocoder = value.p
+        self.p.vocoder = deref(value.p)
 
     @property
     def model(self) -> str:
