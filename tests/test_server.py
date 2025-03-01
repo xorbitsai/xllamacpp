@@ -1,9 +1,6 @@
 import json
 import pprint
-
 import pyllama.pyllama as cy
-import os
-import time
 
 
 def test_llama_server(model_path):
