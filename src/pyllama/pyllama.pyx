@@ -40,6 +40,7 @@ from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp cimport bool as cppbool # required for func pointer sigs
 from libcpp.memory cimport shared_ptr, make_shared
+from cython.operator cimport dereference as deref
 
 cimport llama_cpp
 from server cimport CServer
@@ -306,7 +307,13 @@ cdef class LlamaLogitBias:
 
 
 cdef class CommonParamsSampling:
-    cdef llama_cpp.common_params_sampling p
+    cdef llama_cpp.common_params_sampling *p
+
+    @staticmethod
+    cdef CommonParamsSampling from_ptr(llama_cpp.common_params_sampling *params):
+        cdef CommonParamsSampling wrapper = CommonParamsSampling.__new__(CommonParamsSampling)
+        wrapper.p = params
+        return wrapper
 
     def print(self) -> str:
         """print the parameters into a string"""
@@ -621,10 +628,10 @@ cdef class CommonParamsSampling:
 
 
 cdef class CpuParams:
-    cdef llama_cpp.cpu_params p
+    cdef llama_cpp.cpu_params *p
 
     @staticmethod
-    cdef CpuParams from_instance(llama_cpp.cpu_params params):
+    cdef CpuParams from_ptr(llama_cpp.cpu_params *params):
         cdef CpuParams wrapper = CpuParams.__new__(CpuParams)
         wrapper.p = params
         return wrapper
@@ -693,10 +700,10 @@ cdef class CpuParams:
 
 
 cdef class CommonParamsSpeculative:
-    cdef llama_cpp.common_params_speculative p
+    cdef llama_cpp.common_params_speculative *p
 
     @staticmethod
-    cdef CommonParamsSpeculative from_instance(llama_cpp.common_params_speculative params):
+    cdef CommonParamsSpeculative from_ptr(llama_cpp.common_params_speculative *params):
         cdef CommonParamsSpeculative wrapper = CommonParamsSpeculative.__new__(CommonParamsSpeculative)
         wrapper.p = params
         return wrapper
@@ -757,19 +764,19 @@ cdef class CommonParamsSpeculative:
 
     @property
     def cpuparams(self) -> CpuParams:
-        return CpuParams.from_instance(self.p.cpuparams)
-    
+        return CpuParams.from_ptr(&self.p.cpuparams)
+
     @cpuparams.setter
     def cpuparams(self, value: CpuParams):
-        self.p.cpuparams = value.p
+        self.p.cpuparams = deref(value.p)
 
     @property
     def cpuparams_batch(self) -> CpuParams:
-        return CpuParams.from_instance(self.p.cpuparams_batch)
-    
+        return CpuParams.from_ptr(&self.p.cpuparams_batch)
+
     @cpuparams_batch.setter
     def cpuparams_batch(self, value: CpuParams):
-        self.p.cpuparams_batch = value.p
+        self.p.cpuparams_batch = deref(value.p)
 
     @property
     def model(self) -> str:
@@ -1037,6 +1044,22 @@ cdef class CommonParams:
     def split_mode(self, llama_split_mode value):
         self.p.split_mode = value
 
+    @property
+    def cpuparams(self) -> CpuParams:
+        return CpuParams.from_ptr(&self.p.cpuparams)
+
+    @cpuparams.setter
+    def cpuparams(self, value: CpuParams):
+        self.p.cpuparams = deref(value.p)
+
+    @property
+    def cpuparams_batch(self) -> CpuParams:
+        return CpuParams.from_ptr(&self.p.cpuparams_batch)
+
+    @cpuparams_batch.setter
+    def cpuparams_batch(self, value: CpuParams):
+        self.p.cpuparams_batch = deref(value.p)
+
     # @property
     # def cb_eval(self) -> py_sched_eval_callback:
     #     """get/set python ggml backend sched eval callback."""
@@ -1085,20 +1108,20 @@ cdef class CommonParams:
     @property
     def sampling(self) -> CommonParamsSampling:
         """common params sampling."""
-        return CommonParamsSampling.from_instance(self.p.sampling)
+        return CommonParamsSampling.from_ptr(&self.p.sampling)
 
     @sampling.setter
     def sampling(self, value: CommonParamsSampling):
-        self.p.sampling = value.p
+        self.p.sampling = deref(value.p)
 
     @property
     def speculative(self) -> CommonParamsSpeculative:
         """common params speculative."""
-        return CommonParamsSpeculative.from_instance(self.p.speculative)
+        return CommonParamsSpeculative.from_ptr(&self.p.speculative)
 
     @speculative.setter
     def speculative(self, value: CommonParamsSpeculative):
-        self.p.speculative = value.p
+        self.p.speculative = deref(value.p)
 
     @property
     def vocoder(self) -> CommonParamsVocoder:
