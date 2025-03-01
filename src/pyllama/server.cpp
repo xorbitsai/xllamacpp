@@ -3627,7 +3627,10 @@ handle_completions_impl(server_context &ctx_server, server_task_type type,
   }
 
   if (oaicompat != OAICOMPAT_TYPE_NONE) {
-    data = oaicompat_completion_params_parse(data);
+    data = oaicompat_completion_params_parse(
+        data, ctx_server.params_base.use_jinja,
+        ctx_server.params_base.reasoning_format,
+        ctx_server.chat_templates.get());
   }
 
   auto completion_id = gen_chatcmplid();
@@ -3689,7 +3692,7 @@ handle_completions_impl(server_context &ctx_server, server_task_type type,
           }
         },
         [&](const json &error_data) { res_error(error_data); },
-        []{return false;});
+        [] { return false; });
 
     ctx_server.queue_results.remove_waiting_task_ids(task_ids);
   } else {
@@ -3707,7 +3710,7 @@ handle_completions_impl(server_context &ctx_server, server_task_type type,
           return true;
         },
         [&](const json &error_data) { res_error(error_data); },
-        []{return false;});
+        [] { return false; });
 
     ctx_server.queue_results.remove_waiting_task_ids(task_ids);
   }

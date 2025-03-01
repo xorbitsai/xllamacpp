@@ -12,4 +12,4 @@ cdef extern from "server.h" namespace "pyllama" nogil:
                 Callback res_error,
                 void *py_cb_error,
                 Callback res_ok,
-                void *py_cb_ok)
+                void *py_cb_ok) except +

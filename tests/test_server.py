@@ -14,6 +14,7 @@ def test_llama_server(model_path):
     params.n_predict = 32
     params.n_ctx = 512
     params.cpuparams.n_threads = 4
+    params.cpuparams_batch.n_threads = 2
 
     server = cy.Server(params)
 
