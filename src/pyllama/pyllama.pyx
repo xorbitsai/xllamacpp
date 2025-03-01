@@ -621,16 +621,22 @@ cdef class CommonParamsSampling:
 
 
 cdef class CpuParams:
-    cdef llama_cpp.cpu_params ptr
+    cdef llama_cpp.cpu_params p
+
+    @staticmethod
+    cdef CpuParams from_instance(llama_cpp.cpu_params params):
+        cdef CpuParams wrapper = CpuParams.__new__(CpuParams)
+        wrapper.p = params
+        return wrapper
 
     @property
     def n_threads(self) -> int:
         """number of threads."""
-        return self.ptr.n_threads
+        return self.p.n_threads
 
     @n_threads.setter
     def n_threads(self, value: int):
-        self.ptr.n_threads = value
+        self.p.n_threads = value
 
     @property
     def cpumask(self) -> list[bool]:
@@ -640,50 +646,50 @@ cdef class CpuParams:
         """
         res = []
         for i in range(GGML_MAX_N_THREADS):
-            res.append(<bint>self.ptr.cpumask[i])
+            res.append(<bint>self.p.cpumask[i])
         return res
 
     @cpumask.setter
     def cpumask(self, values: list[bool]):
         assert len(values) == GGML_MAX_N_THREADS
         for i in range(GGML_MAX_N_THREADS):
-            self.ptr.cpumask[i] = <bint>values[i]
+            self.p.cpumask[i] = <bint>values[i]
 
     @property
     def mask_valid(self) -> bool:
         """Default: any CPU."""
-        return self.ptr.mask_valid
+        return self.p.mask_valid
 
     @mask_valid.setter
     def mask_valid(self, value: bool):
-        self.ptr.mask_valid = value
+        self.p.mask_valid = value
 
     @property
     def priority(self) -> llama_cpp.ggml_sched_priority:
         """Scheduling prio : (0 - normal, 1 - medium, 2 - high, 3 - realtime)."""
-        return self.ptr.priority
+        return self.p.priority
 
     @priority.setter
     def priority(self, value: llama_cpp.ggml_sched_priority):
-        self.ptr.priority = value
+        self.p.priority = value
 
     @property
     def strict_cpu(self) -> bool:
         """Use strict CPU placement."""
-        return self.ptr.strict_cpu
+        return self.p.strict_cpu
 
     @strict_cpu.setter
     def strict_cpu(self, bint value):
-        self.ptr.strict_cpu = value
+        self.p.strict_cpu = value
 
     @property
     def poll(self) -> uint32_t:
         """Polling (busywait) level (0 - no polling, 100 - mostly polling)"""
-        return self.ptr.poll
+        return self.p.poll
 
     @poll.setter
     def poll(self, uint32_t value):
-        self.ptr.poll = value
+        self.p.poll = value
 
 
 cdef class CommonParamsSpeculative:
@@ -693,8 +699,6 @@ cdef class CommonParamsSpeculative:
     cdef CommonParamsSpeculative from_instance(llama_cpp.common_params_speculative params):
         cdef CommonParamsSpeculative wrapper = CommonParamsSpeculative.__new__(CommonParamsSpeculative)
         wrapper.p = params
-        # wrapper.cpuparams = CpuParams.from_ptr(&wrapper.p.cpuparams, wrapper)
-        # wrapper.cpuparams_batch = CpuParams.from_ptr(&wrapper.p.cpuparams_batch, wrapper)
         return wrapper
 
     @property
@@ -750,6 +754,22 @@ cdef class CommonParamsSpeculative:
     @p_min.setter
     def p_min(self, value: float):
         self.p.p_min = value
+
+    @property
+    def cpuparams(self) -> CpuParams:
+        return CpuParams.from_instance(self.p.cpuparams)
+    
+    @cpuparams.setter
+    def cpuparams(self, value: CpuParams):
+        self.p.cpuparams = value.p
+
+    @property
+    def cpuparams_batch(self) -> CpuParams:
+        return CpuParams.from_instance(self.p.cpuparams_batch)
+    
+    @cpuparams_batch.setter
+    def cpuparams_batch(self, value: CpuParams):
+        self.p.cpuparams_batch = value.p
 
     @property
     def model(self) -> str:
