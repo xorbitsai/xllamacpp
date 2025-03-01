@@ -27,6 +27,7 @@ EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
     "src/pyllama",
     LLAMACPP_INCLUDES_DIR,
+    os.path.join(CWD, "thirdparty/llama.cpp"),  # For including 'common/base64.hpp' in server/utils.hpp
     os.path.join(CWD, "thirdparty/llama.cpp/examples/server"),
 ]
 LIBRARY_DIRS = [
