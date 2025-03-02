@@ -10,7 +10,8 @@ from Cython.Build import cythonize
 # -----------------------------------------------------------------------------
 # constants
 
-NAME = "pyllama-cuda12x" if os.getenv("PYLLAMA_BUILD_CUDA") else "pyllama"
+BUILD_CUDA = os.getenv("PYLLAMA_BUILD_CUDA")
+NAME = "pyllama-cuda12x" if BUILD_CUDA else "pyllama"
 CWD = os.getcwd()
 
 VERSION = "0.0.1"
@@ -39,6 +40,8 @@ LIBRARIES = []
 
 if PLATFORM == "Windows":
     LIBRARIES.extend(["common", "llama", "ggml", "ggml-base", "ggml-cpu", "Advapi32"])
+    if BUILD_CUDA:
+        LIBRARIES.extend(["ggml-cuda"])
 else:
     LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(
@@ -50,6 +53,8 @@ else:
             f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
         ]
     )
+    if BUILD_CUDA:
+        EXTRA_OBJECTS.extend([f"{LLAMACPP_LIBS_DIR}/libggml-cuda.a"])
 if PLATFORM == "Darwin":
     EXTRA_OBJECTS.extend(
         [
