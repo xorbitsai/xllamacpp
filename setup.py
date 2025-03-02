@@ -10,6 +10,7 @@ from Cython.Build import cythonize
 # -----------------------------------------------------------------------------
 # constants
 
+NAME = "pyllama-cuda12x" if os.getenv("PYLLAMA_BUILD_CUDA") else "pyllama"
 CWD = os.getcwd()
 
 VERSION = "0.0.1"
@@ -95,7 +96,7 @@ def mk_extension(name, sources, define_macros=None):
 # COMMON SETUP CONFIG
 
 common = {
-    "name": "pyllama",
+    "name": NAME,
     "version": VERSION,
     "description": "A cython wrapper of the llama.cpp inference engine.",
     "python_requires": ">=3.8",
