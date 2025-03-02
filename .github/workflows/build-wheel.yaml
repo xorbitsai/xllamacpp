@@ -111,22 +111,22 @@ jobs:
 
           # Windows AMD64
           - os: windows-latest
-            arch: auto
+            arch: AMD64
             platform-id: win_amd64
             python: 39
             requires-python: ">=3.9,<3.10"
           - os: windows-latest
-            arch: auto
+            arch: AMD64
             platform-id: win_amd64
             python: 310
             requires-python: ">=3.10,<3.11"
           - os: windows-latest
-            arch: auto
+            arch: AMD64
             platform-id: win_amd64
             python: 311
             requires-python: ">=3.11,<3.12"
           - os: windows-latest
-            arch: auto
+            arch: AMD64
             platform-id: win_amd64
             python: 312
             requires-python: ">=3.12,<3.13"
