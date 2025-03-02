@@ -145,7 +145,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheel-${{ matrix.python }}-${{ matrix.platform-id }}
+          name: wheel-${{ matrix.pyver }}-${{ matrix.cuda }}-${{ matrix.os }}
           path: ./dist/*.whl
 
 #      - uses: softprops/action-gh-release@v2
