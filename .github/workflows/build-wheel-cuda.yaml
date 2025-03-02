@@ -22,7 +22,7 @@ jobs:
           $matrix = @{
               'os' = @('ubuntu-latest', 'windows-2019')
               'pyver' = @("3.9", "3.10", "3.11", "3.12")
-              'cuda' = @("12.1.1", "12.2.2", "12.3.2", "12.4.1") #, "12.5.1", "12.6.1")
+              'cuda' = @("12.4.1") # "12.1.1", "12.2.2", "12.3.2", "12.4.1") #, "12.5.1", "12.6.1")
               'releasetag' = @("basic")
           }
 
@@ -106,6 +106,7 @@ jobs:
       - name: Build Wheel
         run: |
           $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
+          $env:PYLLAMA_BUILD_CUDA = 1
           $env:CUDA_PATH = $env:CONDA_PREFIX
           $env:CUDA_HOME = $env:CONDA_PREFIX
           $env:CUDA_TOOLKIT_ROOT_DIR = $env:CONDA_PREFIX
@@ -124,15 +125,17 @@ jobs:
           # if ($env:AVXVER -eq 'basic') {
           #  $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX=off -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
           # }
+          # Change project name
+          sed -i '' 's/name = "pyllama"/name = "pyllama-cuda12x"/g' pyproject.toml
           make
           python -m build --wheel
           # write the build tag to the output
           Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
 
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          # Set tag_name to <tag>-cu<cuda_version>
-          tag_name: ${{ github.ref_name }}-cu${{ env.CUDA_VERSION }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#      - uses: softprops/action-gh-release@v2
+#        with:
+#          files: dist/*
+#          # Set tag_name to <tag>-cu<cuda_version>
+#          tag_name: ${{ github.ref_name }}-cu${{ env.CUDA_VERSION }}
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

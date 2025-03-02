@@ -10,6 +10,8 @@ from Cython.Build import cythonize
 # -----------------------------------------------------------------------------
 # constants
 
+BUILD_CUDA = os.getenv("PYLLAMA_BUILD_CUDA")
+NAME = "pyllama-cuda12x" if BUILD_CUDA else "pyllama"
 CWD = os.getcwd()
 
 VERSION = "0.0.1"
@@ -38,6 +40,9 @@ LIBRARIES = []
 
 if PLATFORM == "Windows":
     LIBRARIES.extend(["common", "llama", "ggml", "ggml-base", "ggml-cpu", "Advapi32"])
+    if BUILD_CUDA:
+        LIBRARY_DIRS.extend([os.getenv("CUDA_PATH_V12_4", "") + "\\Lib\\x64"])
+        LIBRARIES.extend(["ggml-cuda", "cudart", "cublas", "cublasLt", "cuda"])
 else:
     LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(
@@ -49,6 +54,8 @@ else:
             f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
         ]
     )
+    if BUILD_CUDA:
+        EXTRA_OBJECTS.extend([f"{LLAMACPP_LIBS_DIR}/libggml-cuda.a"])
 if PLATFORM == "Darwin":
     EXTRA_OBJECTS.extend(
         [
@@ -95,7 +102,7 @@ def mk_extension(name, sources, define_macros=None):
 # COMMON SETUP CONFIG
 
 common = {
-    "name": "pyllama",
+    "name": NAME,
     "version": VERSION,
     "description": "A cython wrapper of the llama.cpp inference engine.",
     "python_requires": ">=3.8",
