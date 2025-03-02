@@ -41,7 +41,8 @@ LIBRARIES = []
 if PLATFORM == "Windows":
     LIBRARIES.extend(["common", "llama", "ggml", "ggml-base", "ggml-cpu", "Advapi32"])
     if BUILD_CUDA:
-        LIBRARIES.extend(["ggml-cuda"])
+        LIBRARY_DIRS.extend([os.getenv("CUDA_PATH_V12_4", "") + "\\Lib\\x64"])
+        LIBRARIES.extend(["ggml-cuda", "cudart", "cublas", "cublasLt", "cuda"])
 else:
     LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(
