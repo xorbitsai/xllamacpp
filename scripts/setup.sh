@@ -24,7 +24,7 @@ build_llamacpp() {
     cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib && \
     cmake --build . --config Release && \
     cmake --install . --prefix ${PREFIX}
-  else:
+  else
     cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DGGML_CUDA=ON && \
     cmake --build . --config Release && \
     cmake --install . --prefix ${PREFIX}
