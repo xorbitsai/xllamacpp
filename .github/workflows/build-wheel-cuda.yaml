@@ -125,6 +125,8 @@ jobs:
           # if ($env:AVXVER -eq 'basic') {
           #  $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX=off -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
           # }
+          # Change project name
+          sed -i '' 's/name = "pyllama"/name = "pyllama-cuda12x"/g' pyproject.toml
           make
           python -m build --wheel
           # write the build tag to the output
