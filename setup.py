@@ -16,7 +16,6 @@ VERSION = "0.0.1"
 
 PLATFORM = platform.system()
 
-WITH_DYLIB = os.getenv("WITH_DYLIB", False)
 LLAMACPP_INCLUDES_DIR = os.path.join(CWD, "src/llama.cpp/include")
 LLAMACPP_LIBS_DIR = os.path.join(CWD, "src/llama.cpp/lib")
 
@@ -27,7 +26,9 @@ EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
     "src/pyllama",
     LLAMACPP_INCLUDES_DIR,
-    os.path.join(CWD, "thirdparty/llama.cpp"),  # For including 'common/base64.hpp' in server/utils.hpp
+    os.path.join(
+        CWD, "thirdparty/llama.cpp"
+    ),  # For including 'common/base64.hpp' in server/utils.hpp
     os.path.join(CWD, "thirdparty/llama.cpp/examples/server"),
 ]
 LIBRARY_DIRS = [
@@ -35,14 +36,14 @@ LIBRARY_DIRS = [
 ]
 LIBRARIES = ["pthread"]
 
-
-if WITH_DYLIB:
-    EXTRA_OBJECTS.append(f"{LLAMACPP_LIBS_DIR}/libcommon.a")
-    LIBRARIES.extend(
+if PLATFORM == "Windows":
+    EXTRA_OBJECTS.extend(
         [
-            "common",
-            "ggml",
-            "llama",
+            f"{LLAMACPP_LIBS_DIR}/common.lib",
+            f"{LLAMACPP_LIBS_DIR}/llama.lib",
+            f"{LLAMACPP_LIBS_DIR}/ggml.lib",
+            f"{LLAMACPP_LIBS_DIR}/ggml-base.lib",
+            f"{LLAMACPP_LIBS_DIR}/ggml-cpu.lib",
         ]
     )
 else:
@@ -55,13 +56,13 @@ else:
             f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
         ]
     )
-    if PLATFORM == "Darwin":
-        EXTRA_OBJECTS.extend(
-            [
-                f"{LLAMACPP_LIBS_DIR}/libggml-blas.a",
-                f"{LLAMACPP_LIBS_DIR}/libggml-metal.a",
-            ]
-        )
+if PLATFORM == "Darwin":
+    EXTRA_OBJECTS.extend(
+        [
+            f"{LLAMACPP_LIBS_DIR}/libggml-blas.a",
+            f"{LLAMACPP_LIBS_DIR}/libggml-metal.a",
+        ]
+    )
 
 INCLUDE_DIRS.append(os.path.join(CWD, "src/pyllama"))
 
