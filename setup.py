@@ -37,15 +37,7 @@ LIBRARY_DIRS = [
 LIBRARIES = []
 
 if PLATFORM == "Windows":
-    EXTRA_OBJECTS.extend(
-        [
-            f"{LLAMACPP_LIBS_DIR}/common.lib",
-            f"{LLAMACPP_LIBS_DIR}/llama.lib",
-            f"{LLAMACPP_LIBS_DIR}/ggml.lib",
-            f"{LLAMACPP_LIBS_DIR}/ggml-base.lib",
-            f"{LLAMACPP_LIBS_DIR}/ggml-cpu.lib",
-        ]
-    )
+    LIBRARIES.extend(["common", "llama", "ggml", "ggml-base", "ggml-cpu"])
 else:
     LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(
