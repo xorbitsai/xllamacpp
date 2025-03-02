@@ -37,7 +37,7 @@ LIBRARY_DIRS = [
 LIBRARIES = []
 
 if PLATFORM == "Windows":
-    LIBRARIES.extend(["common", "llama", "ggml", "ggml-base", "ggml-cpu"])
+    LIBRARIES.extend(["common", "llama", "ggml", "ggml-base", "ggml-cpu", "Advapi32"])
 else:
     LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(
