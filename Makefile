@@ -23,18 +23,13 @@ endif
 
 all: build
 
-build_llama_cpp:
+build:
 	@bash scripts/setup.sh
-
-build: build_llama_cpp
-	@git diff thirdparty > changes.diff
-	@python3 setup.py build_ext --inplace
-	
-
+	python setup.py build_ext --inplace
 
 wheel:
 	@echo "WITH_DYLIB=$(WITH_DYLIB)"
-	@python3 setup.py bdist_wheel
+	@python setup.py bdist_wheel
 ifeq ($(WITH_DYLIB),1)
 	delocate-wheel -v dist/*.whl 
 endif
