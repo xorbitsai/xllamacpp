@@ -28,6 +28,7 @@ build_llamacpp() {
     cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DGGML_CUDA=ON && \
     cmake --build . --config Release && \
     cmake --install . --prefix ${PREFIX}
+  fi
   [[ -e common/libcommon.a ]] && cp common/libcommon.a ${LIB}
   [[ -e common/Release/common.lib ]] && cp common/Release/common.lib ${LIB}
   cd ${CWD}
