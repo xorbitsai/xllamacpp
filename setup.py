@@ -34,7 +34,6 @@ INCLUDE_DIRS = [
 LIBRARY_DIRS = [
     LLAMACPP_LIBS_DIR,
 ]
-LIBRARIES = ["pthread"]
 
 if PLATFORM == "Windows":
     EXTRA_OBJECTS.extend(
@@ -47,6 +46,7 @@ if PLATFORM == "Windows":
         ]
     )
 else:
+    LIBRARIES = ["pthread"]
     EXTRA_OBJECTS.extend(
         [
             f"{LLAMACPP_LIBS_DIR}/libcommon.a",
