@@ -140,8 +140,10 @@ jobs:
           sed -i 's/name = "xllamacpp"/name = "xllamacpp-cuda12x"/g' pyproject.toml
           make
           python -m build --wheel
-          auditwheel repair dist/*.whl -w dist
-          rm dist/*-linux_x86_64.whl
+          if ($IsLinux) {
+            auditwheel repair --plat manylinux2014_x86_64 dist/*.whl -w dist
+            rm dist/*-linux_x86_64.whl
+          }
           # write the build tag to the output
           Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
 
