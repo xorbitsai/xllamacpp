@@ -191,14 +191,14 @@ jobs:
           name: artifacts
 
       - name: Publish to PyPI
-        if: github.repository == 'xorbitsai/xoscar'
+        if: github.repository == 'xorbitsai/pyllama-cpp'
         uses: pypa/gh-action-pypi-publish@v1.8.11
         with:
           user: __token__
           password: ${{ secrets.PYPI_PASSWORD }}
 
       - name: Publish to Test PyPI
-        if: github.repository != 'xorbitsai/xoscar'
+        if: github.repository != 'xorbitsai/pyllama-cpp'
         uses: pypa/gh-action-pypi-publish@v1.8.11
         with:
           user: __token__
