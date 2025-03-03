@@ -1,6 +1,6 @@
-# pyllama - a Python wrapper of llama.cpp
+# xllamacpp - a Python wrapper of llama.cpp
 
-This project forks from [cyllama](https://github.com/shakfu/cyllama) and provides a Python wrapper for @ggerganov's [llama.cpp](https://github.com/ggerganov/llama.cpp) which is likely the most active open-source compiled LLM inference engine. It was spun-off from my earlier, now frozen, llama.cpp wrapper project, [llamalib](https://github.com/shakfu/llamalib)  which provided early stage, but functional, wrappers using [cython](https://github.com/cython/cython), [pybind11](https://github.com/pybind/pybind11), and [nanobind](https://github.com/wjakob/nanobind). Further development of `pyllama`, the cython wrapper from `llamalib`, will continue in this project.
+This project forks from [cyllama](https://github.com/shakfu/cyllama) and provides a Python wrapper for @ggerganov's [llama.cpp](https://github.com/ggerganov/llama.cpp) which is likely the most active open-source compiled LLM inference engine. It was spun-off from my earlier, now frozen, llama.cpp wrapper project, [llamalib](https://github.com/shakfu/llamalib)  which provided early stage, but functional, wrappers using [cython](https://github.com/cython/cython), [pybind11](https://github.com/pybind/pybind11), and [nanobind](https://github.com/wjakob/nanobind). Further development of `xllamacpp`, the cython wrapper from `llamalib`, will continue in this project.
 
 Development goals are to:
 
@@ -32,7 +32,7 @@ Development is done only on macOS to keep things simple, with intermittent testi
 
 The following table provide an overview of the current wrapping/dev status:
 
-| status                       | pyllama       |
+| status                       | xllamacpp       |
 | :--------------------------- | :-----------: |
 | wrapper-type                 | cython        |
 | wrap llama.h + other headers | yes           |
@@ -40,7 +40,7 @@ The following table provide an overview of the current wrapping/dev status:
 | wrap low-level simple-cli    | yes           |
 | wrap low-level llama-cli     | WIP           |
   
-The initial milestone entailed creating a high-level wrapper of the `simple.cpp` llama.cpp example, followed by a low-level one. The next objective is to fully wrap the functionality of `llama-cli` which is ongoing (see: `pyllama.__init__.py`).
+The initial milestone entailed creating a high-level wrapper of the `simple.cpp` llama.cpp example, followed by a low-level one. The next objective is to fully wrap the functionality of `llama-cli` which is ongoing (see: `xllamacpp.__init__.py`).
 
 It goes without saying that any help / collaboration / contributions to accelerate the above would be welcome!
 
@@ -56,15 +56,15 @@ As the intent is to provide a very thin wrapping layer and play to the strengths
 
 ## Setup
 
-To build `pyllama`:
+To build `xllamacpp`:
 
 1. A recent version of `python3` (testing on python 3.12)
 
-2. Git clone the latest version of `pyllama`:
+2. Git clone the latest version of `xllamacpp`:
 
  ```sh
- git clone https://github.com/shakfu/pyllama.git
- cd pyllama
+ git clone https://github.com/shakfu/xllamacpp.git
+ cd xllamacpp
  git submodule init
  git submodule update
  ```
@@ -80,14 +80,14 @@ To build `pyllama`:
 This will:
 
 1. Download and build `llama.cpp`
-2. Install it into `bin`, `include`, and `lib` in the cloned `pyllama` folder
-3. Build `pyllama`
+2. Install it into `bin`, `include`, and `lib` in the cloned `xllamacpp` folder
+3. Build `xllamacpp`
 
 ## Testing
 
-The `tests` directory in this repo provides extensive examples of using pyllama.
+The `tests` directory in this repo provides extensive examples of using xllamacpp.
 
-However, as a first step, you should download a smallish llm in the `.gguf` model from [huggingface](https://huggingface.co/models?search=gguf). A good model to start and which is assumed by tests is [Llama-3.2-1B-Instruct-Q8_0.gguf](https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf). `pyllama` expects models to be stored in a `models` folder in the cloned `pyllama` directory. So to create the `models` directory if doesn't exist and download this model, you can just type:
+However, as a first step, you should download a smallish llm in the `.gguf` model from [huggingface](https://huggingface.co/models?search=gguf). A good model to start and which is assumed by tests is [Llama-3.2-1B-Instruct-Q8_0.gguf](https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf). `xllamacpp` expects models to be stored in a `models` folder in the cloned `xllamacpp` directory. So to create the `models` directory if doesn't exist and download this model, you can just type:
 
 ```sh
 make download
@@ -96,7 +96,7 @@ make download
 This basically just does:
 
 ```sh
-cd pyllama
+cd xllamacpp
 mkdir models && cd models
 wget https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf 
 ```
@@ -114,10 +114,10 @@ You can also run the test suite with `pytest` by typing `pytest` or:
 make test
 ```
 
-If all tests pass, you can type `python3 -i scripts/start.py` or `ipython -i scripts/start.py` and explore the `pyllama` library with a pre-configured repl:
+If all tests pass, you can type `python3 -i scripts/start.py` or `ipython -i scripts/start.py` and explore the `xllamacpp` library with a pre-configured repl:
 
 ```python
-from pyllama import Llama
+from xllamacpp import Llama
 llm = Llama(model_path='models/Llama-3.2-1B-Instruct-Q8_0.gguf')
 llm.ask("what is the age of the universe?")
 'estimated age of the universe\nThe estimated age of the universe is around 13.8 billion years'
@@ -128,7 +128,7 @@ llm.ask("what is the age of the universe?")
 
 - [x] wrap llama-simple
 
-- [ ] wrap llama-cli (WIP: see: `pyllama.__init__`)
+- [ ] wrap llama-cli (WIP: see: `xllamacpp.__init__`)
 
 - [ ] wrap llama-llava-cli
 

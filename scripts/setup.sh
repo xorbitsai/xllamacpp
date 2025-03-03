@@ -20,7 +20,7 @@ build_llamacpp() {
 		cp common/*.hpp ${INCLUDE} && \
 		cp examples/llava/*.h ${INCLUDE} && \
 		cd build
-  if [[ -z "${PYLLAMA_BUILD_CUDA}" ]]; then
+  if [[ -z "${XLLAMACPP_BUILD_CUDA}" ]]; then
     cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib && \
     cmake --build . --config Release && \
     cmake --install . --prefix ${PREFIX}

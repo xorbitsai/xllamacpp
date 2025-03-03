@@ -10,8 +10,8 @@ from Cython.Build import cythonize
 # -----------------------------------------------------------------------------
 # constants
 
-BUILD_CUDA = os.getenv("PYLLAMA_BUILD_CUDA")
-NAME = "pyllama-cuda12x" if BUILD_CUDA else "pyllama"
+BUILD_CUDA = os.getenv("XLLAMACPP_BUILD_CUDA")
+NAME = "xllamacpp-cuda12x" if BUILD_CUDA else "xllamacpp"
 CWD = os.getcwd()
 
 VERSION = "0.0.1"
@@ -26,7 +26,7 @@ EXTRA_COMPILE_ARGS = ["-std=c++14"]
 EXTRA_LINK_ARGS = []
 EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
-    "src/pyllama",
+    "src/xllamacpp",
     LLAMACPP_INCLUDES_DIR,
     os.path.join(
         CWD, "thirdparty/llama.cpp"
@@ -64,7 +64,7 @@ if PLATFORM == "Darwin":
         ]
     )
 
-INCLUDE_DIRS.append(os.path.join(CWD, "src/pyllama"))
+INCLUDE_DIRS.append(os.path.join(CWD, "src/xllamacpp"))
 
 if PLATFORM == "Darwin":
     # EXTRA_LINK_ARGS.append("-mmacosx-version-min=11")
@@ -111,19 +111,19 @@ common = {
 
 
 # forces cythonize in this case
-subprocess.call("cythonize *.pyx", cwd="src/pyllama", shell=True)
+subprocess.call("cythonize *.pyx", cwd="src/xllamacpp", shell=True)
 
 if not os.path.exists("MANIFEST.in"):
     with open("MANIFEST.in", "w") as f:
-        f.write("exclude src/pyllama/*.pxd\n")
-        f.write("exclude src/pyllama/*.pyx\n")
-        f.write("exclude src/pyllama/*.cpp\n")
-        f.write("exclude src/pyllama/*.h\n")
-        f.write("exclude src/pyllama/py.typed\n")
+        f.write("exclude src/xllamacpp/*.pxd\n")
+        f.write("exclude src/xllamacpp/*.pyx\n")
+        f.write("exclude src/xllamacpp/*.cpp\n")
+        f.write("exclude src/xllamacpp/*.h\n")
+        f.write("exclude src/xllamacpp/py.typed\n")
 
 extensions = [
     mk_extension(
-        "pyllama.pyllama", sources=["src/pyllama/pyllama.pyx", "src/pyllama/server.cpp"]
+        "xllamacpp.xllamacpp", sources=["src/xllamacpp/xllamacpp.pyx", "src/xllamacpp/server.cpp"]
     ),
 ]
 

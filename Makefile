@@ -135,7 +135,7 @@ test_platform_linux:
 	@./build/test_platform
 
 coverage:
-	@pytest --cov=pyllama --cov-report html
+	@pytest --cov=xllamacpp --cov-report html
 
 memray:
 	@pytest --memray --native tests
@@ -144,7 +144,7 @@ bump:
 	@scripts/bump.sh
 
 clean:
-	@rm -rf build dist src/llama.cpp src/*.egg-info .pytest_cache .coverage
+	@rm -rf build dist src/llama.cpp src/*.egg-inf thirdparty/llama.cpp/build o .pytest_cache .coverage
 
 reset: clean
 	@rm -rf bin thirdparty/llama.cpp/lib

@@ -5,7 +5,7 @@
 # cython: c_string_encoding = default
 
 """
-pyllama: a thin cython wrapper of llama.cpp
+xllamacpp: a thin cython wrapper of llama.cpp
 
 classes:
     LlamaLogitBias
@@ -314,6 +314,9 @@ cdef class CommonParamsSampling:
         cdef CommonParamsSampling wrapper = CommonParamsSampling.__new__(CommonParamsSampling)
         wrapper.p = params
         return wrapper
+
+    def __init__(self):
+        raise Exception(f"Can't construct an instance of {type(self).__name__}")
 
     def print(self) -> str:
         """print the parameters into a string"""
@@ -636,6 +639,9 @@ cdef class CpuParams:
         wrapper.p = params
         return wrapper
 
+    def __init__(self):
+        raise Exception(f"Can't construct an instance of {type(self).__name__}")
+
     @property
     def n_threads(self) -> int:
         """number of threads."""
@@ -707,6 +713,9 @@ cdef class CommonParamsSpeculative:
         cdef CommonParamsSpeculative wrapper = CommonParamsSpeculative.__new__(CommonParamsSpeculative)
         wrapper.p = params
         return wrapper
+
+    def __init__(self):
+        raise Exception(f"Can't construct an instance of {type(self).__name__}")
 
     @property
     def n_ctx(self) -> int:
@@ -796,6 +805,9 @@ cdef class CommonParamsVocoder:
         cdef CommonParamsVocoder wrapper = CommonParamsVocoder.__new__(CommonParamsVocoder)
         wrapper.p = params
         return wrapper
+
+    def __init__(self):
+        raise Exception(f"Can't construct an instance of {type(self).__name__}")
 
     @property
     def hf_repo(self) -> str:

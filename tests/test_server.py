@@ -1,10 +1,10 @@
 import json
 import pprint
-import pyllama.pyllama as cy
+import xllamacpp as xlc
 
 
 def test_llama_server(model_path):
-    params = cy.CommonParams()
+    params = xlc.CommonParams()
 
     params.model = model_path
     params.prompt = "When did the universe begin?"
@@ -13,7 +13,7 @@ def test_llama_server(model_path):
     params.cpuparams.n_threads = 4
     params.cpuparams_batch.n_threads = 2
 
-    server = cy.Server(params)
+    server = xlc.Server(params)
 
     prompt = {
         "max_tokens": 128,

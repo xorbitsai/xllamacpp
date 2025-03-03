@@ -3718,7 +3718,7 @@ handle_completions_impl(server_context &ctx_server, server_task_type type,
 
 #include "server.h"
 
-namespace pyllama {
+namespace xllamacpp {
 Server::Server(const common_params &params)
     : _params(params), _ctx_server(new server_context()) {
   std::promise<int> out;
@@ -3748,4 +3748,4 @@ void Server::handle_completions(const std::string &prompt_json_str,
       },
       OAICOMPAT_TYPE_COMPLETION);
 }
-} // namespace pyllama
+} // namespace xllamacpp

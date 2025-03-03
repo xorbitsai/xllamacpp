@@ -4,7 +4,7 @@ vscode/
 build/
 models/
 
-src/pyllama/pyllama.cpp
+src/xllamacpp/xllamacpp.cpp
 src/llama.cpp/bin/
 src/llama.cpp/lib/
 src/llama.cpp/include/*

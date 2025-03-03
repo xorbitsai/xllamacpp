@@ -1,5 +1,5 @@
 [project]
-name = "pyllama"
+name = "xllamacpp"
 version = "0.1.0"
 description = "A Python wrapper of llama.cpp"
 readme = "README.md"

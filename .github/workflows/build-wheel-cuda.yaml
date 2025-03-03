@@ -117,7 +117,7 @@ jobs:
       - name: Build Wheel
         run: |
           $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
-          $env:PYLLAMA_BUILD_CUDA = 1
+          $env:XLLAMACPP_BUILD_CUDA = 1
           $env:CUDA_PATH = $env:CONDA_PREFIX
           $env:CUDA_HOME = $env:CONDA_PREFIX
           $env:CUDA_TOOLKIT_ROOT_DIR = $env:CONDA_PREFIX
@@ -137,7 +137,7 @@ jobs:
           #  $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX=off -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
           # }
           # Change project name
-          sed -i 's/name = "pyllama"/name = "pyllama-cuda12x"/g' pyproject.toml
+          sed -i 's/name = "xllamacpp"/name = "xllamacpp-cuda12x"/g' pyproject.toml
           make
           python -m build --wheel
           # write the build tag to the output
@@ -191,14 +191,14 @@ jobs:
           name: artifacts
 
       - name: Publish to PyPI
-        if: github.repository == 'xorbitsai/pyllama-cpp'
+        if: github.repository == 'xorbitsai/xllamacpp'
         uses: pypa/gh-action-pypi-publish@v1.8.11
         with:
           user: __token__
           password: ${{ secrets.PYPI_PASSWORD }}
 
       - name: Publish to Test PyPI
-        if: github.repository != 'xorbitsai/pyllama-cpp'
+        if: github.repository != 'xorbitsai/xllamacpp'
         uses: pypa/gh-action-pypi-publish@v1.8.11
         with:
           user: __token__

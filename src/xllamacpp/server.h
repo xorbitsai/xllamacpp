@@ -5,7 +5,7 @@
 
 struct server_context;
 
-namespace pyllama {
+namespace xllamacpp {
 typedef void (*Callback)(const std::string &, void *py_cb);
 
 class Server {
@@ -23,4 +23,4 @@ private:
       _ctx_server; // incomplete type of server_context
   std::thread _loop_thread;
 };
-} // namespace pyllama
+} // namespace xllamacpp
