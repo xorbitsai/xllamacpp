@@ -1,7 +1,5 @@
-include src/cyllama/*.pxd
-include src/cyllama/*.pyx
-include src/cyllama/*.cpp
-include src/cyllama/*.h
-include thirdparty/llama.cpp/include/*.h
-include thirdparty/llama.cpp/lib/*.a
-include src/cyllama/py.typed
+exclude src/xllamacpp/*.pxd
+exclude src/xllamacpp/*.pyx
+exclude src/xllamacpp/*.cpp
+exclude src/xllamacpp/*.h
+exclude src/xllamacpp/py.typed

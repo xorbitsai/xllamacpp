@@ -6,50 +6,16 @@
 
 """
 xllamacpp: a thin cython wrapper of llama.cpp
-
-classes:
-    LlamaLogitBias
-    LlamaTokenData
-    LlamaTokenDataArray
-    LlamaLoraAdapter
-    GGMLThreadPoolParams
-    GGMLThreadPool
-    GGMLTensor
-    LlamaSamplerChainParams
-    LlamaSampler
-    LlamaChatMessage
-    CommonChatMsg
-    CommonSampler
-    CpuParams
-    CommonParams
-    CommonParamsSampling
-    LlamaModelParams
-    LlamaModelQuantizeParams
-    LlamaModel
-    LlamaContextParams
-    LlamaContext
-    LlamaBatch
-    CommonInitResult
-
-
 """
-from libc.stdint cimport uint8_t, int32_t, int64_t, uint32_t, uint64_t
-from libc.stdlib cimport malloc, calloc, realloc, free
-from libc.string cimport strcpy, strlen, strncpy
+from libc.stdint cimport int32_t, uint32_t
+from libc.stdlib cimport malloc, free
 from libcpp.vector cimport vector
 from libcpp.string cimport string
-from libcpp cimport bool as cppbool # required for func pointer sigs
 from libcpp.memory cimport shared_ptr, make_shared
 from cython.operator cimport dereference as deref
 
 cimport llama_cpp
 from server cimport CServer
-
-# import numpy as np
-
-import os
-from typing import Optional, Sequence, Callable
-
 
 
 # constants
@@ -259,60 +225,47 @@ cpdef enum common_sampler_type:
 
 
 cdef class LlamaLogitBias:
-    cdef llama_cpp.llama_logit_bias * ptr
-    cdef bint owner
-
-    def __cinit__(self):
-        self.ptr = NULL
-        self.owner = True
-
-    def __init__(self, int token, float bias):
-        self.ptr = <llama_cpp.llama_logit_bias *>malloc(sizeof(llama_cpp.llama_logit_bias))
-        if self.ptr is NULL:
-            raise MemoryError
-        self.owner = True
-        self.ptr.token = token
-        self.ptr.bias = bias
-
-    def __dealloc__(self):
-        # De-allocate if not null and flag is set
-        if self.ptr is not NULL and self.owner is True:
-            free(self.ptr)
-            self.ptr = NULL
+    cdef llama_cpp.llama_logit_bias *p
+    cdef object owner
 
     @staticmethod
-    cdef LlamaLogitBias from_ptr(llama_cpp.llama_logit_bias *ptr, bint owner=False):
+    cdef LlamaLogitBias from_ptr(llama_cpp.llama_logit_bias *p, object owner):
         cdef LlamaLogitBias wrapper = LlamaLogitBias.__new__(LlamaLogitBias)
-        wrapper.ptr = ptr
+        wrapper.p = p
         wrapper.owner = owner
         return wrapper
+
+    def __init__(self):
+        raise Exception(f"Can't construct an instance of {type(self).__name__}")
 
     @property
     def token(self) -> int:
         """token token"""
-        return self.ptr.token
+        return self.p.token
 
     @token.setter
     def token(self, int value):
-        self.ptr.token = value
+        self.p.token = value
 
     @property
     def bias(self) -> float:
         """bias"""
-        return self.ptr.bias
+        return self.p.bias
 
     @bias.setter
     def bias(self, float value):
-        self.ptr.bias = value
+        self.p.bias = value
 
 
 cdef class CommonParamsSampling:
     cdef llama_cpp.common_params_sampling *p
+    cdef object owner
 
     @staticmethod
-    cdef CommonParamsSampling from_ptr(llama_cpp.common_params_sampling *params):
+    cdef CommonParamsSampling from_ptr(llama_cpp.common_params_sampling *params, object owner):
         cdef CommonParamsSampling wrapper = CommonParamsSampling.__new__(CommonParamsSampling)
         wrapper.p = params
+        wrapper.owner = owner
         return wrapper
 
     def __init__(self):
@@ -618,7 +571,7 @@ cdef class CommonParamsSampling:
         """
         result = []
         for i in range(self.p.logit_bias.size()):
-            result.append(LlamaLogitBias.from_ptr(&self.p.logit_bias[i]))
+            result.append(LlamaLogitBias.from_ptr(&self.p.logit_bias[i], self))
         return result
 
     @logit_bias.setter
@@ -632,11 +585,13 @@ cdef class CommonParamsSampling:
 
 cdef class CpuParams:
     cdef llama_cpp.cpu_params *p
+    cdef object owner
 
     @staticmethod
-    cdef CpuParams from_ptr(llama_cpp.cpu_params *params):
+    cdef CpuParams from_ptr(llama_cpp.cpu_params *params, object owner):
         cdef CpuParams wrapper = CpuParams.__new__(CpuParams)
         wrapper.p = params
+        wrapper.owner = owner
         return wrapper
 
     def __init__(self):
@@ -707,11 +662,13 @@ cdef class CpuParams:
 
 cdef class CommonParamsSpeculative:
     cdef llama_cpp.common_params_speculative *p
+    cdef object owner
 
     @staticmethod
-    cdef CommonParamsSpeculative from_ptr(llama_cpp.common_params_speculative *params):
+    cdef CommonParamsSpeculative from_ptr(llama_cpp.common_params_speculative *params, object owner):
         cdef CommonParamsSpeculative wrapper = CommonParamsSpeculative.__new__(CommonParamsSpeculative)
         wrapper.p = params
+        wrapper.owner = owner
         return wrapper
 
     def __init__(self):
@@ -773,7 +730,7 @@ cdef class CommonParamsSpeculative:
 
     @property
     def cpuparams(self) -> CpuParams:
-        return CpuParams.from_ptr(&self.p.cpuparams)
+        return CpuParams.from_ptr(&self.p.cpuparams, self)
 
     @cpuparams.setter
     def cpuparams(self, value: CpuParams):
@@ -781,7 +738,7 @@ cdef class CommonParamsSpeculative:
 
     @property
     def cpuparams_batch(self) -> CpuParams:
-        return CpuParams.from_ptr(&self.p.cpuparams_batch)
+        return CpuParams.from_ptr(&self.p.cpuparams_batch, self)
 
     @cpuparams_batch.setter
     def cpuparams_batch(self, value: CpuParams):
@@ -799,11 +756,13 @@ cdef class CommonParamsSpeculative:
 
 cdef class CommonParamsVocoder:
     cdef llama_cpp.common_params_vocoder *p
+    cdef object owner
 
     @staticmethod
-    cdef CommonParamsVocoder from_ptr(llama_cpp.common_params_vocoder *params):
+    cdef CommonParamsVocoder from_ptr(llama_cpp.common_params_vocoder *params, owner):
         cdef CommonParamsVocoder wrapper = CommonParamsVocoder.__new__(CommonParamsVocoder)
         wrapper.p = params
+        wrapper.owner = owner
         return wrapper
 
     def __init__(self):
@@ -1064,7 +1023,7 @@ cdef class CommonParams:
 
     @property
     def cpuparams(self) -> CpuParams:
-        return CpuParams.from_ptr(&self.p.cpuparams)
+        return CpuParams.from_ptr(&self.p.cpuparams, self)
 
     @cpuparams.setter
     def cpuparams(self, value: CpuParams):
@@ -1072,7 +1031,7 @@ cdef class CommonParams:
 
     @property
     def cpuparams_batch(self) -> CpuParams:
-        return CpuParams.from_ptr(&self.p.cpuparams_batch)
+        return CpuParams.from_ptr(&self.p.cpuparams_batch, self)
 
     @cpuparams_batch.setter
     def cpuparams_batch(self, value: CpuParams):
@@ -1126,7 +1085,7 @@ cdef class CommonParams:
     @property
     def sampling(self) -> CommonParamsSampling:
         """common params sampling."""
-        return CommonParamsSampling.from_ptr(&self.p.sampling)
+        return CommonParamsSampling.from_ptr(&self.p.sampling, self)
 
     @sampling.setter
     def sampling(self, value: CommonParamsSampling):
@@ -1135,7 +1094,7 @@ cdef class CommonParams:
     @property
     def speculative(self) -> CommonParamsSpeculative:
         """common params speculative."""
-        return CommonParamsSpeculative.from_ptr(&self.p.speculative)
+        return CommonParamsSpeculative.from_ptr(&self.p.speculative, self)
 
     @speculative.setter
     def speculative(self, value: CommonParamsSpeculative):
@@ -1144,7 +1103,7 @@ cdef class CommonParams:
     @property
     def vocoder(self) -> CommonParamsVocoder:
         """common params vocoder."""
-        return CommonParamsVocoder.from_ptr(&self.p.vocoder)
+        return CommonParamsVocoder.from_ptr(&self.p.vocoder, self)
 
     @vocoder.setter
     def vocoder(self, value: CommonParamsVocoder):

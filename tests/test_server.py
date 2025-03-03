@@ -1,5 +1,8 @@
 import json
 import pprint
+import sys
+
+print(sys.path)
 import xllamacpp as xlc
 
 

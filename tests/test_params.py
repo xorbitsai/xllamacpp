@@ -1,9 +1,5 @@
-import platform
-
 import pytest
 from pytest import approx
-
-PLATFORM = platform.system()
 
 import xllamacpp as xlc
 

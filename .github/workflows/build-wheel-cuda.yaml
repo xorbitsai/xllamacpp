@@ -111,7 +111,7 @@ jobs:
         run: |
           $cudaVersion = $env:CUDAVER
           mamba install -y 'cuda' -c nvidia/label/cuda-$cudaVersion
-          python -m pip install build wheel
+          python -m pip install build wheel auditwheel
           python -m pip install -r requirements.txt
 
       - name: Build Wheel
@@ -140,6 +140,8 @@ jobs:
           sed -i 's/name = "xllamacpp"/name = "xllamacpp-cuda12x"/g' pyproject.toml
           make
           python -m build --wheel
+          auditwheel repair dist/*.whl -w dist
+          rm dist/*-linux_x86_64.whl
           # write the build tag to the output
           Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
 
@@ -191,14 +193,14 @@ jobs:
           name: artifacts
 
       - name: Publish to PyPI
-        if: github.repository == 'xorbitsai/xllama-cpp'
+        if: github.repository == 'xorbitsai/xllamacpp'
         uses: pypa/gh-action-pypi-publish@v1.8.11
         with:
           user: __token__
           password: ${{ secrets.PYPI_PASSWORD }}
 
       - name: Publish to Test PyPI
-        if: github.repository != 'xorbitsai/xllama-cpp'
+        if: github.repository != 'xorbitsai/xllamacpp'
         uses: pypa/gh-action-pypi-publish@v1.8.11
         with:
           user: __token__
