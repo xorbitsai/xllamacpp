@@ -1552,6 +1552,8 @@ def render_pep440(pieces: Dict[str, Any]) -> str:
     Exceptions:
     1: no tags. git_describe was just HEX. 0+untagged.DISTANCE.gHEX[.dirty]
     """
+    if os.getenv("VERSIONEER_CLOSEST_TAG_ONLY"):
+        return pieces["closest-tag"] or "0"
     if pieces["closest-tag"]:
         rendered = pieces["closest-tag"]
         if pieces["distance"] or pieces["dirty"]:

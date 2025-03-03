@@ -118,6 +118,7 @@ jobs:
         run: |
           $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
           $env:XLLAMACPP_BUILD_CUDA = 1
+          $env:VERSIONEER_CLOSEST_TAG_ONLY = 1
           $env:CUDA_PATH = $env:CONDA_PREFIX
           $env:CUDA_HOME = $env:CONDA_PREFIX
           $env:CUDA_TOOLKIT_ROOT_DIR = $env:CONDA_PREFIX
