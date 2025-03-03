@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+import sys
 import platform
 import subprocess
 from setuptools import Extension, setup
@@ -12,9 +13,12 @@ from Cython.Build import cythonize
 
 BUILD_CUDA = os.getenv("XLLAMACPP_BUILD_CUDA")
 NAME = "xllamacpp-cuda12x" if BUILD_CUDA else "xllamacpp"
-CWD = os.getcwd()
+CWD = os.path.dirname(os.path.abspath(__file__))
 
-VERSION = "0.0.1"
+sys.path.insert(0, CWD)
+import versioneer
+
+VERSION = versioneer.get_version()
 
 PLATFORM = platform.system()
 
@@ -106,6 +110,7 @@ common = {
     "version": VERSION,
     "description": "A cython wrapper of the llama.cpp inference engine.",
     "python_requires": ">=3.8",
+    "cmdclass": versioneer.get_cmdclass(),
     # "include_package_data": True,
 }
 
@@ -123,7 +128,8 @@ if not os.path.exists("MANIFEST.in"):
 
 extensions = [
     mk_extension(
-        "xllamacpp.xllamacpp", sources=["src/xllamacpp/xllamacpp.pyx", "src/xllamacpp/server.cpp"]
+        "xllamacpp.xllamacpp",
+        sources=["src/xllamacpp/xllamacpp.pyx", "src/xllamacpp/server.cpp"],
     ),
 ]
 

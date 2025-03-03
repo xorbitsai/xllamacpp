@@ -1,6 +1,5 @@
 # set path so `llama-cli` etc.. be in path
 export PATH := $(PWD)/bin:$(PATH)
-export MACOSX_DEPLOYMENT_TARGET := 14.7
 
 # models
 MODEL := models/Llama-3.2-1B-Instruct-Q8_0.gguf
