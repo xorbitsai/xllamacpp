@@ -2046,3 +2046,7 @@ cdef class Server:
     def handle_completions(self, string prompt_json_str, res_error, res_ok):
         with nogil:
             self.svr.get().handle_completions(prompt_json_str, callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
+
+    def handle_chat_completions(self, string prompt_json_str, res_error, res_ok):
+        with nogil:
+            self.svr.get().handle_chat_completions(prompt_json_str, callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)

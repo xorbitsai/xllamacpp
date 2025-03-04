@@ -3626,13 +3626,6 @@ handle_completions_impl(server_context &ctx_server, server_task_type type,
     return;
   }
 
-  if (oaicompat != OAICOMPAT_TYPE_NONE) {
-    data = oaicompat_completion_params_parse(
-        data, ctx_server.params_base.use_jinja,
-        ctx_server.params_base.reasoning_format,
-        ctx_server.chat_templates.get());
-  }
-
   auto completion_id = gen_chatcmplid();
   std::vector<server_task> tasks;
 
@@ -3737,7 +3730,7 @@ Server::~Server() { _ctx_server->queue_tasks.terminate(); }
 void Server::handle_completions(const std::string &prompt_json_str,
                                 Callback res_error, void *py_cb_error,
                                 Callback res_ok, void *py_cb_ok) {
-  json data = json::parse(prompt_json_str);
+  json data = oaicompat_completion_params_parse(json::parse(prompt_json_str));
   handle_completions_impl(
       *_ctx_server, SERVER_TASK_TYPE_COMPLETION, data,
       [res_error, py_cb_error](const json &err) {
@@ -3747,5 +3740,23 @@ void Server::handle_completions(const std::string &prompt_json_str,
         res_ok(ok.dump().c_str(), py_cb_ok);
       },
       OAICOMPAT_TYPE_COMPLETION);
+}
+
+void Server::handle_chat_completions(const std::string &prompt_json_str,
+                                     Callback res_error, void *py_cb_error,
+                                     Callback res_ok, void *py_cb_ok) {
+  json data = oaicompat_completion_params_parse(
+      json::parse(prompt_json_str), _ctx_server->params_base.use_jinja,
+      _ctx_server->params_base.reasoning_format,
+      _ctx_server->chat_templates.get());
+  handle_completions_impl(
+      *_ctx_server, SERVER_TASK_TYPE_COMPLETION, data,
+      [res_error, py_cb_error](const json &err) {
+        res_error(err.dump().c_str(), py_cb_error);
+      },
+      [res_ok, py_cb_ok](const json &ok) {
+        res_ok(ok.dump().c_str(), py_cb_ok);
+      },
+      OAICOMPAT_TYPE_CHAT);
 }
 } // namespace xllamacpp

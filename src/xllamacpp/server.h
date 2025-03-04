@@ -17,6 +17,10 @@ public:
                           Callback res_error, void *py_cb_error,
                           Callback res_ok, void *py_cb_ok);
 
+  void handle_chat_completions(const std::string &prompt_json_str,
+                               Callback res_error, void *py_cb_error,
+                               Callback res_ok, void *py_cb_ok);
+
 private:
   common_params _params;
   std::shared_ptr<server_context>

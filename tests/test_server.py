@@ -31,9 +31,20 @@ def test_llama_server(model_path):
         lambda s: pprint.pprint(json.loads(s)),
         lambda s: pprint.pprint(json.loads(s)),
     )
+    server.handle_chat_completions(
+        json.dumps(prompt),
+        lambda s: pprint.pprint(json.loads(s)),
+        lambda s: pprint.pprint(json.loads(s)),
+    )
 
     prompt["stream"] = True
+
     server.handle_completions(
+        json.dumps(prompt),
+        lambda s: pprint.pprint(json.loads(s)),
+        lambda s: pprint.pprint(json.loads(s)),
+    )
+    server.handle_chat_completions(
         json.dumps(prompt),
         lambda s: pprint.pprint(json.loads(s)),
         lambda s: pprint.pprint(json.loads(s)),
