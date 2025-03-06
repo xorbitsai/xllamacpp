@@ -3605,6 +3605,8 @@ static void init(common_params &params, server_context &ctx_server,
 
   ctx_server.queue_tasks.start_loop();
 
+  LOG_INF("%s: main loop stopped\n", __func__);
+
   llama_backend_free();
 }
 
