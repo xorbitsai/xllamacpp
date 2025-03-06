@@ -18,7 +18,25 @@ def test_llama_server(model_path):
 
     server = xlc.Server(params)
 
-    prompt = {
+    complete_prompt = {
+        "max_tokens": 128,
+        "prompt": "Write the fibonacci function in c++.",
+    }
+
+    server.handle_completions(
+        json.dumps(complete_prompt),
+        lambda s: pprint.pprint(json.loads(s)),
+        lambda s: pprint.pprint(json.loads(s)),
+    )
+    complete_prompt["stream"] = True
+
+    server.handle_completions(
+        json.dumps(complete_prompt),
+        lambda s: pprint.pprint(json.loads(s)),
+        lambda s: pprint.pprint(json.loads(s)),
+    )
+
+    chat_complete_prompt = {
         "max_tokens": 128,
         "messages": [
             {"role": "system", "content": "You are a coding assistant."},
@@ -26,26 +44,16 @@ def test_llama_server(model_path):
         ],
     }
 
-    server.handle_completions(
-        json.dumps(prompt),
-        lambda s: pprint.pprint(json.loads(s)),
-        lambda s: pprint.pprint(json.loads(s)),
-    )
     server.handle_chat_completions(
-        json.dumps(prompt),
+        json.dumps(chat_complete_prompt),
         lambda s: pprint.pprint(json.loads(s)),
         lambda s: pprint.pprint(json.loads(s)),
     )
 
-    prompt["stream"] = True
+    chat_complete_prompt["stream"] = True
 
-    server.handle_completions(
-        json.dumps(prompt),
-        lambda s: pprint.pprint(json.loads(s)),
-        lambda s: pprint.pprint(json.loads(s)),
-    )
     server.handle_chat_completions(
-        json.dumps(prompt),
+        json.dumps(chat_complete_prompt),
         lambda s: pprint.pprint(json.loads(s)),
         lambda s: pprint.pprint(json.loads(s)),
     )
