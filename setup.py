@@ -64,9 +64,14 @@ if PLATFORM == "Darwin":
     EXTRA_OBJECTS.extend(
         [
             f"{LLAMACPP_LIBS_DIR}/libggml-blas.a",
-            f"{LLAMACPP_LIBS_DIR}/libggml-metal.a",
         ]
     )
+    if platform.processor() == "arm":
+        EXTRA_OBJECTS.extend(
+            [
+                f"{LLAMACPP_LIBS_DIR}/libggml-metal.a",
+            ]
+        )
 
 INCLUDE_DIRS.append(os.path.join(CWD, "src/xllamacpp"))
 
