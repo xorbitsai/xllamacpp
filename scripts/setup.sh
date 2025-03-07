@@ -10,6 +10,9 @@ THIRDPARTY=${CWD}/thirdparty
 
 build_llamacpp() {
 	echo "update from llama.cpp main repo"
+	echo $LD_LIBRARY_PATH #path
+	sudo find /usr/ -name 'libcuda.so.*' #version
+	echo "xxxxxxxxxxxx"
 	PROJECT=${THIRDPARTY}/llama.cpp
 	PREFIX=${CWD}/src/llama.cpp
 	INCLUDE=${PREFIX}/include
