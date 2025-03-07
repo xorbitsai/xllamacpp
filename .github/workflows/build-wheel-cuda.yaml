@@ -120,7 +120,9 @@ jobs:
           $env:CUDA_HOME = $env:CONDA_PREFIX
           $env:CUDA_TOOLKIT_ROOT_DIR = $env:CONDA_PREFIX
           if ($IsLinux) {
-            $env:LD_LIBRARY_PATH = $env:CONDA_PREFIX + '/lib:' + $env:CONDA_PREFIX + '/lib/stubs:' + $env:LD_LIBRARY_PATH
+            $env:LD_LIBRARY_PATH = $env:CONDA_PREFIX + '/lib:' + $env:LD_LIBRARY_PATH
+            echo $LD_LIBRARY_PATH #path
+            sudo find /usr/ -name 'libcuda.so.*' #version
           }
           $env:VERBOSE = '1'
           $env:CMAKE_ARGS = '-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=all'
@@ -137,8 +139,6 @@ jobs:
           # Change project name
           sed -i 's/name = "xllamacpp"/name = "xllamacpp-cuda12x"/g' pyproject.toml
           dir env:
-          echo $LD_LIBRARY_PATH #path
-          sudo find /usr/ -name 'libcuda.so.*' #version
           make
           python -m build --wheel
           if ($IsLinux) {
