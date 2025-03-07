@@ -45,7 +45,7 @@ LIBRARIES = []
 if PLATFORM == "Windows":
     LIBRARIES.extend(["common", "llama", "ggml", "ggml-base", "ggml-cpu", "Advapi32"])
     if BUILD_CUDA:
-        LIBRARY_DIRS.extend([os.getenv("CUDA_PATH_V12_4", "") + "\\Lib\\x64"])
+        LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "\\Lib\\x64"])
         LIBRARIES.extend(["ggml-cuda", "cudart", "cublas", "cublasLt", "cuda"])
 else:
     LIBRARIES.extend(["pthread"])
@@ -59,7 +59,8 @@ else:
         ]
     )
     if BUILD_CUDA:
-        EXTRA_OBJECTS.extend([f"{LLAMACPP_LIBS_DIR}/libggml-cuda.a"])
+        LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "/lib/stubs"])
+        LIBRARIES.extend(["cudart", "cublas", "cublasLt", "cuda"])
 if PLATFORM == "Darwin":
     EXTRA_OBJECTS.extend(
         [
