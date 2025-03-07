@@ -95,7 +95,7 @@ if PLATFORM == "Darwin":
     )
 
 if PLATFORM == "Linux":
-    EXTRA_LINK_ARGS.extend(["-fopenmp", "-Wl,--no-undefined"])
+    EXTRA_LINK_ARGS.extend(["-fopenmp"])
 
 
 def mk_extension(name, sources, define_macros=None):
