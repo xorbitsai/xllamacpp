@@ -136,6 +136,7 @@ jobs:
           # }
           # Change project name
           sed -i 's/name = "xllamacpp"/name = "xllamacpp-cuda12x"/g' pyproject.toml
+          dir env:
           make
           python -m build --wheel
           if ($IsLinux) {
