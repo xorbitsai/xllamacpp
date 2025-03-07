@@ -64,7 +64,6 @@ else:
                 f"{LLAMACPP_LIBS_DIR}/libggml-cuda.a",
             ]
         )
-        LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "/lib/stubs"])
         LIBRARIES.extend(["cudart", "cublas", "cublasLt", "cuda"])
 if PLATFORM == "Darwin":
     EXTRA_OBJECTS.extend(
