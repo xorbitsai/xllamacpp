@@ -137,6 +137,8 @@ jobs:
           # Change project name
           sed -i 's/name = "xllamacpp"/name = "xllamacpp-cuda12x"/g' pyproject.toml
           dir env:
+          echo $LD_LIBRARY_PATH #path
+          sudo find /usr/ -name 'libcuda.so.*' #version
           make
           python -m build --wheel
           if ($IsLinux) {

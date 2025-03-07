@@ -27,7 +27,7 @@ LLAMACPP_LIBS_DIR = os.path.join(CWD, "src/llama.cpp/lib")
 
 DEFINE_MACROS = []
 EXTRA_COMPILE_ARGS = ["-std=c++14"]
-EXTRA_LINK_ARGS = []
+EXTRA_LINK_ARGS = ["--no-undefined"]
 EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
     "src/xllamacpp",
