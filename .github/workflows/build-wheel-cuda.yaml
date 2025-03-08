@@ -143,7 +143,7 @@ jobs:
             auditwheel repair --plat manylinux_2_35_x86_64 --exclude libcuda.so.1 dist/*.whl -w dist
             rm dist/*-linux_x86_64.whl
           } else {
-            delvewheel repair dist/*.whl -w dist
+            delvewheel repair --exclude nvcuda.dll dist/*.whl -w dist
           }
           # write the build tag to the output
           Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
