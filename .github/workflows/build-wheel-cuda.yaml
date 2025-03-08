@@ -108,7 +108,7 @@ jobs:
         run: |
           $cudaVersion = $env:CUDAVER
           mamba install -y 'cuda' -c nvidia/label/cuda-$cudaVersion
-          python -m pip install build wheel auditwheel
+          python -m pip install build wheel auditwheel delvewheel
           python -m pip install -r requirements.txt
 
       - name: Build Wheel
@@ -142,6 +142,8 @@ jobs:
           if ($IsLinux) {
             auditwheel repair --plat manylinux_2_35_x86_64 --exclude libcuda.so.1 dist/*.whl -w dist
             rm dist/*-linux_x86_64.whl
+          } else {
+            delvewheel repair dist/*.whl -w dist
           }
           # write the build tag to the output
           Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
