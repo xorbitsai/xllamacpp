@@ -148,23 +148,19 @@ jobs:
           # write the build tag to the output
           Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
 
-      # - uses: actions/upload-artifact@v4
-      #   with:
-      #     name: wheel-${{ matrix.pyver }}-${{ matrix.cuda }}-${{ matrix.os }}
-      #     path: ./dist/*.whl
-
-  publish_github:
-    needs: [build_wheels]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    steps:
       - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         with:
           files: dist/*
           # Set tag_name to <tag>-cu<cuda_version>
           tag_name: ${{ github.ref_name }}-cu${{ env.CUDA_VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # - uses: actions/upload-artifact@v4
+      #   with:
+      #     name: wheel-${{ matrix.pyver }}-${{ matrix.cuda }}-${{ matrix.os }}
+      #     path: ./dist/*.whl
 
   # The wheel is too large > 100MB to upload to the pypi.
   # upload_pypi:
