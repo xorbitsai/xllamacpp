@@ -12,7 +12,7 @@ from Cython.Build import cythonize
 # constants
 
 BUILD_CUDA = os.getenv("XLLAMACPP_BUILD_CUDA")
-NAME = "xllamacpp-cuda12x" if BUILD_CUDA else "xllamacpp"
+# NAME = "xllamacpp-cuda12x" if BUILD_CUDA else "xllamacpp"
 CWD = os.path.dirname(os.path.abspath(__file__))
 
 sys.path.insert(0, CWD)

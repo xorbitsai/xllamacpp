@@ -135,7 +135,7 @@ jobs:
           #  $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX=off -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
           # }
           # Change project name
-          sed -i 's/name = "xllamacpp"/name = "xllamacpp-cuda12x"/g' pyproject.toml
+          # sed -i 's/name = "xllamacpp"/name = "xllamacpp-cuda12x"/g' pyproject.toml
           dir env:
           make
           python -m build --wheel
