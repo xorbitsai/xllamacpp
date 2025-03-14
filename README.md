@@ -1,46 +1,18 @@
 # xllamacpp - a Python wrapper of llama.cpp
 
-This project forks from [cyllama](https://github.com/shakfu/cyllama) and provides a Python wrapper for @ggerganov's [llama.cpp](https://github.com/ggerganov/llama.cpp) which is likely the most active open-source compiled LLM inference engine. It was spun-off from my earlier, now frozen, llama.cpp wrapper project, [llamalib](https://github.com/shakfu/llamalib)  which provided early stage, but functional, wrappers using [cython](https://github.com/cython/cython), [pybind11](https://github.com/pybind/pybind11), and [nanobind](https://github.com/wjakob/nanobind). Further development of `xllamacpp`, the cython wrapper from `llamalib`, will continue in this project.
+This project forks from [cyllama](https://github.com/shakfu/cyllama) and provides a Python wrapper for @ggerganov's [llama.cpp](https://github.com/ggerganov/llama.cpp) which is likely the most active open-source compiled LLM inference engine.
 
-Development goals are to:
+## Compare to llama-cpp-python 
 
-- Stay up-to-date with bleeding-edge `llama.cpp` (last stable build with llama.cpp `b4381`)
+The following table provide an overview of the current implementations / features:
 
-- Produce a minimal, performant, compiled, thin python wrapper around the core `llama-cli` feature-set of `llama.cpp`.
-
-- Integrate and wrap `llava-cli` features.
-
-- Integrate and wrap features from related projects such as [whisper.cpp](https://github.com/ggerganov/whisper.cpp) and [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
-
-- Learn about the internals of this popular C++/C LLM inference engine along the way. For me at least, this is definitely the most efficient way to learn about the underlying technologies.
-
-Given that there is a fairly mature, well-maintained and performant ctypes-based wrapper provided by @abetlen's [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) project and that LLM inference is gpu-driven rather than cpu-driven, this all may see quite redundant. Nonetheless, we anticipate some benefits to using a compiled cython-based wrapper instead of ctypes:
-
-- Cython functions and extension classes can enforce strong type checking.
-
-- Packaging benefits with respect to self-contained statically compiled extension modules, which include simpler compilation and reduced package size.
-
-- There may be some performance improvements in the use of compiled wrappers over the use of ctypes.
-
-- It may be possible to incorporate external optimizations more readily into compiled wrappers.
-
-- It may be useful in case one wants to de-couple the python frontend and wrapper backends to existing frameworks: for example, to just replace the ctypes wrapper part in `llama-cpp-python` with compiled cython wrappers and contribute it back as a PR.
-
-## Status
-
-Development is done only on macOS to keep things simple, with intermittent testing to ensure it works on Linux. 
-
-The following table provide an overview of the current wrapping/dev status:
-
-| status                       | xllamacpp       |
-| :--------------------------- | :-----------: |
-| wrapper-type                 | cython        |
-| wrap llama.h + other headers | yes           |
-| wrap high-level simple-cli   | yes           |
-| wrap low-level simple-cli    | yes           |
-| wrap low-level llama-cli     | WIP           |
-  
-The initial milestone entailed creating a high-level wrapper of the `simple.cpp` llama.cpp example, followed by a low-level one. The next objective is to fully wrap the functionality of `llama-cli` which is ongoing (see: `xllamacpp.__init__.py`).
+| implementations / features             | xllamacpp     | llama-cpp-python |
+| :--------------------------- | :-----------: | :--------------: |     
+| Wrapper-type                 | cython        | ctypes           |
+| API                           | Server & Params API  | Llama API |
+| Server implementation   | C++           | Python through wrapped LLama API |
+| Continuous batching    | yes           | no |
+| Thread safe     | yes           | no |
 
 It goes without saying that any help / collaboration / contributions to accelerate the above would be welcome!
 
@@ -54,6 +26,20 @@ As the intent is to provide a very thin wrapping layer and play to the strengths
 
 - Minimize non-wrapper python code.
 
+## Install
+
+- From pypi for `CPU` or `Mac`:
+
+```sh
+pip install -U xllamacpp
+```
+
+- From github pypi for `CUDA` (use `--force-reinstall` to replace the installed CPU version):
+
+```sh
+pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu124
+```
+
 ## Setup
 
 To build `xllamacpp`:
@@ -63,7 +49,7 @@ To build `xllamacpp`:
 2. Git clone the latest version of `xllamacpp`:
 
  ```sh
- git clone https://github.com/shakfu/xllamacpp.git
+ git clone git@github.com:xorbitsai/xllamacpp.git
  cd xllamacpp
  git submodule init
  git submodule update
@@ -76,12 +62,6 @@ To build `xllamacpp`:
  ```
 
 4. Type `make` in the terminal.
-
-This will:
-
-1. Download and build `llama.cpp`
-2. Install it into `bin`, `include`, and `lib` in the cloned `xllamacpp` folder
-3. Build `xllamacpp`
 
 ## Testing
 
@@ -113,25 +93,3 @@ You can also run the test suite with `pytest` by typing `pytest` or:
 ```sh
 make test
 ```
-
-If all tests pass, you can type `python3 -i scripts/start.py` or `ipython -i scripts/start.py` and explore the `xllamacpp` library with a pre-configured repl:
-
-```python
-from xllamacpp import Llama
-llm = Llama(model_path='models/Llama-3.2-1B-Instruct-Q8_0.gguf')
-llm.ask("what is the age of the universe?")
-'estimated age of the universe\nThe estimated age of the universe is around 13.8 billion years'
-```
-
-
-## TODO
-
-- [x] wrap llama-simple
-
-- [ ] wrap llama-cli (WIP: see: `xllamacpp.__init__`)
-
-- [ ] wrap llama-llava-cli
-
-- [ ] wrap [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
-
-- [ ] wrap [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
