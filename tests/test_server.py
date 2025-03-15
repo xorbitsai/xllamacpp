@@ -15,6 +15,7 @@ def test_llama_server(model_path):
     params.n_ctx = 512
     params.cpuparams.n_threads = 4
     params.cpuparams_batch.n_threads = 2
+    params.endpoint_metrics = True
 
     server = xlc.Server(params)
 
@@ -56,4 +57,9 @@ def test_llama_server(model_path):
         json.dumps(chat_complete_prompt),
         lambda s: pprint.pprint(json.loads(s)),
         lambda s: pprint.pprint(json.loads(s)),
+    )
+
+    server.handle_metrics(
+        lambda s: pprint.pprint(json.loads(s)),
+        lambda s: print(s.decode("utf-8")),
     )

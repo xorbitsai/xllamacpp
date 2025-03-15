@@ -3613,11 +3613,11 @@ static void init(common_params &params, server_context &ctx_server,
 // handle completion-like requests (completion, chat, infill)
 // we can optionally provide a custom format for partial results and final
 // results
-static const void
-handle_completions_impl(server_context &ctx_server, server_task_type type,
-                        json &data, std::function<void(const json &)> res_error,
-                        std::function<void(const json &)> res_ok,
-                        oaicompat_type oaicompat) {
+static void handle_completions_impl(server_context &ctx_server,
+                                    server_task_type type, json &data,
+                                    std::function<void(const json &)> res_error,
+                                    std::function<void(const json &)> res_ok,
+                                    oaicompat_type oaicompat) {
   GGML_ASSERT(type == SERVER_TASK_TYPE_COMPLETION ||
               type == SERVER_TASK_TYPE_INFILL);
 
@@ -3711,6 +3711,109 @@ handle_completions_impl(server_context &ctx_server, server_task_type type,
   }
 };
 
+// handle metrics requests
+static void
+handle_metrics_impl(server_context &ctx_server,
+                    std::function<void(const json &)> res_error,
+                    std::function<void(const std::string &)> res_ok) {
+  if (!ctx_server.params_base.endpoint_metrics) {
+    res_error(format_error_response("This server does not support metrics "
+                                    "endpoint. Start it with `--metrics`",
+                                    ERROR_TYPE_NOT_SUPPORTED));
+    return;
+  }
+
+  // request slots data using task queue
+  server_task task(SERVER_TASK_TYPE_METRICS);
+  task.id = ctx_server.queue_tasks.get_new_id();
+  task.metrics_reset_bucket = true;
+
+  ctx_server.queue_results.add_waiting_task_id(task.id);
+  ctx_server.queue_tasks.post(task, true); // high-priority task
+
+  // get the result
+  server_task_result_ptr result = ctx_server.queue_results.recv(task.id);
+  ctx_server.queue_results.remove_waiting_task_id(task.id);
+
+  if (result->is_error()) {
+    res_error(result->to_json());
+    return;
+  }
+
+  // TODO: get rid of this dynamic_cast
+  auto res_metrics = dynamic_cast<server_task_result_metrics *>(result.get());
+  GGML_ASSERT(res_metrics != nullptr);
+
+  // metrics definition:
+  // https://prometheus.io/docs/practices/naming/#metric-names
+  json all_metrics_def = json{
+      {"counter",
+       {{{"name", "prompt_tokens_total"},
+         {"help", "Number of prompt tokens processed."},
+         {"value", (uint64_t)res_metrics->n_prompt_tokens_processed_total}},
+        {{"name", "prompt_seconds_total"},
+         {"help", "Prompt process time"},
+         {"value", (uint64_t)res_metrics->t_prompt_processing_total / 1.e3}},
+        {{"name", "tokens_predicted_total"},
+         {"help", "Number of generation tokens processed."},
+         {"value", (uint64_t)res_metrics->n_tokens_predicted_total}},
+        {{"name", "tokens_predicted_seconds_total"},
+         {"help", "Predict process time"},
+         {"value", (uint64_t)res_metrics->t_tokens_generation_total / 1.e3}},
+        {{"name", "n_decode_total"},
+         {"help", "Total number of llama_decode() calls"},
+         {"value", res_metrics->n_decode_total}},
+        {{"name", "n_busy_slots_per_decode"},
+         {"help", "Average number of busy slots per llama_decode() call"},
+         {"value", (float)res_metrics->n_busy_slots_total /
+                       std::max((float)res_metrics->n_decode_total, 1.f)}}}},
+      {"gauge",
+       {{{"name", "prompt_tokens_seconds"},
+         {"help", "Average prompt throughput in tokens/s."},
+         {"value", res_metrics->n_prompt_tokens_processed
+                       ? 1.e3 / res_metrics->t_prompt_processing *
+                             res_metrics->n_prompt_tokens_processed
+                       : 0.}},
+        {{"name", "predicted_tokens_seconds"},
+         {"help", "Average generation throughput in tokens/s."},
+         {"value", res_metrics->n_tokens_predicted
+                       ? 1.e3 / res_metrics->t_tokens_generation *
+                             res_metrics->n_tokens_predicted
+                       : 0.}},
+        {{"name", "kv_cache_usage_ratio"},
+         {"help", "KV-cache usage. 1 means 100 percent usage."},
+         {"value", 1. * res_metrics->kv_cache_used_cells /
+                       ctx_server.params_base.n_ctx}},
+        {{"name", "kv_cache_tokens"},
+         {"help", "KV-cache tokens."},
+         {"value", (uint64_t)res_metrics->kv_cache_tokens_count}},
+        {{"name", "requests_processing"},
+         {"help", "Number of requests processing."},
+         {"value", (uint64_t)res_metrics->n_processing_slots}},
+        {{"name", "requests_deferred"},
+         {"help", "Number of requests deferred."},
+         {"value", (uint64_t)res_metrics->n_tasks_deferred}}}}};
+
+  std::stringstream prometheus;
+
+  for (const auto &el : all_metrics_def.items()) {
+    const auto &type = el.key();
+    const auto &metrics_def = el.value();
+
+    for (const auto &metric_def : metrics_def) {
+      const std::string name = metric_def.at("name");
+      const std::string help = metric_def.at("help");
+
+      auto value = json_value(metric_def, "value", 0.);
+      prometheus << "# HELP llamacpp:" << name << " " << help << "\n"
+                 << "# TYPE llamacpp:" << name << " " << type << "\n"
+                 << "llamacpp:" << name << " " << value << "\n";
+    }
+  }
+
+  res_ok(prometheus.str());
+};
+
 #include "server.h"
 
 namespace xllamacpp {
@@ -3760,5 +3863,15 @@ void Server::handle_chat_completions(const std::string &prompt_json_str,
         res_ok(ok.dump().c_str(), py_cb_ok);
       },
       OAICOMPAT_TYPE_CHAT);
+}
+
+void Server::handle_metrics(Callback res_error, void *py_cb_error,
+                            Callback res_ok, void *py_cb_ok) {
+  handle_metrics_impl(
+      *_ctx_server,
+      [res_error, py_cb_error](const json &err) {
+        res_error(err.dump().c_str(), py_cb_error);
+      },
+      [res_ok, py_cb_ok](const std::string &ok) { res_ok(ok, py_cb_ok); });
 }
 } // namespace xllamacpp

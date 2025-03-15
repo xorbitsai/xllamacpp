@@ -21,3 +21,8 @@ cdef extern from "server.h" namespace "xllamacpp" nogil:
                 void *py_cb_error,
                 Callback res_ok,
                 void *py_cb_ok) except +
+
+        void handle_metrics(Callback res_error,
+                void *py_cb_error,
+                Callback res_ok,
+                void *py_cb_ok) except +
