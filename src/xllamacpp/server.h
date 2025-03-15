@@ -21,6 +21,9 @@ public:
                                Callback res_error, void *py_cb_error,
                                Callback res_ok, void *py_cb_ok);
 
+  void handle_metrics(Callback res_error, void *py_cb_error, Callback res_ok,
+                      void *py_cb_ok);
+
 private:
   common_params _params;
   std::shared_ptr<server_context>
