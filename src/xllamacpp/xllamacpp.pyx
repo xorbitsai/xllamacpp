@@ -1598,6 +1598,15 @@ cdef class CommonParams:
         self.p.check_tensors = value
 
     @property
+    def single_turn(self) -> bool:
+        """single turn chat conversation"""
+        return self.p.single_turn
+
+    @single_turn.setter
+    def single_turn(self, value: bool):
+        self.p.single_turn = value
+
+    @property
     def cache_type_k(self) -> ggml_type:
         """data type for K cache"""
         return <ggml_type>self.p.cache_type_k
@@ -1948,7 +1957,7 @@ cdef class CommonParams:
 
     @property
     def out_file(self) -> str:
-        """save the resulting imatrix to this file"""
+        """output filename for all example programs"""
         return self.p.out_file.decode()
 
     @out_file.setter

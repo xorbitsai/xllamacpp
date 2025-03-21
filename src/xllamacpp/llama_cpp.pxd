@@ -113,6 +113,7 @@ cdef extern from "ggml.h":
         GGML_OP_RMS_NORM
         GGML_OP_RMS_NORM_BACK
         GGML_OP_GROUP_NORM
+        GGML_OP_L2_NORM
 
         GGML_OP_MUL_MAT
         GGML_OP_MUL_MAT_ID
@@ -360,9 +361,17 @@ cdef extern from "common.h":
         COMMON_CONVERSATION_MODE_ENABLED
         COMMON_CONVERSATION_MODE_AUTO
 
+    cdef enum common_grammar_trigger_type:
+        COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN
+        COMMON_GRAMMAR_TRIGGER_TYPE_WORD
+        COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN
+        COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START
+
     ctypedef struct common_grammar_trigger:
-        std_string word
+        common_grammar_trigger_type type
+        std_string value
         bint at_start
+        llama_token token
 
     # sampler parameters
     ctypedef struct common_params_sampling:
@@ -402,8 +411,7 @@ cdef extern from "common.h":
 
         std_string grammar # optional BNF-like grammar to constrain sampling
         bint                                grammar_lazy
-        std_vector[common_grammar_trigger]  grammar_trigger_words  # optional trigger words to trigger lazy grammar
-        std_vector[llama_token]             grammar_trigger_tokens # optional trigger tokens to trigger lazy grammar and print trigger special tokens.
+        std_vector[common_grammar_trigger]  grammar_triggers  # optional triggers (for lazy grammars)
         std_set[llama_token]                preserved_tokens
 
         std_vector[llama_logit_bias] logit_bias # logit biases to apply
@@ -436,6 +444,7 @@ cdef extern from "common.h":
 
         std_string model       # model path                                                // NOLINT
         std_string model_url   # model url to download                                     // NOLINT
+        std_string speaker_file # speaker file path                                      // NOLINT
         bint use_guide_tokens  # enable guide tokens to improve TTS accuracy            // NOLINT
 
 
@@ -560,6 +569,7 @@ cdef extern from "common.h":
         bint no_kv_offload          # disable KV offloading
         bint warmup                 # warmup run
         bint check_tensors          # validate tensor data
+        bint single_turn            # single turn chat conversation
 
         ggml_type cache_type_k      # KV cache data type for the K
         ggml_type cache_type_v      # KV cache data type for the V
@@ -627,8 +637,6 @@ cdef extern from "common.h":
         int32_t i_pos       # position of the passkey in the junk text
 
         # imatrix params
-        std_string out_file # save the resulting imatrix to this file
-
         int32_t n_out_freq       # output the imatrix every n_out_freq iterations
         int32_t n_save_freq      # save the imatrix every n_save_freq iterations
         int32_t i_chunk          # start processing from this chunk
@@ -640,13 +648,13 @@ cdef extern from "common.h":
         int n_pca_batch
         int n_pca_iterations
         dimre_method cvector_dimre_method
-        std_string cvector_outfile
         std_string cvector_positive_file
         std_string cvector_negative_file
 
         bint spm_infill
 
-        std_string lora_outfile
-
         # batched-bench params
         bint batched_bench_output_jsonl
+    
+        # common params
+        std_string out_file      # output filename for all example programs
