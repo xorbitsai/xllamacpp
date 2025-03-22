@@ -1,5 +1,5 @@
 <div align="center">
-<img src="./assets/logo.png" width="300px" alt="xorbits" />
+<img src="./assets/logo.png" width="400px" alt="xorbits" />
 
 # xllamacpp - a Python wrapper of llama.cpp
 
