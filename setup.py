@@ -121,8 +121,9 @@ common = {
     "name": NAME,
     "version": VERSION,
     "description": "A cython wrapper of the llama.cpp inference engine.",
-    "python_requires": ">=3.8",
+    "python_requires": ">=3.9",
     "cmdclass": versioneer.get_cmdclass(),
+    "license": "MIT",
     # "include_package_data": True,
 }
 
