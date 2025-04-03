@@ -27,7 +27,7 @@ test: build
 
 $(MODEL):
 	@mkdir -p models && cd models && \
-		wget https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf
+		curl --output Llama-3.2-1B-Instruct-Q8_0.gguf -L https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf
 
 download: $(MODEL)
 	@echo "minimal model downloaded to models directory"
