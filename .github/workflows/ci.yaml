@@ -64,7 +64,6 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
-          activate-environment: ${{ env.CONDA_ENV }}
 
       - name: Install dependencies
         env:
