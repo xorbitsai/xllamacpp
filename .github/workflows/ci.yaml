@@ -44,10 +44,6 @@ jobs:
   build_test_job:
     runs-on: ${{ matrix.os }}
     needs: lint
-    env:
-      CONDA_ENV: test
-      SELF_HOST_PYTHON: /root/miniconda3/envs/inference_test/bin/python
-      SELF_HOST_CONDA: /root/miniconda3/condabin/conda
     defaults:
       run:
         shell: bash -l {0}
@@ -77,6 +73,7 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-timeout
           make
+          make download
         working-directory: .
 
       - name: Test with pytest
