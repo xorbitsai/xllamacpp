@@ -660,6 +660,57 @@ cdef class CpuParams:
         self.p.poll = value
 
 
+cdef class CommonParamsModel:
+    cdef llama_cpp.common_params_model *p
+    cdef object owner
+
+    @staticmethod
+    cdef CommonParamsModel from_ptr(llama_cpp.common_params_model *params, object owner):
+        cdef CommonParamsModel wrapper = CommonParamsModel.__new__(CommonParamsModel)
+        wrapper.p = params
+        wrapper.owner = owner
+        return wrapper
+
+    def __init__(self):
+        raise Exception(f"Can't construct an instance of {type(self).__name__}")
+
+    @property
+    def path(self) -> str:
+        """model local path"""
+        return self.p.path.decode()
+
+    @path.setter
+    def path(self, value: str):
+        self.p.path = value.encode()
+
+    @property
+    def url(self) -> str:
+        """model url to download"""
+        return self.p.url.decode()
+
+    @url.setter
+    def url(self, value: str):
+        self.p.url = value.encode()
+
+    @property
+    def hf_repo(self) -> str:
+        """HF repo"""
+        return self.p.hf_repo.decode()
+
+    @hf_repo.setter
+    def hf_repo(self, value: str):
+        self.p.hf_repo = value.encode()
+
+    @property
+    def hf_file(self) -> str:
+        """HF file"""
+        return self.p.hf_file.decode()
+
+    @hf_file.setter
+    def hf_file(self, value: str):
+        self.p.hf_file = value.encode()
+
+
 cdef class CommonParamsSpeculative:
     cdef llama_cpp.common_params_speculative *p
     cdef object owner
@@ -745,13 +796,12 @@ cdef class CommonParamsSpeculative:
         self.p.cpuparams_batch = deref(value.p)
 
     @property
-    def model(self) -> str:
-        """ draft model for speculative decoding."""
-        return self.p.model
+    def model(self) -> CommonParamsModel:
+        return CommonParamsModel.from_ptr(&self.p.model, self)
 
     @model.setter
-    def model(self, value: str):
-        self.p.model = value
+    def model(self, value: CommonParamsModel):
+        self.p.model = deref(value.p)
 
 
 cdef class CommonParamsVocoder:
@@ -769,40 +819,21 @@ cdef class CommonParamsVocoder:
         raise Exception(f"Can't construct an instance of {type(self).__name__}")
 
     @property
-    def hf_repo(self) -> str:
-        """HF repo"""
-        return self.p.hf_repo.decode()
-
-    @hf_repo.setter
-    def hf_repo(self, value: str):
-        self.p.hf_repo = value.encode()
-
-    @property
-    def hf_file(self) -> str:
-        """HF file"""
-        return self.p.hf_file.decode()
-
-    @hf_file.setter
-    def hf_file(self, value: str):
-        self.p.hf_file = value.encode()
-
-    @property
-    def model(self) -> str:
-        """model path"""
-        return self.p.model.decode()
+    def model(self) -> CommonParamsModel:
+        return CommonParamsModel.from_ptr(&self.p.model, self)
 
     @model.setter
-    def model(self, value: str):
-        self.p.model = value.encode()
+    def model(self, value: CommonParamsModel):
+        self.p.model = deref(value.p)
 
     @property
-    def model_url(self) -> str:
-        """model url to download."""
-        return self.p.model_url.decode()
+    def speaker_file(self) -> str:
+        """speaker file path"""
+        return self.p.speaker_file.decode()
 
-    @model_url.setter
-    def model_url(self, value: str):
-        self.p.model_url = value.encode()
+    @speaker_file.setter
+    def speaker_file(self, value: str):
+        self.p.speaker_file = value.encode()
 
 
 cdef class CommonParams:
@@ -1110,13 +1141,12 @@ cdef class CommonParams:
         self.p.vocoder = deref(value.p)
 
     @property
-    def model(self) -> str:
-        """model path"""
-        return self.p.model.decode()
+    def model(self) -> CommonParamsModel:
+        return CommonParamsModel.from_ptr(&self.p.model, self)
 
     @model.setter
-    def model(self, value: str):
-        self.p.model = value.encode('utf8')
+    def model(self, value: CommonParamsModel):
+        self.p.model = deref(value.p)
 
     @property
     def model_alias(self) -> str:
@@ -1128,15 +1158,6 @@ cdef class CommonParams:
         self.p.model_alias = value.encode('utf8')
 
     @property
-    def model_url(self) -> str:
-        """model url to download """
-        return self.p.model_url.decode()
-
-    @model_url.setter
-    def model_url(self, value: str):
-        self.p.model_url = value.encode('utf8')
-
-    @property
     def hf_token(self) -> str:
         """hf token"""
         return self.p.hf_token.decode()
@@ -1144,24 +1165,6 @@ cdef class CommonParams:
     @hf_token.setter
     def hf_token(self, value: str):
         self.p.hf_token = value.encode('utf8')
-
-    @property
-    def hf_repo(self) -> str:
-        """hf repo"""
-        return self.p.hf_repo.decode()
-
-    @hf_repo.setter
-    def hf_repo(self, value: str):
-        self.p.hf_repo = value.encode('utf8')
-
-    @property
-    def hf_file(self) -> str:
-        """hf file"""
-        return self.p.hf_file.decode()
-
-    @hf_file.setter
-    def hf_file(self, value: str):
-        self.p.hf_file = value.encode('utf8')
 
     @property
     def prompt(self) -> str:
@@ -1264,6 +1267,7 @@ cdef class CommonParams:
             self.p.antiprompt.push_back(i.encode('utf8'))
 
     # std::vector<llama_model_kv_override> kv_overrides;
+    # std::vector<llama_model_tensor_buft_override> tensor_buft_overrides;
 
     @property
     def lora_init_without_apply(self) -> bool:
@@ -1625,13 +1629,12 @@ cdef class CommonParams:
         self.p.cache_type_v = value
 
     @property
-    def mmproj(self) -> str:
-        """path to multimodal projector"""
-        return self.p.mmproj.decode()
+    def mmproj(self) -> CommonParamsModel:
+        return CommonParamsModel.from_ptr(&self.p.mmproj, self)
 
     @mmproj.setter
-    def mmproj(self, value: str):
-        self.p.mmproj = value.encode('utf8')
+    def mmproj(self, value: CommonParamsModel):
+        self.p.mmproj = deref(value.p)
 
     @property
     def image(self) -> list[str]:

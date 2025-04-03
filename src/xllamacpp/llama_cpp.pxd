@@ -176,8 +176,15 @@ cdef extern from "ggml.h":
 
         GGML_OP_COUNT
 
+
+    ctypedef struct ggml_backend_buffer_type:
+        pass
+
     ctypedef struct ggml_backend_buffer:
         pass
+
+
+    ctypedef ggml_backend_buffer_type * ggml_backend_buffer_type_t
 
     # -------------------------------------------------------------------------
     # n-dimensional tensor
@@ -275,6 +282,10 @@ cdef extern from "llama.h":
         double  val_f64
         bint    val_bool
         char    val_str[128]
+
+    ctypedef struct llama_model_tensor_buft_override:
+        const char * pattern
+        ggml_backend_buffer_type_t buft
 
     ctypedef struct llama_logit_bias:
         llama_token token
@@ -419,6 +430,14 @@ cdef extern from "common.h":
         # print the parameters into a string
         # std_string print() const
 
+
+    ctypedef struct common_params_model:
+        std_string path          # model local path                                           // NOLINT
+        std_string url           # model url to download                                      // NOLINT
+        std_string hf_repo       # HF repo                                                    // NOLINT
+        std_string hf_file       # HF file                                                    // NOLINT
+
+
     ctypedef struct common_params_speculative:
         std_vector[ggml_backend_dev_t] devices # devices to use for offloading
         int32_t n_ctx           # draft context size
@@ -430,20 +449,11 @@ cdef extern from "common.h":
 
         cpu_params cpuparams
         cpu_params cpuparams_batch
-
-        std_string hf_repo     # HF repo                                                     // NOLINT
-        std_string hf_file     # HF file                                                     // NOLINT
-
-        std_string model       # draft model for speculative decoding                      // NOLINT
-        std_string model_url   # model url to download                                     // NOLINT
+        common_params_model model
 
 
     ctypedef struct common_params_vocoder:
-        std_string hf_repo     # HF repo                                                     // NOLINT
-        std_string hf_file     # HF file                                                     // NOLINT
-
-        std_string model       # model path                                                // NOLINT
-        std_string model_url   # model url to download                                     // NOLINT
+        common_params_model model
         std_string speaker_file # speaker file path                                      // NOLINT
         bint use_guide_tokens  # enable guide tokens to improve TTS accuracy            // NOLINT
 
@@ -498,13 +508,10 @@ cdef extern from "common.h":
         common_params_sampling sampling
         common_params_speculative speculative
         common_params_vocoder     vocoder
+        common_params_model model
 
-        std_string model                # model path
         std_string model_alias          # model alias
-        std_string model_url            # model url to download
         std_string hf_token             # HF token
-        std_string hf_repo              # HF repo
-        std_string hf_file              # HF file
         std_string prompt               #
         std_string prompt_file          # store the external prompt file name
         std_string path_prompt_cache    # path to file for saving/loading prompt eval state
@@ -517,6 +524,8 @@ cdef extern from "common.h":
         std_vector[std_string] in_files     # all input files
         std_vector[std_string] antiprompt   # strings upon which more user input is prompted (a.k.a. reverse prompts)
         std_vector[llama_model_kv_override] kv_overrides
+        std_vector[llama_model_tensor_buft_override] tensor_buft_overrides
+
 
         bint lora_init_without_apply # only load lora to memory, but do not apply it to ctx (user can manually apply lora later using llama_lora_adapter_apply)
         std_vector[common_adapter_lora_info] lora_adapters # lora adapter path with user defined scale
@@ -577,7 +586,7 @@ cdef extern from "common.h":
         common_conversation_mode conversation_mode
 
         # multimodal models (see examples/llava)
-        std_string mmproj           # path to multimodal projector
+        common_params_model mmproj
         std_vector[std_string] image # path to image file(s)
 
         # embedding

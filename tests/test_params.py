@@ -84,13 +84,12 @@ def test_common_params():
 
     # common_sampler_params sparams
 
-    assert params.model == ""
-    # assert params.model_draft          == ""
+    assert params.model.path == ""
+    assert params.model.url == ""
+    assert params.model.hf_repo == ""
+    assert params.model.hf_file == ""
     assert params.model_alias == ""
-    assert params.model_url == ""
     assert params.hf_token == ""
-    assert params.hf_repo == ""
-    assert params.hf_file == ""
     assert params.prompt == ""
     assert params.prompt_file == ""
     assert params.path_prompt_cache == ""
@@ -140,7 +139,7 @@ def test_common_params():
     assert params.cache_type_k == xlc.GGML_TYPE_F16
     assert params.cache_type_v == xlc.GGML_TYPE_F16
 
-    assert params.mmproj == ""
+    assert params.mmproj.path == ""
     assert params.image == []
 
     assert params.embedding is False
@@ -187,7 +186,7 @@ def test_common_params():
 
     assert params.n_junk == 250
     assert params.i_pos == -1
-    assert params.out_file == "imatrix.dat"
+    assert params.out_file == ""
 
     assert params.n_out_freq == 10
     assert params.n_save_freq == 0
