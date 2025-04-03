@@ -69,6 +69,7 @@ jobs:
         env:
           OS: ${{ matrix.os }}
         run: |
+          conda install -c conda-forge libstdcxx-ng
           pip install -r requirements.txt
           pip install pytest pytest-timeout
           make
