@@ -1,6 +1,6 @@
 [project]
 name = "xllamacpp"
-dynamic = ["version"]
+dynamic = ["version", "license"]
 description = "A Python wrapper of llama.cpp"
 readme = "README.md"
 authors = [

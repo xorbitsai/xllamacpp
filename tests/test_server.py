@@ -9,7 +9,7 @@ import xllamacpp as xlc
 def test_llama_server(model_path):
     params = xlc.CommonParams()
 
-    params.model = model_path
+    params.model.path = model_path
     params.prompt = "When did the universe begin?"
     params.n_predict = 32
     params.n_ctx = 512
