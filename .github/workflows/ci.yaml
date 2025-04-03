@@ -35,11 +35,8 @@ jobs:
           src: "src/xllamacpp"
           options: "--check --verbose"
           use_pyproject: true
-      - uses: isort/isort-action@master
-        with:
-          sortPaths: "src/xllamacpp"
-          configuration: "--check-only --diff --sp setup.cfg"
-      - uses: jidicula/clang-format-action@v4.15.0
+      - name: clang-format
+        uses: jidicula/clang-format-action@v4.15.0
         with:
             clang-format-version: '16'
             check-path: 'src/xllamacpp'

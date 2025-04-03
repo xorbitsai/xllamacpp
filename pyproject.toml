@@ -35,8 +35,4 @@ parentdir_prefix = "xllamacpp-"
 [tool.black]
 required-version = "24.4.2"
 include = '\.pyi?$'
-extend-exclude = '''
-/(
-| ^/src/xllamacpp/(_version.py)
-)/
-'''
+exclude = '_version.py'
