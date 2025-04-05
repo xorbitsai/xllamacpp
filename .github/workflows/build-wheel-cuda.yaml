@@ -111,6 +111,7 @@ jobs:
           MAMBA_NO_LOW_SPEED_LIMIT: "1"
         run: |
           $cudaVersion = $env:CUDAVER
+          python -c "import os; print(os.uname())"
           mamba install -y 'cuda' -c nvidia/label/cuda-$cudaVersion
           python -m pip install build wheel auditwheel delvewheel
           python -m pip install -r requirements.txt
@@ -144,7 +145,7 @@ jobs:
           make
           python -m build --wheel
           if ($IsLinux) {
-            auditwheel repair --plat manylinux_2_35_x86_64 --exclude libcuda.so.1 dist/*.whl -w dist
+            auditwheel repair --exclude libcuda.so.1 dist/*.whl -w dist
             rm dist/*-linux_x86_64.whl
           } else {
             delvewheel repair --exclude nvcuda.dll dist/*.whl -w dist
