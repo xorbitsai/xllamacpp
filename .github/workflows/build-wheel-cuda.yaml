@@ -57,6 +57,10 @@ jobs:
         with:
           vs-version: '[16.11,16.12)'
 
+      - name: Building Python wheels (latest manylinux docker)
+        if: runner.os != 'Windows'
+        uses: docker://quay.io/pypa/manylinux2014_x86_64
+
       - uses: actions/checkout@v4
         with:
           submodules: "recursive"
