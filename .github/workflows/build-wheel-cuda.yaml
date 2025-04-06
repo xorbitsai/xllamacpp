@@ -2,9 +2,10 @@ name: Build Wheels (CUDA)
 
 on:
   push:
-    tags:
+    branches:
       - '*'
-  workflow_dispatch:
+  pull_request:
+    types: ['opened', 'reopened', 'synchronize']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -30,7 +31,7 @@ jobs:
     steps:
       - name: Install node.js for GitHub Actions
         run: |
-          apt-get install -y curl ca-certificates &&
+          # apt-get install -y curl ca-certificates &&
           # Install a Node.js version that works in older Ubuntu containers (read: does not require very recent glibc)
           NODE_VERSION=v20.18.1 &&
           NODE_TAR_FILE=node-$NODE_VERSION-linux-x64-glibc-217.tar.gz &&
