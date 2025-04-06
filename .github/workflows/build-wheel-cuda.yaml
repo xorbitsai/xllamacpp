@@ -28,9 +28,9 @@ jobs:
         id: set-matrix
         run: |
           $matrix = @{
-              'os' = @('ubuntu-22.04', 'windows-2019')
+              'os' = @(['ubuntu-22.04', 'docker://quay.io/pypa/manylinux2014_x86_64'] , ['windows-2019', null])
               'pyver' = @("3.9", "3.10", "3.11", "3.12")
-              'cuda' = @("12.4.1") # "12.1.1", "12.2.2", "12.3.2", "12.4.1") #, "12.5.1", "12.6.1")
+              'cuda' = @("12.4.1")
               'releasetag' = @("basic")
           }
 
@@ -38,15 +38,15 @@ jobs:
           Write-Output ('matrix=' + $matrixOut) >> $env:GITHUB_OUTPUT
 
   build_wheels:
-    name: Build Wheel ${{ matrix.os }} ${{ matrix.pyver }} ${{ matrix.cuda }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
+    name: Build Wheel ${{ matrix.os[0] }} ${{ matrix.pyver }} ${{ matrix.cuda }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
     needs: define_matrix
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os[0] }}
     strategy:
       matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
     defaults:
       run:
         shell: pwsh
-    container: docker://quay.io/pypa/manylinux2014_x86_64
+    container: ${{ matrix.os[1] }}
     env:
       CUDAVER: ${{ matrix.cuda }}
       AVXVER: ${{ matrix.releasetag }}
@@ -161,7 +161,7 @@ jobs:
 
       # - uses: actions/upload-artifact@v4
       #   with:
-      #     name: wheel-${{ matrix.pyver }}-${{ matrix.cuda }}-${{ matrix.os }}
+      #     name: wheel-${{ matrix.pyver }}-${{ matrix.cuda }}-${{ matrix.os[0] }}
       #     path: ./dist/*.whl
 
   # The wheel is too large > 100MB to upload to the pypi.
