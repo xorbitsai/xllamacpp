@@ -21,9 +21,15 @@ jobs:
     strategy:
       matrix:
         pyver: ["3.9", "3.10", "3.11", "3.12"]
-        cuda: [12.4.1"]
+        cuda: ["12.4.1"]
         releasetag: ["basic"]
-    container: docker://quay.io/pypa/manylinux2014_x86_64
+    container:
+      # https://github.com/actions/checkout/issues/1474#issuecomment-2604308106
+      image: docker://quay.io/pypa/manylinux2014_x86_64
+      volumes:
+        # override /__e/node20 because GitHub Actions uses a version that requires too-recent glibc
+        # see "Install node.js for GitHub Actions" below
+        - /tmp:/__e/node20
     env:
       CUDAVER: ${{ matrix.cuda }}
       AVXVER: ${{ matrix.releasetag }}
