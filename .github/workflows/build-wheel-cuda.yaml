@@ -46,6 +46,7 @@ jobs:
     defaults:
       run:
         shell: pwsh
+    container: docker://quay.io/pypa/manylinux2014_x86_64
     env:
       CUDAVER: ${{ matrix.cuda }}
       AVXVER: ${{ matrix.releasetag }}
@@ -56,10 +57,6 @@ jobs:
         uses: microsoft/setup-msbuild@v2
         with:
           vs-version: '[16.11,16.12)'
-
-      - name: Building Python wheels (latest manylinux docker)
-        if: runner.os != 'Windows'
-        uses: docker://quay.io/pypa/manylinux2014_x86_64
 
       - uses: actions/checkout@v4
         with:
