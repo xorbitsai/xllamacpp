@@ -48,7 +48,7 @@ jobs:
       - name: Install lsb-release
         run: |
           yum update
-          yum install redhat-lsb
+          yum install -y redhat-lsb-core
 
       - uses: actions/checkout@v4
         with:
