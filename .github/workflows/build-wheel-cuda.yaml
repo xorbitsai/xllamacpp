@@ -45,6 +45,11 @@ jobs:
           curl -Lo /tmp/$NODE_TAR_FILE $NODE_URL &&
           tar -C /__e/node20 -x --strip-components=1 -f /tmp/$NODE_TAR_FILE
 
+      - name: Install lsb-release
+        run: |
+          yum update
+          install redhat-lsb
+
       - uses: actions/checkout@v4
         with:
           submodules: "recursive"
