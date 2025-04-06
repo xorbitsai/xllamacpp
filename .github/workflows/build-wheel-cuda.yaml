@@ -14,35 +14,15 @@ permissions:
   contents: write
 
 jobs:
-  define_matrix:
-    name: Define Build Matrix
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    defaults:
-      run:
-        shell: pwsh
-
-    steps:
-      - name: Define Job Output
-        id: set-matrix
-        run: |
-          $matrix = @{
-              'os' = @(['ubuntu-22.04', 'docker://quay.io/pypa/manylinux2014_x86_64'] , ['windows-2019', null])
-              'pyver' = @("3.9", "3.10", "3.11", "3.12")
-              'cuda' = @("12.4.1")
-              'releasetag' = @("basic")
-          }
-
-          $matrixOut = ConvertTo-Json $matrix -Compress
-          Write-Output ('matrix=' + $matrixOut) >> $env:GITHUB_OUTPUT
-
   build_wheels:
     name: Build Wheel ${{ matrix.os[0] }} ${{ matrix.pyver }} ${{ matrix.cuda }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
-    needs: define_matrix
     runs-on: ${{ matrix.os[0] }}
     strategy:
-      matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
+      matrix:
+        os: [["ubuntu-22.04", "docker://quay.io/pypa/manylinux2014_x86_64"], ["windows-2019", null]]
+        pyver: ["3.9", "3.10", "3.11", "3.12"]
+        cuda: [12.4.1"]
+        releasetag: ["basic"]
     defaults:
       run:
         shell: pwsh
