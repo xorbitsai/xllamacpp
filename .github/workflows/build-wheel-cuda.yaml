@@ -44,7 +44,7 @@ jobs:
 
       - name: setup CPATH
         run: |
-          echo ls -a ${Python_ROOT_DIR}/include/python${{ matrix.pyver }}
+          ls -a ${Python_ROOT_DIR}/include/python${{ matrix.pyver }}
           echo  "python version : ${{ steps.setup-python.outputs.python-version }}"
           echo  "python path : ${{ steps.setup-python.outputs.python-path }}"
           CPATH=${pythonLocation}/include/python${python_version}
