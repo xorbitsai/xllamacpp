@@ -24,6 +24,13 @@ jobs:
     container: rocm/dev-ubuntu-22.04:6.0.2
 
     steps:
+      - name: Install git on container
+        run: |
+          git --version
+          sudo apt-get update
+          sudo apt-get install -y git
+          git --version
+
       - name: Clone
         id: checkout
         uses: actions/checkout@v4
