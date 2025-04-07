@@ -38,12 +38,15 @@ jobs:
 
       - name: Setup Python
         id: setup-python
+        env:
+          AGENT_TOOLSDIRECTORY: "/opt/hostedtoolcache"
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.pyver }}
 
       - name: setup CPATH
         run: |
+          ls -a /opt/hostedtoolcache
           ls -a ${Python_ROOT_DIR}/include/python${{ matrix.pyver }}
           echo  "python version : ${{ steps.setup-python.outputs.python-version }}"
           echo  "python path : ${{ steps.setup-python.outputs.python-path }}"
