@@ -32,7 +32,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.pyver }}
-          cache: 'pip'
 
       - name: Dependencies
         id: depends
