@@ -37,9 +37,17 @@ jobs:
           submodules: "recursive"
 
       - name: Setup Python
+        id: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.pyver }}
+
+      - name: setup CPATH
+        run: |
+          echo  "python version : ${{ steps.setup-python.outputs.python-version }}"
+          echo  "python path : ${{ steps.setup-python.outputs.python-path }}"
+          CPATH=${pythonLocation}/include/python${python_version}
+          echo CPATH=${CPATH} >> "${GITHUB_ENV}"
 
       - name: Python Dependencies
         id: python_depends
