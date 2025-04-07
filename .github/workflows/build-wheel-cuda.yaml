@@ -26,7 +26,6 @@ jobs:
     steps:
       - name: Install git on container
         run: |
-          git --version
           sudo apt-get update
           sudo apt-get install -y git
           git --version
