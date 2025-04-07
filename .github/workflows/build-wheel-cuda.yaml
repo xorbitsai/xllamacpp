@@ -42,15 +42,10 @@ jobs:
         with:
           python-version: ${{ matrix.pyver }}
 
-      - name: setup CPATH
+      - name: Symlink hostedtoolcache
         run: |
           sudo ln -s /__t /opt/hostedtoolcache
           ls -a /opt/hostedtoolcache
-          ls -a ${Python_ROOT_DIR}/include/python${{ matrix.pyver }}
-          echo  "python version : ${{ steps.setup-python.outputs.python-version }}"
-          echo  "python path : ${{ steps.setup-python.outputs.python-path }}"
-          CPATH=${pythonLocation}/include/python${python_version}
-          echo CPATH=${CPATH} >> "${GITHUB_ENV}"
 
       - name: Python Dependencies
         id: python_depends
@@ -74,6 +69,8 @@ jobs:
           printenv
           make
           python -m build --wheel
+          auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
+  #           rm dist/*-linux_x86_64.whl
 
 
   # build_wheels_cuda:
