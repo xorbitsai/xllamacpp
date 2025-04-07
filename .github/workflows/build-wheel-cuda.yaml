@@ -46,7 +46,7 @@ jobs:
         run: |
           sudo ln -s /__t /opt/hostedtoolcache
           ls -a /opt/hostedtoolcache
-          rocminfo
+          hipconfig --full
 
       - name: Python Dependencies
         id: python_depends
