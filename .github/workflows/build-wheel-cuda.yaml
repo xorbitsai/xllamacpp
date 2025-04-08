@@ -15,13 +15,35 @@ permissions:
   contents: write
 
 jobs:
+  free-disk-space:
+    runs-on: ubuntu-22.04
+    steps:
+
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: false
+        
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+
   build_wheels_hip_linux:
-    name: Build Wheel HIP Linux ${{ matrix.pyver }}
+    name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
+    needs: free-disk-space
     runs-on: ubuntu-22.04
     strategy:
       matrix:
         pyver: ["3.9", "3.10", "3.11", "3.12"]
-    container: rocm/dev-ubuntu-22.04:6.3.4
+        hip: ["6.3.4"]
+    container: rocm/dev-ubuntu-22.04:${{matrix.hip}}
 
     steps:
       - name: System Dependencies
@@ -78,7 +100,7 @@ jobs:
       #   if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
       #   with:
       #     files: dist/*
-      #     tag_name: ${{ github.ref_name }}-ROCm-6.3.4
+      #     tag_name: ${{ github.ref_name }}-ROCm-${{matrix.hip}}
       #   env:
       #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
