@@ -54,7 +54,7 @@ def get_config() -> VersioneerConfig:
     cfg.tag_prefix = "v"
     cfg.parentdir_prefix = "xllamacpp-"
     cfg.versionfile_source = "src/xllamacpp/_version.py"
-    cfg.verbose = False
+    cfg.verbose = True
     return cfg
 
 
