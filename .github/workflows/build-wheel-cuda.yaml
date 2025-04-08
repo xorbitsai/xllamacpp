@@ -32,8 +32,8 @@ jobs:
         dotnet: true
         haskell: true
         large-packages: false
-        docker-images: false
-        swap-storage: false
+        docker-images: true
+        swap-storage: true
 
   build_wheels_hip_linux:
     name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
