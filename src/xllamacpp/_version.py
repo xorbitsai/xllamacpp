@@ -52,7 +52,7 @@ def get_config() -> VersioneerConfig:
     cfg.VCS = "git"
     cfg.style = "pep440"
     cfg.tag_prefix = "v"
-    cfg.parentdir_prefix = "xllamacpp-"
+    cfg.parentdir_prefix = "xllamacpp"
     cfg.versionfile_source = "src/xllamacpp/_version.py"
     cfg.verbose = True
     return cfg
