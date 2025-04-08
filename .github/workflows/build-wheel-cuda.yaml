@@ -30,10 +30,10 @@ jobs:
         # "false" if necessary for your workflow
         android: true
         dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
+        haskell: false
+        large-packages: false
+        docker-images: false
+        swap-storage: false
 
   build_wheels_hip_linux:
     name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
