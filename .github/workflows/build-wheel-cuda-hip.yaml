@@ -69,6 +69,7 @@ jobs:
           VERBOSE: "1"
         run: |
           printenv
+          git config --global --add safe.directory '*'
           make
           python -m build --wheel
           df -ha
