@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         pyver: ["3.9", "3.10", "3.11", "3.12"]
-    container: rocm/dev-ubuntu-22.04:6.0.2
+    container: rocm/dev-ubuntu-22.04:6.3.4-complete
 
     steps:
       - name: System Dependencies
@@ -76,7 +76,7 @@ jobs:
       #   if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
       #   with:
       #     files: dist/*
-      #     tag_name: ${{ github.ref_name }}-ROCm-6.0.2
+      #     tag_name: ${{ github.ref_name }}-ROCm-6.3.4
       #   env:
       #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
