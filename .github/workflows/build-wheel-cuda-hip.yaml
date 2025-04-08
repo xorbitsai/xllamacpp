@@ -1,4 +1,4 @@
-name: Build Wheels (CUDA)
+name: Build Wheels (CUDA & HIP)
 
 on:
   push:
@@ -14,41 +14,94 @@ permissions:
   contents: write
 
 jobs:
-  define_matrix:
-    name: Define Build Matrix
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    defaults:
-      run:
-        shell: pwsh
+  build_wheels_hip_linux:
+    name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        pyver: ["3.9", "3.10", "3.11", "3.12"]
+        hip: ["6.0.2"]  # 6.3.4 encounter error: failed to write (No space left on device)
+    container: rocm/dev-ubuntu-22.04:${{matrix.hip}}
 
     steps:
-      - name: Define Job Output
-        id: set-matrix
+      - name: System Dependencies
+        id: system_depends
         run: |
-          $matrix = @{
-              'os' = @('ubuntu-22.04', 'windows-2019')
-              'pyver' = @("3.9", "3.10", "3.11", "3.12")
-              'cuda' = @("12.4.1") # "12.1.1", "12.2.2", "12.3.2", "12.4.1") #, "12.5.1", "12.6.1")
-              'releasetag' = @("basic")
-          }
+          sudo apt-get update
+          sudo apt-get install -y build-essential git cmake rocblas-dev hipblas-dev libcurl4-openssl-dev patchelf
+          sudo apt-get clean
+          hipconfig --full
+          ls -alh /opt/rocm/lib
 
-          $matrixOut = ConvertTo-Json $matrix -Compress
-          Write-Output ('matrix=' + $matrixOut) >> $env:GITHUB_OUTPUT
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
 
-  build_wheels:
-    name: Build Wheel ${{ matrix.os }} ${{ matrix.pyver }} ${{ matrix.cuda }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
-    needs: define_matrix
+      - name: Setup Python
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.pyver }}
+
+      - name: Symlink hostedtoolcache
+        run: |
+          sudo ln -s /__t /opt/hostedtoolcache
+
+      - name: Python Dependencies
+        id: python_depends
+        run: |
+          python -m pip install build wheel auditwheel
+          python -m pip install -r requirements.txt
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2.16
+        with:
+          key: ubuntu-22-cmake-hip
+          evict-old-files: 1d
+
+      - name: Build with native CMake HIP support
+        id: cmake_build
+        env:
+          XLLAMACPP_BUILD_HIP: "1"
+          VERSIONEER_CLOSEST_TAG_ONLY: "1"
+          VERBOSE: "1"
+        run: |
+          printenv
+          make
+          python -m build --wheel
+          df -ha
+          echo "Clean up"
+          rm -rf build
+          rm -rf thirdparty
+          df -ha
+          auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
+          rm dist/*-linux_x86_64.whl
+          ls -alh dist
+
+      - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: dist/*
+          tag_name: ${{ github.ref_name }}-rocm-${{matrix.hip}}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+  build_wheels_cuda:
+    name: Build Wheel CUDA ${{ matrix.os }} ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: ${{ matrix.os }}
     strategy:
-      matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
+      matrix:
+        os: ["ubuntu-22.04", "windows-2019"]
+        pyver: ["3.9", "3.10", "3.11", "3.12"]
+        cuda: ["12.4.1"]
     defaults:
       run:
         shell: pwsh
     env:
       CUDAVER: ${{ matrix.cuda }}
-      AVXVER: ${{ matrix.releasetag }}
 
     steps:
       - name: Add MSBuild to PATH
@@ -124,18 +177,8 @@ jobs:
           }
           $env:VERBOSE = '1'
           $env:CMAKE_ARGS = '-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=all'
-          $env:CMAKE_ARGS = "-DGGML_CUDA_FORCE_MMQ=ON $env:CMAKE_ARGS"
-          # if ($env:AVXVER -eq 'AVX') {
+          $env:CMAKE_ARGS = '-DGGML_CUDA_FORCE_MMQ=ON $env:CMAKE_ARGS'
           $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
-          # }
-          # if ($env:AVXVER -eq 'AVX512') {
-          #  $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX512=on'
-          # }
-          # if ($env:AVXVER -eq 'basic') {
-          #  $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX=off -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
-          # }
-          # Change project name
-          # sed -i 's/name = "xllamacpp"/name = "xllamacpp-cuda12x"/g' pyproject.toml
           dir env:
           make
           python -m build --wheel
@@ -156,37 +199,3 @@ jobs:
           tag_name: ${{ github.ref_name }}-cu${{ env.CUDA_VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # - uses: actions/upload-artifact@v4
-      #   with:
-      #     name: wheel-${{ matrix.pyver }}-${{ matrix.cuda }}-${{ matrix.os }}
-      #     path: ./dist/*.whl
-
-  # The wheel is too large > 100MB to upload to the pypi.
-  # upload_pypi:
-  #   needs: [build_wheels]
-  #   runs-on: ubuntu-latest
-  #   # upload to PyPI on every tag starting with 'v'
-  #   if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-  #   steps:
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         path: dist
-  #         pattern: 'wheel-*'
-  #         merge-multiple: true
-
-  #     - name: Publish to PyPI
-  #       if: github.repository == 'xorbitsai/xllamacpp'
-  #       uses: pypa/gh-action-pypi-publish@v1.8.11
-  #       with:
-  #         user: __token__
-  #         password: ${{ secrets.PYPI_PASSWORD }}
-
-  #     - name: Publish to Test PyPI
-  #       if: github.repository != 'xorbitsai/xllamacpp'
-  #       uses: pypa/gh-action-pypi-publish@v1.8.11
-  #       with:
-  #         user: __token__
-  #         password: ${{ secrets.TEST_PYPI_PASSWORD }}
-  #         verbose: true
-  #         repository_url: https://test.pypi.org/legacy/
