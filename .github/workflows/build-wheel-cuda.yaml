@@ -15,8 +15,29 @@ permissions:
   contents: write
 
 jobs:
+  free-disk-space:
+    runs-on: ubuntu-22.04
+    steps:
+
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: false
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+
   build_wheels_hip_linux:
     name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
+    needs: free-disk-space
     runs-on: ubuntu-22.04
     strategy:
       matrix:
@@ -30,6 +51,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential git cmake rocblas-dev hipblas-dev libcurl4-openssl-dev patchelf
+          hipconfig --full
 
       - name: Clone
         id: checkout
@@ -67,7 +89,6 @@ jobs:
           VERBOSE: "1"
         run: |
           printenv
-          hipconfig --full
           make
           ls -alh src/llama.cpp/bin/llama-server
           ldd src/llama.cpp/bin/llama-server
