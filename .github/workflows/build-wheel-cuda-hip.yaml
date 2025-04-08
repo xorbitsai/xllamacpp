@@ -84,7 +84,7 @@ jobs:
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         with:
           files: dist/*
-          tag_name: ${{ github.ref_name }}-ROCm-${{matrix.hip}}
+          tag_name: ${{ github.ref_name }}-rocm-${{matrix.hip}}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
