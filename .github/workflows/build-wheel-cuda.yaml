@@ -67,6 +67,7 @@ jobs:
         run: |
           printenv
           make
+          ldd src/llama.cpp/bin/llama-server
           python -m build --wheel
           auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
           rm dist/*-linux_x86_64.whl
