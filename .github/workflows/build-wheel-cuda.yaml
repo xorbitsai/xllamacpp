@@ -95,8 +95,9 @@ jobs:
           ls -alh src/llama.cpp/bin/llama-server
           ldd src/llama.cpp/bin/llama-server
           python -m build --wheel
-          auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
-          rm dist/*-linux_x86_64.whl
+          df -ha
+          # auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
+          # rm dist/*-linux_x86_64.whl
           ls -alh dist
 
       # - uses: softprops/action-gh-release@v2
