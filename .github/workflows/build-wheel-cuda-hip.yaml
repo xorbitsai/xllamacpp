@@ -70,6 +70,7 @@ jobs:
           VERBOSE: "1"
         run: |
           printenv
+          git config --global --add safe.directory '*'
           cd src/xllamacpp
           python -c "import _version; print(_version.get_versions())"
           # make
