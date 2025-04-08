@@ -67,6 +67,7 @@ jobs:
           VERBOSE: "1"
         run: |
           printenv
+          hipconfig --full
           make
           ls -alh src/llama.cpp/bin/llama-server
           ldd src/llama.cpp/bin/llama-server

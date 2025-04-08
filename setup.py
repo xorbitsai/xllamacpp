@@ -12,6 +12,7 @@ from Cython.Build import cythonize
 # constants
 
 BUILD_CUDA = os.getenv("XLLAMACPP_BUILD_CUDA")
+BUILD_HIP = os.getenv("XLLAMACPP_BUILD_HIP")
 NAME = "xllamacpp"
 # NAME = "xllamacpp-cuda12x" if BUILD_CUDA else "xllamacpp"
 CWD = os.path.dirname(os.path.abspath(__file__))
@@ -67,6 +68,14 @@ else:
         )
         LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "/lib/stubs"])
         LIBRARIES.extend(["cudart", "cublas", "cublasLt", "cuda"])
+    if BUILD_HIP:
+        EXTRA_OBJECTS.extend(
+            [
+                f"{LLAMACPP_LIBS_DIR}/libggml-hip.a",
+            ]
+        )
+        LIBRARY_DIRS.extend(["/opt/rocm/lib"])
+        LIBRARIES.extend(["amdhip64", "hipblas", "rocblas"])
 if PLATFORM == "Darwin":
     EXTRA_OBJECTS.extend(
         [
