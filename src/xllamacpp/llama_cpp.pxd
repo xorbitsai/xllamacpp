@@ -352,6 +352,7 @@ cdef extern from "common.h":
 
     cdef enum common_sampler_type:
         COMMON_SAMPLER_TYPE_NONE
+        COMMON_SAMPLER_TYPE_DRY
         COMMON_SAMPLER_TYPE_TOP_K
         COMMON_SAMPLER_TYPE_TOP_P
         COMMON_SAMPLER_TYPE_MIN_P
@@ -667,3 +668,10 @@ cdef extern from "common.h":
     
         # common params
         std_string out_file      # output filename for all example programs
+
+    
+cdef extern from "sampling.h":
+
+    std_vector[common_sampler_type] common_sampler_types_from_names(const std_vector[std_string] & names, bint allow_alt_names)
+    
+    std_string common_sampler_type_to_str(common_sampler_type cnstr)
