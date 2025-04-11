@@ -197,6 +197,13 @@ def test_common_params():
 
     assert params.n_pca_batch == 100
     assert params.n_pca_iterations == 1000
+
+    sp = params.sampling.samplers
+    assert sp
+    params.sampling.samplers = sp
+    assert params.sampling.samplers == sp
+    params.sampling.samplers = "top_k;top_p;min_p;temperature;dry;typ_p;xtc"
+    assert params.sampling.samplers == "top_k;top_p;min_p;temperature;dry;typ_p;xtc"
     # assert params.cvector_dimre_method  == cy.DIMRE_METHOD_PCA
     # assert params.cvector_outfile       == "control_vector.gguf"
     # assert params.cvector_positive_file == "examples/cvector-generator/positive.txt"

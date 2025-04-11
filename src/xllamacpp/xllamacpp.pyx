@@ -8,7 +8,6 @@
 xllamacpp: a thin cython wrapper of llama.cpp
 """
 from libc.stdint cimport int32_t, uint32_t
-from libc.stdlib cimport malloc, free
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.memory cimport shared_ptr, make_shared
@@ -210,18 +209,6 @@ cpdef enum llama_split_mode:
     LLAMA_SPLIT_MODE_NONE  = 0
     LLAMA_SPLIT_MODE_LAYER = 1
     LLAMA_SPLIT_MODE_ROW   = 2
-
-cpdef enum common_sampler_type:
-    COMMON_SAMPLER_TYPE_NONE        = 1
-    COMMON_SAMPLER_TYPE_TOP_K       = 2
-    COMMON_SAMPLER_TYPE_TOP_P       = 3
-    COMMON_SAMPLER_TYPE_MIN_P       = 4
-    # COMMON_SAMPLER_TYPE_TFS_Z     = 5
-    COMMON_SAMPLER_TYPE_TYPICAL_P   = 6
-    COMMON_SAMPLER_TYPE_TEMPERATURE = 7
-    COMMON_SAMPLER_TYPE_XTC         = 8
-    COMMON_SAMPLER_TYPE_INFILL      = 9
-    COMMON_SAMPLER_TYPE_PENALTIES   = 10
 
 
 cdef class LlamaLogitBias:
@@ -543,16 +530,20 @@ cdef class CommonParamsSampling:
         self.p.no_perf = value
 
     @property
-    def samplers(self) -> list[common_sampler_type]:
+    def samplers(self) -> str:
         """get/set sampler types
         
         std_vector[common_sampler_type] samplers
         """
-        return self.p.samplers
+        res = []
+        for sampler_enum in self.p.samplers:
+            res.append(<str>llama_cpp.common_sampler_type_to_str(sampler_enum))
+        return ";".join(res)
 
     @samplers.setter
-    def samplers(self, value: list[common_sampler_type]):
-        self.p.samplers = value
+    def samplers(self, value: str):
+        cdef vector[string] split_values = value.split(";")
+        self.p.samplers = llama_cpp.common_sampler_types_from_names(split_values, True)
 
     @property
     def grammar(self) -> str:
