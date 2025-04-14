@@ -1769,6 +1769,8 @@ private:
 };
 
 struct server_response {
+  bool running = true;
+
   // for keeping track of all tasks waiting for the result
   std::unordered_set<int> waiting_task_ids;
 
@@ -1831,7 +1833,14 @@ struct server_response {
   server_task_result_ptr recv(const std::unordered_set<int> &id_tasks) {
     while (true) {
       std::unique_lock<std::mutex> lock(mutex_results);
-      condition_results.wait(lock, [&] { return !queue_results.empty(); });
+      condition_results.wait(lock, [&] {
+        if (!running) {
+          SRV_DBG("%s : queue result stop\n", __func__);
+          std::terminate(); // we cannot return here since the caller is HTTP
+                            // code
+        }
+        return !queue_results.empty();
+      });
 
       for (size_t i = 0; i < queue_results.size(); i++) {
         if (id_tasks.find(queue_results[i]->id) != id_tasks.end()) {
@@ -1862,6 +1871,10 @@ struct server_response {
 
       std::cv_status cr_res =
           condition_results.wait_for(lock, std::chrono::seconds(timeout));
+      if (!running) {
+        SRV_DBG("%s : queue result stop\n", __func__);
+        std::terminate(); // we cannot return here since the caller is HTTP code
+      }
       if (cr_res == std::cv_status::timeout) {
         return nullptr;
       }
@@ -1890,6 +1903,12 @@ struct server_response {
         return;
       }
     }
+  }
+
+  // terminate the waiting loop
+  void terminate() {
+    running = false;
+    condition_results.notify_all();
   }
 };
 
@@ -3655,6 +3674,7 @@ static void init(common_params &params, server_context &ctx_server,
   LOG_INF("%s: loading model\n", __func__);
 
   if (!ctx_server.load_model(params)) {
+    ctx_server.queue_results.terminate();
     llama_backend_free();
     LOG_ERR("%s: exiting due to model loading error\n", __func__);
     out.set_value(1);
@@ -3688,6 +3708,7 @@ static void init(common_params &params, server_context &ctx_server,
 
   LOG_INF("%s: main loop stopped\n", __func__);
 
+  ctx_server.queue_results.terminate();
   llama_backend_free();
 }
 

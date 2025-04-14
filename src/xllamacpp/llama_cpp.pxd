@@ -160,13 +160,6 @@ cdef extern from "ggml.h":
 
         GGML_OP_UNARY
 
-        GGML_OP_MAP_UNARY
-        GGML_OP_MAP_BINARY
-
-        GGML_OP_MAP_CUSTOM1_F32
-        GGML_OP_MAP_CUSTOM2_F32
-        GGML_OP_MAP_CUSTOM3_F32
-
         GGML_OP_MAP_CUSTOM1
         GGML_OP_MAP_CUSTOM2
         GGML_OP_MAP_CUSTOM3
