@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         pyver: ["3.9", "3.10", "3.11", "3.12"]
-        hip: ["6.0.2"]  # 6.3.4 encounter error: failed to write (No space left on device)
+        hip: ["6.3.4"]  # 6.3.4 encounter error: failed to write (No space left on device)
     container: rocm/dev-ubuntu-22.04:${{matrix.hip}}
 
     steps:
