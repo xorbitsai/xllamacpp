@@ -139,6 +139,8 @@ cdef extern from "ggml.h":
         GGML_OP_CLAMP
         GGML_OP_CONV_TRANSPOSE_1D
         GGML_OP_IM2COL
+        GGML_OP_IM2COL_BACK
+        GGML_OP_CONV_2D_DW
         GGML_OP_CONV_TRANSPOSE_2D
         GGML_OP_POOL_1D
         GGML_OP_POOL_2D
@@ -581,6 +583,9 @@ cdef extern from "common.h":
 
         # multimodal models (see examples/llava)
         common_params_model mmproj
+        bint mmproj_use_gpu         # use GPU for multimodal model
+        bint no_mmproj              # explicitly disable multimodal model
+
         std_vector[std_string] image # path to image file(s)
 
         # embedding

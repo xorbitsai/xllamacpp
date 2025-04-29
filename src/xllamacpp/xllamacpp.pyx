@@ -1628,6 +1628,24 @@ cdef class CommonParams:
         self.p.mmproj = deref(value.p)
 
     @property
+    def mmproj_use_gpu(self) -> bool:
+        """use GPU for multimodal model"""
+        return self.p.mmproj_use_gpu
+
+    @mmproj_use_gpu.setter
+    def mmproj_use_gpu(self, value: bool):
+        self.p.mmproj_use_gpu = value
+
+    @property
+    def no_mmproj(self) -> bool:
+        """explicitly disable multimodal model"""
+        return self.p.no_mmproj
+
+    @no_mmproj.setter
+    def no_mmproj(self, value: bool):
+        self.p.no_mmproj = value
+
+    @property
     def image(self) -> list[str]:
         """paths to image file(s)"""
         result = []
