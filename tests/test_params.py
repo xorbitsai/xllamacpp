@@ -140,6 +140,8 @@ def test_common_params():
     assert params.cache_type_v == xlc.GGML_TYPE_F16
 
     assert params.mmproj.path == ""
+    assert params.mmproj_use_gpu is True
+    assert params.no_mmproj is False
     assert params.image == []
 
     assert params.embedding is False
