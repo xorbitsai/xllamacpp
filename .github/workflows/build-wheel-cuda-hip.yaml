@@ -24,24 +24,18 @@ jobs:
     container: rocm/dev-ubuntu-22.04:${{matrix.hip}}
 
     steps:
-      - name: Free Disk Space Before Build
-        run: |
-          echo "Disk space before cleanup:"
-          df -h
-          sudo rm -rf /usr/local/.ghcup
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo rm -rf /usr/local/lib/android/sdk/ndk
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/share/boost
-          sudo apt-get clean
-          echo "Disk space after cleanup:"
-          df -h
-
       - name: System Dependencies
         id: system_depends
         run: |
-          sudo apt-get install -y build-essential git cmake rocblas-dev hipblas-dev libcurl4-openssl-dev patchelf
+          sudo apt-get update
+          echo "1:"
+          df -h
+          sudo apt-get install -y build-essential git cmake
+          echo "2:"
+          df -h
+          sudo apt-get install -y rocblas-dev hipblas-dev patchelf
+          echo "3:"
+          df -h
           sudo apt-get clean
           hipconfig --full
           ls -alh /opt/rocm/lib
