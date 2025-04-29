@@ -34,8 +34,11 @@ jobs:
           sudo apt-get install -y build-essential git cmake
           echo "2:"
           df -h
-          sudo apt-get install -y rocblas-dev hipblas-dev patchelf
+          sudo apt-get install -y rocblas-dev
           echo "3:"
+          df -h
+          sudo apt-get install -y hipblas-dev patchelf
+          echo "4:"
           df -h
           sudo apt-get clean
           hipconfig --full
