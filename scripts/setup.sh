@@ -46,6 +46,8 @@ build_llamacpp() {
   fi
   [[ -e common/libcommon.a ]] && cp common/libcommon.a ${LIB}
   [[ -e common/Release/common.lib ]] && cp common/Release/common.lib ${LIB}
+  [[ -e tools/mtmd/libmtmd_static.a ]] && cp tools/mtmd/libmtmd_static.a ${LIB}
+  [[ -e tools/mtmd/Release/mtmd_static.lib ]] && cp tools/mtmd/Release/mtmd_static.lib ${LIB}
   cd ${CWD}
 }
 

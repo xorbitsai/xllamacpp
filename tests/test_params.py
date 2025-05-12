@@ -126,7 +126,6 @@ def test_common_params():
     assert params.no_perf is False
     assert params.ctx_shift is True
     assert params.input_prefix_bos is False
-    assert params.logits_all is False
     assert params.use_mmap is True
     assert params.use_mlock is False
     assert params.verbose_prompt is False
@@ -135,6 +134,7 @@ def test_common_params():
     assert params.no_kv_offload is False
     assert params.warmup is True
     assert params.check_tensors is False
+    assert params.no_op_offload is False
 
     assert params.cache_type_k == xlc.GGML_TYPE_F16
     assert params.cache_type_v == xlc.GGML_TYPE_F16
@@ -196,6 +196,7 @@ def test_common_params():
 
     assert params.process_output is False
     assert params.compute_ppl is True
+    assert params.parse_special is False
 
     assert params.n_pca_batch == 100
     assert params.n_pca_iterations == 1000
