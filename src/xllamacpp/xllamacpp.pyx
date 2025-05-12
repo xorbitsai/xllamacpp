@@ -1512,15 +1512,6 @@ cdef class CommonParams:
         self.p.input_prefix_bos = value
 
     @property
-    def logits_all(self) -> bool:
-        """return logits for all tokens in the batch"""
-        return self.p.logits_all
-
-    @logits_all.setter
-    def logits_all(self, value: bool):
-        self.p.logits_all = value
-
-    @property
     def use_mmap(self) -> bool:
         """use mmap for faster loads"""
         return self.p.use_mmap
@@ -1591,6 +1582,15 @@ cdef class CommonParams:
     @check_tensors.setter
     def check_tensors(self, value: bool):
         self.p.check_tensors = value
+
+    @property
+    def no_op_offload(self) -> bool:
+        """globally disable offload host tensor operations to device"""
+        return self.p.no_op_offload
+
+    @no_op_offload.setter
+    def no_op_offload(self, value: bool):
+        self.p.no_op_offload = value
 
     @property
     def single_turn(self) -> bool:
@@ -2022,6 +2022,15 @@ cdef class CommonParams:
         self.p.compute_ppl = value
 
     @property
+    def parse_special(self) -> bool:
+        """whether to parse special tokens during imatrix tokenization"""
+        return self.p.parse_special
+
+    @parse_special.setter
+    def parse_special(self, value: bool):
+        self.p.parse_special = value
+
+    @property
     def n_pca_batch(self) -> int:
         """start processing from this chunk"""
         return self.p.n_pca_batch
@@ -2042,8 +2051,8 @@ cdef class CommonParams:
     # // cvector-generator params
     # dimre_method cvector_dimre_method = DIMRE_METHOD_PCA;
     # std::string cvector_outfile       =
-    # std::string cvector_positive_file = "examples/cvector-generator/positive.txt";
-    # std::string cvector_negative_file = "examples/cvector-generator/negative.txt";
+    # std::string cvector_positive_file = "tools/cvector-generator/positive.txt";
+    # std::string cvector_negative_file = "tools/cvector-generator/negative.txt";
 
     # bool spm_infill = false; // suffix/prefix/middle pattern for infill
 

@@ -329,7 +329,6 @@ cdef extern from "common.h":
         LLAMA_EXAMPLE_COMMON
         LLAMA_EXAMPLE_SPECULATIVE
         LLAMA_EXAMPLE_MAIN
-        LLAMA_EXAMPLE_INFILL
         LLAMA_EXAMPLE_EMBEDDING
         LLAMA_EXAMPLE_PERPLEXITY
         LLAMA_EXAMPLE_RETRIEVAL
@@ -357,6 +356,7 @@ cdef extern from "common.h":
         COMMON_SAMPLER_TYPE_XTC
         COMMON_SAMPLER_TYPE_INFILL
         COMMON_SAMPLER_TYPE_PENALTIES
+        COMMON_SAMPLER_TYPE_TOP_N_SIGMA
 
     # dimensionality reduction methods, used by cvector-generator
     cdef enum dimre_method:
@@ -564,7 +564,6 @@ cdef extern from "common.h":
         bint ctx_shift              # context shift on inifinite text generation
 
         bint input_prefix_bos       # prefix BOS to user inputs, preceding input_prefix
-        bint logits_all             # return logits for all tokens in the batch
         bint use_mmap               # use mmap for faster loads
         bint use_mlock              # use mlock to keep model in memory
         bint verbose_prompt         # print prompt tokens before generation
@@ -574,6 +573,7 @@ cdef extern from "common.h":
         bint no_kv_offload          # disable KV offloading
         bint warmup                 # warmup run
         bint check_tensors          # validate tensor data
+        bint no_op_offload          # globally disable offload host tensor operations to device
         bint single_turn            # single turn chat conversation
 
         ggml_type cache_type_k      # KV cache data type for the K
@@ -581,7 +581,7 @@ cdef extern from "common.h":
 
         common_conversation_mode conversation_mode
 
-        # multimodal models (see examples/llava)
+        # multimodal models (see tools/mtmd)
         common_params_model mmproj
         bint mmproj_use_gpu         # use GPU for multimodal model
         bint no_mmproj              # explicitly disable multimodal model
@@ -651,6 +651,7 @@ cdef extern from "common.h":
 
         bint process_output      # collect data for the output tensor
         bint compute_ppl         # whether to compute perplexity
+        bint parse_special       # whether to parse special tokens during imatrix tokenization
 
         # cvector-generator params
         int n_pca_batch

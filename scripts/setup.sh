@@ -12,10 +12,12 @@ build_llamacpp() {
 	echo "update from llama.cpp main repo"
 	PROJECT=${THIRDPARTY}/llama.cpp
 	PREFIX=${CWD}/src/llama.cpp
+	rm -rf ${PREFIX}
 	INCLUDE=${PREFIX}/include
 	NPROC=2
 	LIB=${PREFIX}/lib
 	SRC=${PREFIX}/src
+	mkdir -p ${SRC}
 	cd ${PROJECT} && \
 		mkdir -p build ${INCLUDE} &&
     cp common/*.h ${INCLUDE} && \

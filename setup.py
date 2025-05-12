@@ -28,7 +28,7 @@ LLAMACPP_INCLUDES_DIR = os.path.join(CWD, "src/llama.cpp/include")
 LLAMACPP_LIBS_DIR = os.path.join(CWD, "src/llama.cpp/lib")
 
 DEFINE_MACROS = []
-EXTRA_COMPILE_ARGS = ["-std=c++14"]
+EXTRA_COMPILE_ARGS = ["-std=c++17"]
 EXTRA_LINK_ARGS = []
 EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
@@ -38,6 +38,7 @@ INCLUDE_DIRS = [
         CWD, "thirdparty/llama.cpp"
     ),  # For including 'common/base64.hpp' in server/utils.hpp
     os.path.join(CWD, "thirdparty/llama.cpp/tools/server"),
+    os.path.join(CWD, "thirdparty/llama.cpp/tools/mtmd"),
 ]
 LIBRARY_DIRS = [
     LLAMACPP_LIBS_DIR,
