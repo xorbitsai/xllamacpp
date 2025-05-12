@@ -37,7 +37,7 @@ INCLUDE_DIRS = [
     os.path.join(
         CWD, "thirdparty/llama.cpp"
     ),  # For including 'common/base64.hpp' in server/utils.hpp
-    os.path.join(CWD, "thirdparty/llama.cpp/examples/server"),
+    os.path.join(CWD, "thirdparty/llama.cpp/tools/server"),
 ]
 LIBRARY_DIRS = [
     LLAMACPP_LIBS_DIR,

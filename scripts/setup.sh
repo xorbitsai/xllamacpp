@@ -20,9 +20,8 @@ build_llamacpp() {
 		mkdir -p build ${INCLUDE} &&
     cp common/*.h ${INCLUDE} && \
 		cp common/*.hpp ${INCLUDE} && \
-		cp examples/llava/*.h ${INCLUDE} && \
 		# For tracking changes
-		cp examples/server/server.cpp ${SRC} && \
+		cp tools/server/server.cpp ${SRC} && \
 		cd build
   if [[ -n "${XLLAMACPP_BUILD_CUDA}" ]]; then
 	cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DLLAMA_CURL=OFF -DGGML_CUDA=ON -DGGML_CUDA_FORCE_MMQ=ON && \
