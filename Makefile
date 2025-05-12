@@ -3,7 +3,7 @@ export PATH := $(PWD)/bin:$(PATH)
 export MACOSX_DEPLOYMENT_TARGET := 11
 
 # models
-MODEL := models/Llama-3.2-1B-Instruct-Q8_0.gguf
+MODEL := models/mmproj-tinygemma3.gguf
 
 THIRDPARTY := $(PWD)/thirdparty
 LLAMACPP := $(THIRDPARTY)/llama.cpp
@@ -27,7 +27,9 @@ test: build
 
 $(MODEL):
 	@mkdir -p models && cd models && \
-		curl --output Llama-3.2-1B-Instruct-Q8_0.gguf -L https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf
+		curl --output Llama-3.2-1B-Instruct-Q8_0.gguf -L https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf && \
+		curl --output tinygemma3-Q8_0.gguf -L https://huggingface.co/ggml-org/tinygemma3-GGUF/resolve/main/tinygemma3-Q8_0.gguf && \
+		curl --output mmproj-tinygemma3.gguf -L https://huggingface.co/ggml-org/tinygemma3-GGUF/resolve/main/mmproj-tinygemma3.gguf
 
 download: $(MODEL)
 	@echo "minimal model downloaded to models directory"

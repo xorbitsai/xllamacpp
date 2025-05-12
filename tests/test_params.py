@@ -65,7 +65,7 @@ def test_common_params():
     assert params.cpuparams.n_threads == -1
     assert params.cpuparams.cpumask == [False] * xlc.GGML_MAX_N_THREADS
     assert params.cpuparams.mask_valid is False
-    assert params.cpuparams.priority == xlc.GGML_SCHED_PRIO_NORMAL
+    assert params.cpuparams.priority == xlc.ggml_sched_priority.GGML_SCHED_PRIO_NORMAL
     assert params.cpuparams.strict_cpu is False
     assert params.cpuparams.poll == 50
 
@@ -76,11 +76,17 @@ def test_common_params():
     # assert params.cb_eval             == nullptr;
     # assert params.cb_eval_user_data   == nullptr;
 
-    assert params.numa == xlc.GGML_NUMA_STRATEGY_DISABLED
-    assert params.split_mode == xlc.LLAMA_SPLIT_MODE_LAYER
-    assert params.rope_scaling_type == xlc.LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED
-    assert params.pooling_type == xlc.LLAMA_POOLING_TYPE_UNSPECIFIED
-    assert params.attention_type == xlc.LLAMA_ATTENTION_TYPE_UNSPECIFIED
+    assert params.numa == xlc.ggml_numa_strategy.GGML_NUMA_STRATEGY_DISABLED
+    assert params.split_mode == xlc.llama_split_mode.LLAMA_SPLIT_MODE_LAYER
+    assert (
+        params.rope_scaling_type
+        == xlc.llama_rope_scaling_type.LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED
+    )
+    assert params.pooling_type == xlc.llama_pooling_type.LLAMA_POOLING_TYPE_UNSPECIFIED
+    assert (
+        params.attention_type
+        == xlc.llama_attention_type.LLAMA_ATTENTION_TYPE_UNSPECIFIED
+    )
 
     # common_sampler_params sparams
 
@@ -126,7 +132,6 @@ def test_common_params():
     assert params.no_perf is False
     assert params.ctx_shift is True
     assert params.input_prefix_bos is False
-    assert params.logits_all is False
     assert params.use_mmap is True
     assert params.use_mlock is False
     assert params.verbose_prompt is False
@@ -135,9 +140,10 @@ def test_common_params():
     assert params.no_kv_offload is False
     assert params.warmup is True
     assert params.check_tensors is False
+    assert params.no_op_offload is False
 
-    assert params.cache_type_k == xlc.GGML_TYPE_F16
-    assert params.cache_type_v == xlc.GGML_TYPE_F16
+    assert params.cache_type_k == xlc.ggml_type.GGML_TYPE_F16
+    assert params.cache_type_v == xlc.ggml_type.GGML_TYPE_F16
 
     assert params.mmproj.path == ""
     assert params.mmproj_use_gpu is True
@@ -196,6 +202,7 @@ def test_common_params():
 
     assert params.process_output is False
     assert params.compute_ppl is True
+    assert params.parse_special is False
 
     assert params.n_pca_batch == 100
     assert params.n_pca_iterations == 1000
