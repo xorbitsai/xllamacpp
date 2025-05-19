@@ -167,6 +167,8 @@ jobs:
 
       - name: Build Wheel
         run: |
+          $architecture = [System.Environment]::GetEnvironmentVariable("PROCESSOR_ARCHITECTURE")
+          Write-Host "AAAAAAAAAAAAAAAAAA: $architecture"
           $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
           $env:XLLAMACPP_BUILD_CUDA = 1
           $env:VERSIONEER_CLOSEST_TAG_ONLY = 1
@@ -185,7 +187,7 @@ jobs:
           python -m build --wheel
           if ($IsLinux) {
             $architecture = [System.Environment]::GetEnvironmentVariable("PROCESSOR_ARCHITECTURE")
-            Write-Output "$architecture"
+            Write-Host "$architecture"
             if ($architecture -eq "ARM64") {
               auditwheel repair --plat manylinux_2_35_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
               rm dist/*-linux_aarch64.whl
