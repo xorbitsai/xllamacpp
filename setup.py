@@ -71,8 +71,10 @@ else:
             ]
         )
         LIBRARY_DIRS.extend(
-            [os.getenv("CUDA_PATH", "") + "/lib/stubs"],
-            [os.getenv("CUDA_PATH", "") + "/lib"],
+            [
+                os.getenv("CUDA_PATH", "") + "/lib/stubs",
+                os.getenv("CUDA_PATH", "") + "/lib",
+            ],
         )
         LIBRARIES.extend(["cudart", "cublas", "cublasLt", "cuda"])
     if BUILD_HIP:
