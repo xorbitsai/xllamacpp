@@ -46,7 +46,9 @@ LIBRARY_DIRS = [
 LIBRARIES = []
 
 if PLATFORM == "Windows":
-    LIBRARIES.extend(["common", "llama", "ggml", "ggml-base", "ggml-cpu", "mtmd_static", "Advapi32"])
+    LIBRARIES.extend(
+        ["common", "llama", "ggml", "ggml-base", "ggml-cpu", "mtmd_static", "Advapi32"]
+    )
     if BUILD_CUDA:
         LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "\\Lib\\x64"])
         LIBRARIES.extend(["ggml-cuda", "cudart", "cublas", "cublasLt", "cuda"])
@@ -68,7 +70,10 @@ else:
                 f"{LLAMACPP_LIBS_DIR}/libggml-cuda.a",
             ]
         )
-        LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "/lib/stubs"])
+        LIBRARY_DIRS.extend(
+            [os.getenv("CUDA_PATH", "") + "/lib/stubs"],
+            [os.getenv("CUDA_PATH", "") + "/lib"],
+        )
         LIBRARIES.extend(["cudart", "cublas", "cublasLt", "cuda"])
     if BUILD_HIP:
         EXTRA_OBJECTS.extend(
