@@ -184,8 +184,8 @@ jobs:
           make
           python -m build --wheel
           if ($IsLinux) {
-            $architecture = (Get-CimInstance -ClassName Win32_Processor).Architecture
-            if ($architecture -eq 9) {
+            $architecture = [System.Environment]::GetEnvironmentVariable("PROCESSOR_ARCHITECTURE")
+            if ($architecture -eq "ARM64") {
               auditwheel repair --plat manylinux_2_35_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
               rm dist/*-linux_aarch64.whl
             } else {
