@@ -188,6 +188,7 @@ jobs:
           if ($IsLinux) {
             if ($env:OS -eq "ubuntu-22.04-arm") {
               auditwheel repair --plat manylinux_2_35_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
+              dir dist/
               rm dist/*-linux_aarch64.whl
             } else {
               auditwheel repair --plat manylinux_2_35_x86_64 --exclude libcuda.so.1 dist/*.whl -w dist
