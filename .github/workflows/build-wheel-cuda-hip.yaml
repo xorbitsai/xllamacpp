@@ -103,6 +103,7 @@ jobs:
         shell: pwsh
     env:
       CUDAVER: ${{ matrix.cuda }}
+      OS: ${{ matrix.os }}
 
     steps:
       - name: Add MSBuild to PATH
@@ -167,8 +168,7 @@ jobs:
 
       - name: Build Wheel
         run: |
-          $architecture = [System.Environment]::GetEnvironmentVariable("PROCESSOR_ARCHITECTURE")
-          Write-Host "AAAAAAAAAAAAAAAAAA: $architecture"
+          Write-Host "System: $env:OS"
           $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
           $env:XLLAMACPP_BUILD_CUDA = 1
           $env:VERSIONEER_CLOSEST_TAG_ONLY = 1
@@ -186,9 +186,7 @@ jobs:
           make
           python -m build --wheel
           if ($IsLinux) {
-            $architecture = [System.Environment]::GetEnvironmentVariable("PROCESSOR_ARCHITECTURE")
-            Write-Host "$architecture"
-            if ($architecture -eq "ARM64") {
+            if ($env:OS -eq "ubuntu-22.04-arm") {
               auditwheel repair --plat manylinux_2_35_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
               rm dist/*-linux_aarch64.whl
             } else {
