@@ -144,6 +144,7 @@ def test_common_params():
 
     assert params.cache_type_k == xlc.ggml_type.GGML_TYPE_F16
     assert params.cache_type_v == xlc.ggml_type.GGML_TYPE_F16
+    assert xlc.ggml_type.GGML_TYPE_COUNT == 39
 
     assert params.mmproj.path == ""
     assert params.mmproj_use_gpu is True

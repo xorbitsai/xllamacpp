@@ -1,10 +1,11 @@
 # distutils: language=c++
 
-from llama_cpp cimport common_params
+from xllamacpp.xllamacpp cimport common_params
 from libcpp.string cimport string as std_string
-from libcpp.functional cimport function as std_function
 
 cdef extern from "server.h" namespace "xllamacpp" nogil:
+    std_string c_get_json_device_info "xllamacpp::get_json_device_info" ()
+
     ctypedef void (*Callback "xllamacpp::Callback")(const std_string &, void *py_cb)
     cdef cppclass CServer "xllamacpp::Server":
 

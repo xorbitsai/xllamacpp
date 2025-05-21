@@ -13,8 +13,9 @@ from libcpp.string cimport string
 from libcpp.memory cimport shared_ptr, make_shared
 from cython.operator cimport dereference as deref
 
-cimport llama_cpp
-from server cimport CServer
+from xllamacpp cimport xllamacpp as llama_cpp
+# from xllamacpp.xllamacpp import ggml_type, ggml_numa_strategy, llama_rope_scaling_type, llama_pooling_type, llama_attention_type, llama_split_mode
+from server cimport CServer, c_get_json_device_info
 
 
 # constants
@@ -22,18 +23,18 @@ from server cimport CServer
 
 LLAMA_DEFAULT_SEED = 0xFFFFFFFF
 
-cpdef enum:
-    GGML_DEFAULT_N_THREADS = 4
-    GGML_MAX_DIMS = 4
-    GGML_MAX_N_THREADS = 16
-    GGML_MAX_NAME = 64
-    GGML_MAX_OP_PARAMS = 64
-    GGML_MAX_SRC = 10
+# cpdef enum:
+#     GGML_DEFAULT_N_THREADS = 4
+#     GGML_MAX_DIMS = 4
+#     GGML_MAX_N_THREADS = 16
+#     GGML_MAX_NAME = 64
+#     GGML_MAX_OP_PARAMS = 64
+#     GGML_MAX_SRC = 10
 
-cpdef enum:
-    GGML_ROPE_TYPE_NEOX   = 2
-    GGML_ROPE_TYPE_MROPE  = 8
-    GGML_ROPE_TYPE_VISION = 24
+# cpdef enum:
+#     GGML_ROPE_TYPE_NEOX   = 2
+#     GGML_ROPE_TYPE_MROPE  = 8
+#     GGML_ROPE_TYPE_VISION = 24
 
 
 # build info
@@ -48,100 +49,6 @@ BUILD_INFO = {
 
 # enums
 # -----------------------------------------------------------------------------
-
-cpdef enum ggml_log_level:
-    GGML_LOG_LEVEL_NONE  = 0
-    GGML_LOG_LEVEL_INFO  = 1
-    GGML_LOG_LEVEL_WARN  = 2
-    GGML_LOG_LEVEL_ERROR = 3
-    GGML_LOG_LEVEL_DEBUG = 4
-    GGML_LOG_LEVEL_CONT  = 5
-
-cpdef enum llama_vocab_type:
-    LLAMA_VOCAB_TYPE_NONE # For models without vocab
-    LLAMA_VOCAB_TYPE_SPM  # LLaMA tokenizer based on byte-level BPE with byte fallback
-    LLAMA_VOCAB_TYPE_BPE  # GPT-2 tokenizer based on byte-level BPE
-    LLAMA_VOCAB_TYPE_WPM  # BERT tokenizer based on WordPiece
-    LLAMA_VOCAB_TYPE_UGM  # T5 tokenizer based on Unigram
-    LLAMA_VOCAB_TYPE_RWKV # RWKV tokenizer based on greedy tokenization
-
-cpdef enum llama_rope_type:
-    LLAMA_ROPE_TYPE_NONE   = -1
-    LLAMA_ROPE_TYPE_NORM   = 0
-    LLAMA_ROPE_TYPE_NEOX   = GGML_ROPE_TYPE_NEOX
-    LLAMA_ROPE_TYPE_MROPE  = GGML_ROPE_TYPE_MROPE
-    LLAMA_ROPE_TYPE_VISION = GGML_ROPE_TYPE_VISION
-
-cpdef enum llama_token_attr:
-    LLAMA_TOKEN_ATTR_UNDEFINED    = 0
-    LLAMA_TOKEN_ATTR_UNKNOWN      = 1 << 0
-    LLAMA_TOKEN_ATTR_UNUSED       = 1 << 1
-    LLAMA_TOKEN_ATTR_NORMAL       = 1 << 2
-    LLAMA_TOKEN_ATTR_CONTROL      = 1 << 3 # SPECIAL?
-    LLAMA_TOKEN_ATTR_USER_DEFINED = 1 << 4
-    LLAMA_TOKEN_ATTR_BYTE         = 1 << 5
-    LLAMA_TOKEN_ATTR_NORMALIZED   = 1 << 6
-    LLAMA_TOKEN_ATTR_LSTRIP       = 1 << 7
-    LLAMA_TOKEN_ATTR_RSTRIP       = 1 << 8
-    LLAMA_TOKEN_ATTR_SINGLE_WORD  = 1 << 9
-
-cpdef enum ggml_numa_strategy:
-    GGML_NUMA_STRATEGY_DISABLED   = 0
-    GGML_NUMA_STRATEGY_DISTRIBUTE = 1
-    GGML_NUMA_STRATEGY_ISOLATE    = 2
-    GGML_NUMA_STRATEGY_NUMACTL    = 3
-    GGML_NUMA_STRATEGY_MIRROR     = 4
-    GGML_NUMA_STRATEGY_COUNT
-
-cpdef enum ggml_type:
-    GGML_TYPE_F32     = 0
-    GGML_TYPE_F16     = 1
-    GGML_TYPE_Q4_0    = 2
-    GGML_TYPE_Q4_1    = 3
-    # GGML_TYPE_Q4_2 = 4 support has been removed
-    # GGML_TYPE_Q4_3 = 5 support has been removed
-    GGML_TYPE_Q5_0    = 6
-    GGML_TYPE_Q5_1    = 7
-    GGML_TYPE_Q8_0    = 8
-    GGML_TYPE_Q8_1    = 9
-    GGML_TYPE_Q2_K    = 10
-    GGML_TYPE_Q3_K    = 11
-    GGML_TYPE_Q4_K    = 12
-    GGML_TYPE_Q5_K    = 13
-    GGML_TYPE_Q6_K    = 14
-    GGML_TYPE_Q8_K    = 15
-    GGML_TYPE_IQ2_XXS = 16
-    GGML_TYPE_IQ2_XS  = 17
-    GGML_TYPE_IQ3_XXS = 18
-    GGML_TYPE_IQ1_S   = 19
-    GGML_TYPE_IQ4_NL  = 20
-    GGML_TYPE_IQ3_S   = 21
-    GGML_TYPE_IQ2_S   = 22
-    GGML_TYPE_IQ4_XS  = 23
-    GGML_TYPE_I8      = 24
-    GGML_TYPE_I16     = 25
-    GGML_TYPE_I32     = 26
-    GGML_TYPE_I64     = 27
-    GGML_TYPE_F64     = 28
-    GGML_TYPE_IQ1_M   = 29
-    GGML_TYPE_BF16    = 30
-    # GGML_TYPE_Q4_0_4_4 = 31 # support has been removed from gguf files
-    # GGML_TYPE_Q4_0_4_8 = 32
-    # GGML_TYPE_Q4_0_8_8 = 33
-    GGML_TYPE_TQ1_0   = 34
-    GGML_TYPE_TQ2_0   = 35
-    GGML_TYPE_IQ4_NL_4_4 = 36
-    # GGML_TYPE_IQ4_NL_4_4 = 36
-    # GGML_TYPE_IQ4_NL_4_8 = 37
-    # GGML_TYPE_IQ4_NL_8_8 = 38
-    GGML_TYPE_COUNT = 39
-
-
-cpdef enum ggml_sched_priority:
-    GGML_SCHED_PRIO_NORMAL
-    GGML_SCHED_PRIO_MEDIUM
-    GGML_SCHED_PRIO_HIGH
-    GGML_SCHED_PRIO_REALTIME
 
 cpdef enum llama_ftype:
     LLAMA_FTYPE_ALL_F32              = 0
@@ -183,32 +90,6 @@ cpdef enum llama_ftype:
     LLAMA_FTYPE_MOSTLY_TQ1_0         = 36 # except 1d tensors
     LLAMA_FTYPE_MOSTLY_TQ2_0         = 37 # except 1d tensors
     LLAMA_FTYPE_GUESSED              = 1024
-
-cpdef enum llama_rope_scaling_type:
-    LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED = -1
-    LLAMA_ROPE_SCALING_TYPE_NONE        = 0
-    LLAMA_ROPE_SCALING_TYPE_LINEAR      = 1
-    LLAMA_ROPE_SCALING_TYPE_YARN        = 2
-    LLAMA_ROPE_SCALING_TYPE_LONGROPE    = 3
-    LLAMA_ROPE_SCALING_TYPE_MAX_VALUE   = LLAMA_ROPE_SCALING_TYPE_LONGROPE
-
-cpdef enum llama_pooling_type:
-    LLAMA_POOLING_TYPE_UNSPECIFIED = -1
-    LLAMA_POOLING_TYPE_NONE = 0
-    LLAMA_POOLING_TYPE_MEAN = 1
-    LLAMA_POOLING_TYPE_CLS  = 2
-    LLAMA_POOLING_TYPE_LAST = 3
-    LLAMA_POOLING_TYPE_RANK = 4 # used by reranking models to attach the classification head to the graph
-
-cpdef enum llama_attention_type:
-    LLAMA_ATTENTION_TYPE_UNSPECIFIED = -1
-    LLAMA_ATTENTION_TYPE_CAUSAL      = 0
-    LLAMA_ATTENTION_TYPE_NON_CAUSAL  = 1
-
-cpdef enum llama_split_mode:
-    LLAMA_SPLIT_MODE_NONE  = 0
-    LLAMA_SPLIT_MODE_LAYER = 1
-    LLAMA_SPLIT_MODE_ROW   = 2
 
 
 cdef class LlamaLogitBias:
@@ -1080,7 +961,7 @@ cdef class CommonParams:
     @property
     def rope_scaling_type(self) -> llama_rope_scaling_type:
         """rope scaling type."""
-        return llama_rope_scaling_type(self.p.rope_scaling_type)
+        return self.p.rope_scaling_type
 
     @rope_scaling_type.setter
     def rope_scaling_type(self, llama_rope_scaling_type value):
@@ -1089,7 +970,7 @@ cdef class CommonParams:
     @property
     def pooling_type(self) -> llama_pooling_type:
         """pooling type for embeddings."""
-        return (self.p.pooling_type)
+        return self.p.pooling_type
 
     @pooling_type.setter
     def pooling_type(self, llama_pooling_type value):
@@ -1098,7 +979,7 @@ cdef class CommonParams:
     @property
     def attention_type(self) -> llama_attention_type:
         """attention type for embeddings."""
-        return llama_attention_type(self.p.attention_type)
+        return self.p.attention_type
 
     @attention_type.setter
     def attention_type(self, llama_attention_type value):
@@ -1602,21 +1483,21 @@ cdef class CommonParams:
         self.p.single_turn = value
 
     @property
-    def cache_type_k(self) -> ggml_type:
+    def cache_type_k(self) -> llama_cpp.ggml_type:
         """data type for K cache"""
-        return <ggml_type>self.p.cache_type_k
+        return <llama_cpp.ggml_type>self.p.cache_type_k
 
     @cache_type_k.setter
-    def cache_type_k(self, ggml_type value):
+    def cache_type_k(self, llama_cpp.ggml_type value):
         self.p.cache_type_k = value
 
     @property
-    def cache_type_v(self) -> ggml_type:
+    def cache_type_v(self) -> llama_cpp.ggml_type:
         """data type for V cache"""
-        return <ggml_type>self.p.cache_type_v
+        return <llama_cpp.ggml_type>self.p.cache_type_v
 
     @cache_type_v.setter
-    def cache_type_v(self, ggml_type value):
+    def cache_type_v(self, llama_cpp.ggml_type value):
         self.p.cache_type_v = value
 
     @property
@@ -2084,3 +1965,6 @@ cdef class Server:
     def handle_metrics(self, res_error, res_ok):
         with nogil:
             self.svr.get().handle_metrics(callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
+
+def get_json_device_info():
+    return c_get_json_device_info()

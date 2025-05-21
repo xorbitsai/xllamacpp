@@ -6,6 +6,8 @@
 struct server_context;
 
 namespace xllamacpp {
+std::string get_json_device_info();
+
 typedef void (*Callback)(const std::string &, void *py_cb);
 
 class Server {
