@@ -13,9 +13,8 @@ from libcpp.string cimport string
 from libcpp.memory cimport shared_ptr, make_shared
 from cython.operator cimport dereference as deref
 
-from xllamacpp cimport xllamacpp as llama_cpp
-# from xllamacpp.xllamacpp import ggml_type, ggml_numa_strategy, llama_rope_scaling_type, llama_pooling_type, llama_attention_type, llama_split_mode
-from server cimport CServer, c_get_json_device_info
+cimport xllamacpp
+from server cimport CServer, c_get_device_info
 
 
 # constants
@@ -23,81 +22,24 @@ from server cimport CServer, c_get_json_device_info
 
 LLAMA_DEFAULT_SEED = 0xFFFFFFFF
 
-# cpdef enum:
-#     GGML_DEFAULT_N_THREADS = 4
-#     GGML_MAX_DIMS = 4
-#     GGML_MAX_N_THREADS = 16
-#     GGML_MAX_NAME = 64
-#     GGML_MAX_OP_PARAMS = 64
-#     GGML_MAX_SRC = 10
-
-# cpdef enum:
-#     GGML_ROPE_TYPE_NEOX   = 2
-#     GGML_ROPE_TYPE_MROPE  = 8
-#     GGML_ROPE_TYPE_VISION = 24
-
 
 # build info
 # -----------------------------------------------------------------------------
 
 BUILD_INFO = {
-    'build_number': llama_cpp.LLAMA_BUILD_NUMBER,
-    'commit': llama_cpp.LLAMA_COMMIT.decode(),
-    'compiler': llama_cpp.LLAMA_COMPILER.decode(),
-    'build_target': llama_cpp.LLAMA_BUILD_TARGET.decode(),
+    'build_number': xllamacpp.LLAMA_BUILD_NUMBER,
+    'commit': xllamacpp.LLAMA_COMMIT.decode(),
+    'compiler': xllamacpp.LLAMA_COMPILER.decode(),
+    'build_target': xllamacpp.LLAMA_BUILD_TARGET.decode(),
 }
-
-# enums
-# -----------------------------------------------------------------------------
-
-cpdef enum llama_ftype:
-    LLAMA_FTYPE_ALL_F32              = 0
-    LLAMA_FTYPE_MOSTLY_F16           = 1
-    LLAMA_FTYPE_MOSTLY_Q4_0          = 2
-    LLAMA_FTYPE_MOSTLY_Q4_1          = 3
-    # LLAMA_FTYPE_MOSTLY_Q4_1_SOME_F16 = 4  # tok_embeddings.weight and output.weight are F16
-    # LLAMA_FTYPE_MOSTLY_Q4_2       = 5     # support has been removed
-    # LLAMA_FTYPE_MOSTLY_Q4_3       = 6     # support has been removed
-    LLAMA_FTYPE_MOSTLY_Q8_0          = 7
-    LLAMA_FTYPE_MOSTLY_Q5_0          = 8
-    LLAMA_FTYPE_MOSTLY_Q5_1          = 9
-    LLAMA_FTYPE_MOSTLY_Q2_K          = 10
-    LLAMA_FTYPE_MOSTLY_Q3_K_S        = 11
-    LLAMA_FTYPE_MOSTLY_Q3_K_M        = 12
-    LLAMA_FTYPE_MOSTLY_Q3_K_L        = 13
-    LLAMA_FTYPE_MOSTLY_Q4_K_S        = 14
-    LLAMA_FTYPE_MOSTLY_Q4_K_M        = 15
-    LLAMA_FTYPE_MOSTLY_Q5_K_S        = 16
-    LLAMA_FTYPE_MOSTLY_Q5_K_M        = 17
-    LLAMA_FTYPE_MOSTLY_Q6_K          = 18
-    LLAMA_FTYPE_MOSTLY_IQ2_XXS       = 19
-    LLAMA_FTYPE_MOSTLY_IQ2_XS        = 20
-    LLAMA_FTYPE_MOSTLY_Q2_K_S        = 21
-    LLAMA_FTYPE_MOSTLY_IQ3_XS        = 22
-    LLAMA_FTYPE_MOSTLY_IQ3_XXS       = 23
-    LLAMA_FTYPE_MOSTLY_IQ1_S         = 24
-    LLAMA_FTYPE_MOSTLY_IQ4_NL        = 25
-    LLAMA_FTYPE_MOSTLY_IQ3_S         = 26
-    LLAMA_FTYPE_MOSTLY_IQ3_M         = 27
-    LLAMA_FTYPE_MOSTLY_IQ2_S         = 28
-    LLAMA_FTYPE_MOSTLY_IQ2_M         = 29
-    LLAMA_FTYPE_MOSTLY_IQ4_XS        = 30
-    LLAMA_FTYPE_MOSTLY_IQ1_M         = 31
-    LLAMA_FTYPE_MOSTLY_BF16          = 32
-    # LLAMA_FTYPE_MOSTLY_Q4_0_4_4      = 33, # removed from gguf files, use Q4_0 and runtime repack
-    # LLAMA_FTYPE_MOSTLY_Q4_0_4_8      = 34, # removed from gguf files, use Q4_0 and runtime repack
-    # LLAMA_FTYPE_MOSTLY_Q4_0_8_8      = 35, # removed from gguf files, use Q4_0 and runtime repack
-    LLAMA_FTYPE_MOSTLY_TQ1_0         = 36 # except 1d tensors
-    LLAMA_FTYPE_MOSTLY_TQ2_0         = 37 # except 1d tensors
-    LLAMA_FTYPE_GUESSED              = 1024
 
 
 cdef class LlamaLogitBias:
-    cdef llama_cpp.llama_logit_bias *p
+    cdef xllamacpp.llama_logit_bias *p
     cdef object owner
 
     @staticmethod
-    cdef LlamaLogitBias from_ptr(llama_cpp.llama_logit_bias *p, object owner):
+    cdef LlamaLogitBias from_ptr(xllamacpp.llama_logit_bias *p, object owner):
         cdef LlamaLogitBias wrapper = LlamaLogitBias.__new__(LlamaLogitBias)
         wrapper.p = p
         wrapper.owner = owner
@@ -126,11 +68,11 @@ cdef class LlamaLogitBias:
 
 
 cdef class CommonParamsSampling:
-    cdef llama_cpp.common_params_sampling *p
+    cdef xllamacpp.common_params_sampling *p
     cdef object owner
 
     @staticmethod
-    cdef CommonParamsSampling from_ptr(llama_cpp.common_params_sampling *params, object owner):
+    cdef CommonParamsSampling from_ptr(xllamacpp.common_params_sampling *params, object owner):
         cdef CommonParamsSampling wrapper = CommonParamsSampling.__new__(CommonParamsSampling)
         wrapper.p = params
         wrapper.owner = owner
@@ -418,13 +360,13 @@ cdef class CommonParamsSampling:
         """
         res = []
         for sampler_enum in self.p.samplers:
-            res.append(<str>llama_cpp.common_sampler_type_to_str(sampler_enum))
+            res.append(<str>xllamacpp.common_sampler_type_to_str(sampler_enum))
         return ";".join(res)
 
     @samplers.setter
     def samplers(self, value: str):
         cdef vector[string] split_values = value.split(";")
-        self.p.samplers = llama_cpp.common_sampler_types_from_names(split_values, True)
+        self.p.samplers = xllamacpp.common_sampler_types_from_names(split_values, True)
 
     @property
     def grammar(self) -> str:
@@ -448,7 +390,7 @@ cdef class CommonParamsSampling:
 
     @logit_bias.setter
     def logit_bias(self, elems: list[LlamaLogitBias]):
-        cdef vector[llama_cpp.llama_logit_bias] vec
+        cdef vector[xllamacpp.llama_logit_bias] vec
         for elem in elems:
             vec.push_back(elem.ptr[0])
         self.p.logit_bias = vec
@@ -456,11 +398,11 @@ cdef class CommonParamsSampling:
 
 
 cdef class CpuParams:
-    cdef llama_cpp.cpu_params *p
+    cdef xllamacpp.cpu_params *p
     cdef object owner
 
     @staticmethod
-    cdef CpuParams from_ptr(llama_cpp.cpu_params *params, object owner):
+    cdef CpuParams from_ptr(xllamacpp.cpu_params *params, object owner):
         cdef CpuParams wrapper = CpuParams.__new__(CpuParams)
         wrapper.p = params
         wrapper.owner = owner
@@ -505,12 +447,12 @@ cdef class CpuParams:
         self.p.mask_valid = value
 
     @property
-    def priority(self) -> llama_cpp.ggml_sched_priority:
+    def priority(self) -> xllamacpp.ggml_sched_priority:
         """Scheduling prio : (0 - normal, 1 - medium, 2 - high, 3 - realtime)."""
         return self.p.priority
 
     @priority.setter
-    def priority(self, value: llama_cpp.ggml_sched_priority):
+    def priority(self, value: xllamacpp.ggml_sched_priority):
         self.p.priority = value
 
     @property
@@ -533,11 +475,11 @@ cdef class CpuParams:
 
 
 cdef class CommonParamsModel:
-    cdef llama_cpp.common_params_model *p
+    cdef xllamacpp.common_params_model *p
     cdef object owner
 
     @staticmethod
-    cdef CommonParamsModel from_ptr(llama_cpp.common_params_model *params, object owner):
+    cdef CommonParamsModel from_ptr(xllamacpp.common_params_model *params, object owner):
         cdef CommonParamsModel wrapper = CommonParamsModel.__new__(CommonParamsModel)
         wrapper.p = params
         wrapper.owner = owner
@@ -584,11 +526,11 @@ cdef class CommonParamsModel:
 
 
 cdef class CommonParamsSpeculative:
-    cdef llama_cpp.common_params_speculative *p
+    cdef xllamacpp.common_params_speculative *p
     cdef object owner
 
     @staticmethod
-    cdef CommonParamsSpeculative from_ptr(llama_cpp.common_params_speculative *params, object owner):
+    cdef CommonParamsSpeculative from_ptr(xllamacpp.common_params_speculative *params, object owner):
         cdef CommonParamsSpeculative wrapper = CommonParamsSpeculative.__new__(CommonParamsSpeculative)
         wrapper.p = params
         wrapper.owner = owner
@@ -677,11 +619,11 @@ cdef class CommonParamsSpeculative:
 
 
 cdef class CommonParamsVocoder:
-    cdef llama_cpp.common_params_vocoder *p
+    cdef xllamacpp.common_params_vocoder *p
     cdef object owner
 
     @staticmethod
-    cdef CommonParamsVocoder from_ptr(llama_cpp.common_params_vocoder *params, owner):
+    cdef CommonParamsVocoder from_ptr(xllamacpp.common_params_vocoder *params, owner):
         cdef CommonParamsVocoder wrapper = CommonParamsVocoder.__new__(CommonParamsVocoder)
         wrapper.p = params
         wrapper.owner = owner
@@ -709,7 +651,7 @@ cdef class CommonParamsVocoder:
 
 
 cdef class CommonParams:
-    cdef llama_cpp.common_params p
+    cdef xllamacpp.common_params p
 
     @property
     def n_predict(self) -> int:
@@ -1483,21 +1425,21 @@ cdef class CommonParams:
         self.p.single_turn = value
 
     @property
-    def cache_type_k(self) -> llama_cpp.ggml_type:
+    def cache_type_k(self) -> xllamacpp.ggml_type:
         """data type for K cache"""
-        return <llama_cpp.ggml_type>self.p.cache_type_k
+        return <xllamacpp.ggml_type>self.p.cache_type_k
 
     @cache_type_k.setter
-    def cache_type_k(self, llama_cpp.ggml_type value):
+    def cache_type_k(self, xllamacpp.ggml_type value):
         self.p.cache_type_k = value
 
     @property
-    def cache_type_v(self) -> llama_cpp.ggml_type:
+    def cache_type_v(self) -> xllamacpp.ggml_type:
         """data type for V cache"""
-        return <llama_cpp.ggml_type>self.p.cache_type_v
+        return <xllamacpp.ggml_type>self.p.cache_type_v
 
     @cache_type_v.setter
-    def cache_type_v(self, llama_cpp.ggml_type value):
+    def cache_type_v(self, xllamacpp.ggml_type value):
         self.p.cache_type_v = value
 
     @property
@@ -1943,6 +1885,60 @@ cdef class CommonParams:
     # bool batched_bench_output_jsonl = false;
 
 
+# cdef class GGMLBackendDevCaps:
+#     cdef xllamacpp.ggml_backend_dev_caps p
+
+#     @property
+#     def async(self) -> bool:
+#         return self.p.async
+
+#     @property
+#     def host_buffer(self) -> bool:
+#         return self.p.host_buffer
+
+#     @property
+#     def buffer_from_host_ptr(self) -> bool:
+#         return self.p.buffer_from_host_ptr
+
+#     @property
+#     def events(self) -> bool:
+#         return self.p.events
+
+
+# cdef class GGMLBackendDevProps:
+#     cdef xllamacpp.ggml_backend_dev_props p
+
+#     @property
+#     def name(self) -> str:
+#         return <str>self.p.name
+
+#     @property
+#     def description(self) -> str:
+#         return <str>self.p.description
+
+#     @property
+#     def memory_free(self) -> int:
+#         return self.p.memory_free
+
+#     @property
+#     def memory_total(self) -> int:
+#         return self.p.memory_total
+
+#     @property
+#     def type(self) -> ggml_backend_dev_type:
+#         return self.p.ggml_backend_dev_type
+
+#     @property
+#     def caps(self) -> GGMLBackendDevCaps:
+#         cdef GGMLBackendDevCaps value = GGMLBackendDevCaps.__new__(GGMLBackendDevCaps)
+#         value.p = self.p.ggml_backend_dev_caps
+#         return value
+
+
+def get_device_info():
+    return c_get_device_info()
+
+
 cdef void callback_wrapper(const string &data, void *py_cb) noexcept nogil:
     with gil:
         (<object>py_cb)(data)
@@ -1965,6 +1961,3 @@ cdef class Server:
     def handle_metrics(self, res_error, res_ok):
         with nogil:
             self.svr.get().handle_metrics(callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
-
-def get_json_device_info():
-    return c_get_json_device_info()

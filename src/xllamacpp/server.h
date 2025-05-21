@@ -2,11 +2,13 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 struct server_context;
 
 namespace xllamacpp {
-std::string get_json_device_info();
+
+std::vector<ggml_backend_dev_props> get_device_info();
 
 typedef void (*Callback)(const std::string &, void *py_cb);
 

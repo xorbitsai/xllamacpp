@@ -1,10 +1,11 @@
 # distutils: language=c++
 
-from xllamacpp.xllamacpp cimport common_params
+from xllamacpp.xllamacpp cimport common_params, ggml_backend_dev_props
 from libcpp.string cimport string as std_string
+from libcpp.vector cimport vector as std_vector
 
 cdef extern from "server.h" namespace "xllamacpp" nogil:
-    std_string c_get_json_device_info "xllamacpp::get_json_device_info" ()
+    std_vector[ggml_backend_dev_props] c_get_device_info "xllamacpp::get_device_info" ()
 
     ctypedef void (*Callback "xllamacpp::Callback")(const std_string &, void *py_cb)
     cdef cppclass CServer "xllamacpp::Server":
