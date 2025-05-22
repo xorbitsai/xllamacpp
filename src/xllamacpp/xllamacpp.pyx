@@ -1326,6 +1326,15 @@ cdef class CommonParams:
         self.p.ctx_shift = value
 
     @property
+    def swa_full(self) -> bool:
+        """use full-size SWA cache (https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)"""
+        return self.p.swa_full
+
+    @swa_full.setter
+    def swa_full(self, value: bool):
+        self.p.swa_full = value
+
+    @property
     def input_prefix_bos(self) -> bool:
         """prefix BOS to user inputs, preceding input_prefix"""
         return self.p.input_prefix_bos
@@ -1369,15 +1378,6 @@ cdef class CommonParams:
     @display_prompt.setter
     def display_prompt(self, value: bool):
         self.p.display_prompt = value
-
-    @property
-    def dump_kv_cache(self) -> bool:
-        """dump the KV cache contents for debugging purposes"""
-        return self.p.dump_kv_cache
-
-    @dump_kv_cache.setter
-    def dump_kv_cache(self, value: bool):
-        self.p.dump_kv_cache = value
 
     @property
     def no_kv_offload(self) -> bool:
@@ -1425,21 +1425,21 @@ cdef class CommonParams:
         self.p.single_turn = value
 
     @property
-    def cache_type_k(self) -> xllamacpp.ggml_type:
+    def cache_type_k(self) -> ggml_type:
         """data type for K cache"""
-        return <xllamacpp.ggml_type>self.p.cache_type_k
+        return self.p.cache_type_k
 
     @cache_type_k.setter
-    def cache_type_k(self, xllamacpp.ggml_type value):
+    def cache_type_k(self, ggml_type value):
         self.p.cache_type_k = value
 
     @property
-    def cache_type_v(self) -> xllamacpp.ggml_type:
+    def cache_type_v(self) -> ggml_type:
         """data type for V cache"""
-        return <xllamacpp.ggml_type>self.p.cache_type_v
+        return self.p.cache_type_v
 
     @cache_type_v.setter
-    def cache_type_v(self, xllamacpp.ggml_type value):
+    def cache_type_v(self, ggml_type value):
         self.p.cache_type_v = value
 
     @property
@@ -1599,15 +1599,6 @@ cdef class CommonParams:
     def chat_template(self, value: str):
         self.p.chat_template = value.encode('utf8')
 
-    # @property
-    # def system_prompt(self) -> str:
-    #     """system prompt"""
-    #     return self.p.system_prompt.decode()
-
-    # @system_prompt.setter
-    # def system_prompt(self, value: str):
-    #     self.p.system_prompt = value.encode('utf8')
-
     @property
     def enable_chat_template(self) -> bool:
         """enable chat template"""
@@ -1616,6 +1607,23 @@ cdef class CommonParams:
     @enable_chat_template.setter
     def enable_chat_template(self, value: bool):
         self.p.enable_chat_template = value
+
+    @property
+    def reasoning_format(self) -> common_reasoning_format:
+        return self.p.reasoning_format
+
+    @reasoning_format.setter
+    def reasoning_format(self, common_reasoning_format value):
+        self.p.reasoning_format = value
+
+    @property
+    def prefill_assistant(self) -> bool:
+        """if true, any trailing assistant message will be prefilled into the response"""
+        return self.p.prefill_assistant
+
+    @prefill_assistant.setter
+    def prefill_assistant(self, value: bool):
+        self.p.prefill_assistant = value
 
     @property
     def api_keys(self) -> list[str]:
