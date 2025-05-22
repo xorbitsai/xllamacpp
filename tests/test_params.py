@@ -35,6 +35,26 @@ def test_common_params_sampling():
     # assert params.no_perf is False
 
 
+def test_enum_values():
+    assert xlc.GGML_MAX_N_THREADS == 512
+    assert xlc.GGML_ROPE_TYPE_VISION == 24
+    assert xlc.ggml_sched_priority.GGML_SCHED_PRIO_REALTIME == 3
+    assert xlc.ggml_numa_strategy.GGML_NUMA_STRATEGY_COUNT == 5
+    assert xlc.ggml_type.GGML_TYPE_COUNT == 39
+    assert xlc.ggml_backend_dev_type.GGML_BACKEND_DEVICE_TYPE_ACCEL == 2
+    assert xlc.llama_rope_scaling_type.LLAMA_ROPE_SCALING_TYPE_MAX_VALUE == 3
+    assert xlc.llama_pooling_type.LLAMA_POOLING_TYPE_RANK == 4
+    assert xlc.llama_attention_type.LLAMA_ATTENTION_TYPE_NON_CAUSAL == 1
+    assert xlc.llama_split_mode.LLAMA_SPLIT_MODE_ROW == 2
+    assert xlc.llama_model_kv_override_type.LLAMA_KV_OVERRIDE_TYPE_STR == 3
+    assert xlc.dimre_method.DIMRE_METHOD_MEAN == 1
+    assert xlc.common_conversation_mode.COMMON_CONVERSATION_MODE_AUTO == 2
+    assert (
+        xlc.common_grammar_trigger_type.COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START == 3
+    )
+    assert xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK == 1
+
+
 def test_common_params():
     params = xlc.CommonParams()
     assert params.n_predict == -1

@@ -4101,9 +4101,63 @@ handle_metrics_impl(server_context &ctx_server,
   res_ok(prometheus.str());
 };
 
+static void ggml_log_callback_default(enum ggml_log_level level,
+                                      const char *text, void *user_data) {
+  (void)level;
+  (void)text;
+  (void)user_data;
+  // if (level == GGML_LOG_LEVEL_INFO || level == GGML_LOG_LEVEL_ERROR) {
+  //   fputs(text, stderr);
+  //   fflush(stderr);
+  // }
+}
+
 #include "server.h"
 
 namespace xllamacpp {
+
+std::vector<ggml_backend_dev_props> get_device_info() {
+  ggml_log_set(ggml_log_callback_default, nullptr);
+
+  const size_t dev_count = ggml_backend_dev_count();
+
+  std::vector<ggml_backend_dev_props> result;
+  std::vector<ggml_backend_dev_t> devs;
+  std::vector<ggml_backend_t> backends;
+
+  for (size_t i = 0; i < dev_count; ++i) {
+    devs.push_back(ggml_backend_dev_get(i));
+
+    ggml_backend_t backend = ggml_backend_dev_init(devs[i], NULL);
+    GGML_ASSERT(backend != NULL);
+
+    if (ggml_backend_is_cpu(backend)) {
+      ggml_backend_cpu_set_n_threads(backend,
+                                     std::thread::hardware_concurrency() / 2);
+    }
+
+    backends.push_back(backend);
+  }
+
+  for (size_t i = 0; i < dev_count; ++i) {
+    // Put the backend to be tested in front so that it's prioritized:
+    std::vector<ggml_backend_t> backends_modded = {backends[i]};
+    backends_modded.insert(backends_modded.end(), backends.begin(),
+                           backends.end());
+
+    ggml_backend_dev_props prop;
+    ggml_backend_dev_get_props(devs[i], &prop);
+
+    result.push_back(prop);
+  }
+
+  for (ggml_backend_t backend : backends) {
+    ggml_backend_free(backend);
+  }
+
+  return result;
+}
+
 Server::Server(const common_params &params)
     : _params(params), _ctx_server(new server_context()) {
   std::promise<int> out;

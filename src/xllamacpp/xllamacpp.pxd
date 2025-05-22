@@ -7,169 +7,82 @@ from libcpp.set cimport set as std_set
 
 
 #------------------------------------------------------------------------------
-# constants
-
-cpdef enum:
-    GGML_DEFAULT_N_THREADS = 4
-    GGML_MAX_DIMS = 4
-    GGML_MAX_N_THREADS = 16
-    GGML_MAX_NAME = 64
-    GGML_MAX_OP_PARAMS = 64
-    GGML_MAX_SRC = 10
-
-cpdef enum:
-    GGML_ROPE_TYPE_NEOX   = 2
-    GGML_ROPE_TYPE_MROPE  = 8
-    GGML_ROPE_TYPE_VISION = 24
-
-
-#------------------------------------------------------------------------------
 # ggml.h
 
 cdef extern from "ggml.h":
 
-    cdef enum ggml_sched_priority:
+    cpdef enum:
+        GGML_DEFAULT_N_THREADS
+        GGML_MAX_DIMS
+        GGML_MAX_N_THREADS
+        GGML_MAX_NAME
+        GGML_MAX_OP_PARAMS
+        GGML_MAX_SRC
+
+
+    cpdef enum:
+        GGML_ROPE_TYPE_NEOX
+        GGML_ROPE_TYPE_MROPE
+        GGML_ROPE_TYPE_VISION
+
+
+    cpdef enum ggml_sched_priority:
         GGML_SCHED_PRIO_NORMAL
         GGML_SCHED_PRIO_MEDIUM
         GGML_SCHED_PRIO_HIGH
         GGML_SCHED_PRIO_REALTIME
 
 
-    cdef enum ggml_numa_strategy:
-        GGML_NUMA_STRATEGY_DISABLED   = 0
-        GGML_NUMA_STRATEGY_DISTRIBUTE = 1
-        GGML_NUMA_STRATEGY_ISOLATE    = 2
-        GGML_NUMA_STRATEGY_NUMACTL    = 3
-        GGML_NUMA_STRATEGY_MIRROR     = 4
+    cpdef enum ggml_numa_strategy:
+        GGML_NUMA_STRATEGY_DISABLED
+        GGML_NUMA_STRATEGY_DISTRIBUTE
+        GGML_NUMA_STRATEGY_ISOLATE
+        GGML_NUMA_STRATEGY_NUMACTL
+        GGML_NUMA_STRATEGY_MIRROR
         GGML_NUMA_STRATEGY_COUNT
 
 
-    cdef enum ggml_type:
-        GGML_TYPE_F32     = 0
-        GGML_TYPE_F16     = 1
-        GGML_TYPE_Q4_0    = 2
-        GGML_TYPE_Q4_1    = 3
-        # GGML_TYPE_Q4_2 = 4 support has been removed
-        # GGML_TYPE_Q4_3 = 5 support has been removed
-        GGML_TYPE_Q5_0    = 6
-        GGML_TYPE_Q5_1    = 7
-        GGML_TYPE_Q8_0    = 8
-        GGML_TYPE_Q8_1    = 9
-        GGML_TYPE_Q2_K    = 10
-        GGML_TYPE_Q3_K    = 11
-        GGML_TYPE_Q4_K    = 12
-        GGML_TYPE_Q5_K    = 13
-        GGML_TYPE_Q6_K    = 14
-        GGML_TYPE_Q8_K    = 15
-        GGML_TYPE_IQ2_XXS = 16
-        GGML_TYPE_IQ2_XS  = 17
-        GGML_TYPE_IQ3_XXS = 18
-        GGML_TYPE_IQ1_S   = 19
-        GGML_TYPE_IQ4_NL  = 20
-        GGML_TYPE_IQ3_S   = 21
-        GGML_TYPE_IQ2_S   = 22
-        GGML_TYPE_IQ4_XS  = 23
-        GGML_TYPE_I8      = 24
-        GGML_TYPE_I16     = 25
-        GGML_TYPE_I32     = 26
-        GGML_TYPE_I64     = 27
-        GGML_TYPE_F64     = 28
-        GGML_TYPE_IQ1_M   = 29
-        GGML_TYPE_BF16    = 30
-        # GGML_TYPE_Q4_0_4_4 = 31 # support has been removed from gguf files
-        # GGML_TYPE_Q4_0_4_8 = 32
-        # GGML_TYPE_Q4_0_8_8 = 33
-        GGML_TYPE_TQ1_0   = 34
-        GGML_TYPE_TQ2_0   = 35
-        GGML_TYPE_IQ4_NL_4_4 = 36
-        # GGML_TYPE_IQ4_NL_4_4 = 36
-        # GGML_TYPE_IQ4_NL_4_8 = 37
-        # GGML_TYPE_IQ4_NL_8_8 = 38
-        GGML_TYPE_COUNT = 39
-
-
-    cdef enum ggml_op:
-        GGML_OP_NONE = 0
-
-        GGML_OP_DUP
-        GGML_OP_ADD
-        GGML_OP_ADD1
-        GGML_OP_ACC
-        GGML_OP_SUB
-        GGML_OP_MUL
-        GGML_OP_DIV
-        GGML_OP_SQR
-        GGML_OP_SQRT
-        GGML_OP_LOG
-        GGML_OP_SUM
-        GGML_OP_SUM_ROWS
-        GGML_OP_MEAN
-        GGML_OP_ARGMAX
-        GGML_OP_REPEAT
-        GGML_OP_REPEAT_BACK
-        GGML_OP_CONCAT
-        GGML_OP_SILU_BACK
-        GGML_OP_NORM # normalize
-        GGML_OP_RMS_NORM
-        GGML_OP_RMS_NORM_BACK
-        GGML_OP_GROUP_NORM
-        GGML_OP_L2_NORM
-
-        GGML_OP_MUL_MAT
-        GGML_OP_MUL_MAT_ID
-        GGML_OP_OUT_PROD
-
-        GGML_OP_SCALE
-        GGML_OP_SET
-        GGML_OP_CPY
-        GGML_OP_CONT
-        GGML_OP_RESHAPE
-        GGML_OP_VIEW
-        GGML_OP_PERMUTE
-        GGML_OP_TRANSPOSE
-        GGML_OP_GET_ROWS
-        GGML_OP_GET_ROWS_BACK
-        GGML_OP_DIAG
-        GGML_OP_DIAG_MASK_INF
-        GGML_OP_DIAG_MASK_ZERO
-        GGML_OP_SOFT_MAX
-        GGML_OP_SOFT_MAX_BACK
-        GGML_OP_ROPE
-        GGML_OP_ROPE_BACK
-        GGML_OP_CLAMP
-        GGML_OP_CONV_TRANSPOSE_1D
-        GGML_OP_IM2COL
-        GGML_OP_IM2COL_BACK
-        GGML_OP_CONV_2D_DW
-        GGML_OP_CONV_TRANSPOSE_2D
-        GGML_OP_POOL_1D
-        GGML_OP_POOL_2D
-        GGML_OP_UPSCALE # nearest interpolate
-        GGML_OP_PAD
-        GGML_OP_ARANGE
-        GGML_OP_TIMESTEP_EMBEDDING
-        GGML_OP_ARGSORT
-        GGML_OP_LEAKY_RELU
-
-        GGML_OP_FLASH_ATTN_EXT
-        GGML_OP_FLASH_ATTN_BACK
-        GGML_OP_SSM_CONV
-        GGML_OP_SSM_SCAN
-        GGML_OP_WIN_PART
-        GGML_OP_WIN_UNPART
-        GGML_OP_GET_REL_POS
-        GGML_OP_ADD_REL_POS
-
-        GGML_OP_UNARY
-
-        GGML_OP_MAP_CUSTOM1
-        GGML_OP_MAP_CUSTOM2
-        GGML_OP_MAP_CUSTOM3
-
-        GGML_OP_CROSS_ENTROPY_LOSS
-        GGML_OP_CROSS_ENTROPY_LOSS_BACK
-
-        GGML_OP_COUNT
+    cpdef enum ggml_type:
+        GGML_TYPE_F32
+        GGML_TYPE_F16
+        GGML_TYPE_Q4_0
+        GGML_TYPE_Q4_1
+        # GGML_TYPE_Q4_2 = 4, support has been removed
+        # GGML_TYPE_Q4_3 = 5, support has been removed
+        GGML_TYPE_Q5_0
+        GGML_TYPE_Q5_1
+        GGML_TYPE_Q8_0
+        GGML_TYPE_Q8_1
+        GGML_TYPE_Q2_K
+        GGML_TYPE_Q3_K
+        GGML_TYPE_Q4_K
+        GGML_TYPE_Q5_K
+        GGML_TYPE_Q6_K
+        GGML_TYPE_Q8_K
+        GGML_TYPE_IQ2_XXS
+        GGML_TYPE_IQ2_XS
+        GGML_TYPE_IQ3_XXS
+        GGML_TYPE_IQ1_S
+        GGML_TYPE_IQ4_NL
+        GGML_TYPE_IQ3_S
+        GGML_TYPE_IQ2_S
+        GGML_TYPE_IQ4_XS
+        GGML_TYPE_I8
+        GGML_TYPE_I16
+        GGML_TYPE_I32
+        GGML_TYPE_I64
+        GGML_TYPE_F64
+        GGML_TYPE_IQ1_M
+        GGML_TYPE_BF16
+        # GGML_TYPE_Q4_0_4_4 = 31, support has been removed from gguf files
+        # GGML_TYPE_Q4_0_4_8 = 32,
+        # GGML_TYPE_Q4_0_8_8 = 33,
+        GGML_TYPE_TQ1_0
+        GGML_TYPE_TQ2_0
+        # GGML_TYPE_IQ4_NL_4_4 = 36,
+        # GGML_TYPE_IQ4_NL_4_8 = 37,
+        # GGML_TYPE_IQ4_NL_8_8 = 38,
+        GGML_TYPE_COUNT
 
 
     ctypedef struct ggml_backend_buffer_type:
@@ -185,38 +98,7 @@ cdef extern from "ggml.h":
     # n-dimensional tensor
 
     ctypedef struct ggml_tensor:
-        ggml_type type
-
-        ggml_backend_buffer * buffer
-
-        int64_t ne[GGML_MAX_DIMS]  # number of elements
-        size_t  nb[GGML_MAX_DIMS]  # stride in bytes:
-                                   # nb[0] = ggml_type_size(type)
-                                   # nb[1] = nb[0]   * (ne[0] / ggml_blck_size(type)) + padding
-                                   # nb[i] = nb[i-1] * ne[i-1]
-
-        # compute data
-        ggml_op op
-
-        # op params - allocated as int32_t for alignment
-        int32_t op_params[16] # GGML_MAX_OP_PARAMS / sizeof(int32_t?)
-
-        int32_t flags
-
-        ggml_tensor * grad
-        ggml_tensor * src[GGML_MAX_SRC]
-
-        # source tensor and offset for views
-        ggml_tensor * view_src
-        size_t view_offs
-
-        void * data
-
-        char name[GGML_MAX_NAME]
-
-        void * extra # extra things e.g. for ggml-cuda.cu
-
-        # char padding[4]
+        pass
 
 
 #------------------------------------------------------------------------------
@@ -224,6 +106,34 @@ cdef extern from "ggml.h":
 
 
 cdef extern from "ggml-backend.h":
+    cpdef enum ggml_backend_dev_type:
+        # CPU device using system memory
+        GGML_BACKEND_DEVICE_TYPE_CPU
+        # GPU device using dedicated memory
+        GGML_BACKEND_DEVICE_TYPE_GPU
+        # accelerator devices intended to be used together with the CPU backend (e.g. BLAS or AMX)
+        GGML_BACKEND_DEVICE_TYPE_ACCEL
+
+    # functionality supported by the device
+    ctypedef struct ggml_backend_dev_caps:
+        # asynchronous operations
+        bint async
+        # pinned host buffer
+        bint host_buffer
+        # creating buffers from host ptr
+        bint buffer_from_host_ptr
+        # event synchronization
+        bint events
+
+    # all the device properties
+    ctypedef struct ggml_backend_dev_props:
+        const char * name
+        const char * description
+        size_t memory_free
+        size_t memory_total
+        ggml_backend_dev_type type
+        ggml_backend_dev_caps caps
+
     ctypedef bint (*ggml_backend_sched_eval_callback)(ggml_tensor * t, bint ask, void * user_data)
 
     ctypedef struct ggml_backend_device: pass
@@ -238,33 +148,33 @@ cdef extern from "llama.h":
 
     ctypedef int32_t llama_token
 
-    cdef enum llama_rope_scaling_type:
-        LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED = -1
-        LLAMA_ROPE_SCALING_TYPE_NONE        = 0
-        LLAMA_ROPE_SCALING_TYPE_LINEAR      = 1
-        LLAMA_ROPE_SCALING_TYPE_YARN        = 2
-        LLAMA_ROPE_SCALING_TYPE_LONGROPE    = 3
-        LLAMA_ROPE_SCALING_TYPE_MAX_VALUE   = LLAMA_ROPE_SCALING_TYPE_LONGROPE
+    cpdef enum llama_rope_scaling_type:
+        LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED
+        LLAMA_ROPE_SCALING_TYPE_NONE
+        LLAMA_ROPE_SCALING_TYPE_LINEAR
+        LLAMA_ROPE_SCALING_TYPE_YARN
+        LLAMA_ROPE_SCALING_TYPE_LONGROPE
+        LLAMA_ROPE_SCALING_TYPE_MAX_VALUE
 
-    cdef enum llama_pooling_type:
-        LLAMA_POOLING_TYPE_UNSPECIFIED = -1
-        LLAMA_POOLING_TYPE_NONE = 0
-        LLAMA_POOLING_TYPE_MEAN = 1
-        LLAMA_POOLING_TYPE_CLS  = 2
-        LLAMA_POOLING_TYPE_LAST = 3
-        LLAMA_POOLING_TYPE_RANK = 4 # used by reranking models to attach the classification head to the graph
+    cpdef enum llama_pooling_type:
+        LLAMA_POOLING_TYPE_UNSPECIFIED
+        LLAMA_POOLING_TYPE_NONE
+        LLAMA_POOLING_TYPE_MEAN
+        LLAMA_POOLING_TYPE_CLS
+        LLAMA_POOLING_TYPE_LAST
+        LLAMA_POOLING_TYPE_RANK  # used by reranking models to attach the classification head to the graph
  
-    cdef enum llama_attention_type:
-        LLAMA_ATTENTION_TYPE_UNSPECIFIED = -1
-        LLAMA_ATTENTION_TYPE_CAUSAL      = 0
-        LLAMA_ATTENTION_TYPE_NON_CAUSAL  = 1
+    cpdef enum llama_attention_type:
+        LLAMA_ATTENTION_TYPE_UNSPECIFIED
+        LLAMA_ATTENTION_TYPE_CAUSAL
+        LLAMA_ATTENTION_TYPE_NON_CAUSAL
 
-    cdef enum llama_split_mode:
-        LLAMA_SPLIT_MODE_NONE  = 0 # single GPU
-        LLAMA_SPLIT_MODE_LAYER = 1 # split layers and KV across GPUs
-        LLAMA_SPLIT_MODE_ROW   = 2 # split layers and KV across GPUs, use tensor parallelism if supported
+    cpdef enum llama_split_mode:
+        LLAMA_SPLIT_MODE_NONE   # single GPU
+        LLAMA_SPLIT_MODE_LAYER  # split layers and KV across GPUs
+        LLAMA_SPLIT_MODE_ROW    # split layers and KV across GPUs, use tensor parallelism if supported
 
-    cdef enum llama_model_kv_override_type:
+    cpdef enum llama_model_kv_override_type:
         LLAMA_KV_OVERRIDE_TYPE_INT
         LLAMA_KV_OVERRIDE_TYPE_FLOAT
         LLAMA_KV_OVERRIDE_TYPE_BOOL
@@ -325,50 +235,20 @@ cdef extern from "common.h":
     # -------------------------------------------------------------------------
     # Common params
 
-    cdef enum llama_example:
-        LLAMA_EXAMPLE_COMMON
-        LLAMA_EXAMPLE_SPECULATIVE
-        LLAMA_EXAMPLE_MAIN
-        LLAMA_EXAMPLE_EMBEDDING
-        LLAMA_EXAMPLE_PERPLEXITY
-        LLAMA_EXAMPLE_RETRIEVAL
-        LLAMA_EXAMPLE_PASSKEY
-        LLAMA_EXAMPLE_IMATRIX
-        LLAMA_EXAMPLE_BENCH
-        LLAMA_EXAMPLE_SERVER
-        LLAMA_EXAMPLE_CVECTOR_GENERATOR
-        LLAMA_EXAMPLE_EXPORT_LORA
-        LLAMA_EXAMPLE_LLAVA
-        LLAMA_EXAMPLE_LOOKUP
-        LLAMA_EXAMPLE_PARALLEL
-        LLAMA_EXAMPLE_TTS
-        LLAMA_EXAMPLE_COUNT
-
     cdef enum common_sampler_type:
-        COMMON_SAMPLER_TYPE_NONE
-        COMMON_SAMPLER_TYPE_DRY
-        COMMON_SAMPLER_TYPE_TOP_K
-        COMMON_SAMPLER_TYPE_TOP_P
-        COMMON_SAMPLER_TYPE_MIN_P
-        # COMMON_SAMPLER_TYPE_TFS_Z
-        COMMON_SAMPLER_TYPE_TYPICAL_P
-        COMMON_SAMPLER_TYPE_TEMPERATURE
-        COMMON_SAMPLER_TYPE_XTC
-        COMMON_SAMPLER_TYPE_INFILL
-        COMMON_SAMPLER_TYPE_PENALTIES
-        COMMON_SAMPLER_TYPE_TOP_N_SIGMA
+        pass
 
     # dimensionality reduction methods, used by cvector-generator
-    cdef enum dimre_method:
+    cpdef enum dimre_method:
         DIMRE_METHOD_PCA
         DIMRE_METHOD_MEAN
 
-    cdef enum common_conversation_mode:
+    cpdef enum common_conversation_mode:
         COMMON_CONVERSATION_MODE_DISABLED
         COMMON_CONVERSATION_MODE_ENABLED
         COMMON_CONVERSATION_MODE_AUTO
 
-    cdef enum common_grammar_trigger_type:
+    cpdef enum common_grammar_trigger_type:
         COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN
         COMMON_GRAMMAR_TRIGGER_TYPE_WORD
         COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN
@@ -454,14 +334,12 @@ cdef extern from "common.h":
         bint use_guide_tokens  # enable guide tokens to improve TTS accuracy            // NOLINT
 
 
-    cdef enum common_reasoning_format:
+    cpdef enum common_reasoning_format:
         COMMON_REASONING_FORMAT_NONE
         COMMON_REASONING_FORMAT_DEEPSEEK  # Extract thinking tag contents and return as `message.reasoning_content`
 
 
     ctypedef struct common_params:
-        llama_example curr_ex
-
         int32_t n_predict          # new tokens to predict
         int32_t n_ctx              # context size
         int32_t n_batch            # logical batch size for prompt processing (must be >=32 to use BLAS)

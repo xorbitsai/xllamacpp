@@ -2,10 +2,14 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 struct server_context;
 
 namespace xllamacpp {
+
+std::vector<ggml_backend_dev_props> get_device_info();
+
 typedef void (*Callback)(const std::string &, void *py_cb);
 
 class Server {

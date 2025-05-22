@@ -13,8 +13,8 @@ from libcpp.string cimport string
 from libcpp.memory cimport shared_ptr, make_shared
 from cython.operator cimport dereference as deref
 
-cimport llama_cpp
-from server cimport CServer
+cimport xllamacpp
+from server cimport CServer, c_get_device_info
 
 
 # constants
@@ -22,201 +22,24 @@ from server cimport CServer
 
 LLAMA_DEFAULT_SEED = 0xFFFFFFFF
 
-cpdef enum:
-    GGML_DEFAULT_N_THREADS = 4
-    GGML_MAX_DIMS = 4
-    GGML_MAX_N_THREADS = 16
-    GGML_MAX_NAME = 64
-    GGML_MAX_OP_PARAMS = 64
-    GGML_MAX_SRC = 10
-
-cpdef enum:
-    GGML_ROPE_TYPE_NEOX   = 2
-    GGML_ROPE_TYPE_MROPE  = 8
-    GGML_ROPE_TYPE_VISION = 24
-
 
 # build info
 # -----------------------------------------------------------------------------
 
 BUILD_INFO = {
-    'build_number': llama_cpp.LLAMA_BUILD_NUMBER,
-    'commit': llama_cpp.LLAMA_COMMIT.decode(),
-    'compiler': llama_cpp.LLAMA_COMPILER.decode(),
-    'build_target': llama_cpp.LLAMA_BUILD_TARGET.decode(),
+    'build_number': xllamacpp.LLAMA_BUILD_NUMBER,
+    'commit': xllamacpp.LLAMA_COMMIT.decode(),
+    'compiler': xllamacpp.LLAMA_COMPILER.decode(),
+    'build_target': xllamacpp.LLAMA_BUILD_TARGET.decode(),
 }
-
-# enums
-# -----------------------------------------------------------------------------
-
-cpdef enum ggml_log_level:
-    GGML_LOG_LEVEL_NONE  = 0
-    GGML_LOG_LEVEL_INFO  = 1
-    GGML_LOG_LEVEL_WARN  = 2
-    GGML_LOG_LEVEL_ERROR = 3
-    GGML_LOG_LEVEL_DEBUG = 4
-    GGML_LOG_LEVEL_CONT  = 5
-
-cpdef enum llama_vocab_type:
-    LLAMA_VOCAB_TYPE_NONE # For models without vocab
-    LLAMA_VOCAB_TYPE_SPM  # LLaMA tokenizer based on byte-level BPE with byte fallback
-    LLAMA_VOCAB_TYPE_BPE  # GPT-2 tokenizer based on byte-level BPE
-    LLAMA_VOCAB_TYPE_WPM  # BERT tokenizer based on WordPiece
-    LLAMA_VOCAB_TYPE_UGM  # T5 tokenizer based on Unigram
-    LLAMA_VOCAB_TYPE_RWKV # RWKV tokenizer based on greedy tokenization
-
-cpdef enum llama_rope_type:
-    LLAMA_ROPE_TYPE_NONE   = -1
-    LLAMA_ROPE_TYPE_NORM   = 0
-    LLAMA_ROPE_TYPE_NEOX   = GGML_ROPE_TYPE_NEOX
-    LLAMA_ROPE_TYPE_MROPE  = GGML_ROPE_TYPE_MROPE
-    LLAMA_ROPE_TYPE_VISION = GGML_ROPE_TYPE_VISION
-
-cpdef enum llama_token_attr:
-    LLAMA_TOKEN_ATTR_UNDEFINED    = 0
-    LLAMA_TOKEN_ATTR_UNKNOWN      = 1 << 0
-    LLAMA_TOKEN_ATTR_UNUSED       = 1 << 1
-    LLAMA_TOKEN_ATTR_NORMAL       = 1 << 2
-    LLAMA_TOKEN_ATTR_CONTROL      = 1 << 3 # SPECIAL?
-    LLAMA_TOKEN_ATTR_USER_DEFINED = 1 << 4
-    LLAMA_TOKEN_ATTR_BYTE         = 1 << 5
-    LLAMA_TOKEN_ATTR_NORMALIZED   = 1 << 6
-    LLAMA_TOKEN_ATTR_LSTRIP       = 1 << 7
-    LLAMA_TOKEN_ATTR_RSTRIP       = 1 << 8
-    LLAMA_TOKEN_ATTR_SINGLE_WORD  = 1 << 9
-
-cpdef enum ggml_numa_strategy:
-    GGML_NUMA_STRATEGY_DISABLED   = 0
-    GGML_NUMA_STRATEGY_DISTRIBUTE = 1
-    GGML_NUMA_STRATEGY_ISOLATE    = 2
-    GGML_NUMA_STRATEGY_NUMACTL    = 3
-    GGML_NUMA_STRATEGY_MIRROR     = 4
-    GGML_NUMA_STRATEGY_COUNT
-
-cpdef enum ggml_type:
-    GGML_TYPE_F32     = 0
-    GGML_TYPE_F16     = 1
-    GGML_TYPE_Q4_0    = 2
-    GGML_TYPE_Q4_1    = 3
-    # GGML_TYPE_Q4_2 = 4 support has been removed
-    # GGML_TYPE_Q4_3 = 5 support has been removed
-    GGML_TYPE_Q5_0    = 6
-    GGML_TYPE_Q5_1    = 7
-    GGML_TYPE_Q8_0    = 8
-    GGML_TYPE_Q8_1    = 9
-    GGML_TYPE_Q2_K    = 10
-    GGML_TYPE_Q3_K    = 11
-    GGML_TYPE_Q4_K    = 12
-    GGML_TYPE_Q5_K    = 13
-    GGML_TYPE_Q6_K    = 14
-    GGML_TYPE_Q8_K    = 15
-    GGML_TYPE_IQ2_XXS = 16
-    GGML_TYPE_IQ2_XS  = 17
-    GGML_TYPE_IQ3_XXS = 18
-    GGML_TYPE_IQ1_S   = 19
-    GGML_TYPE_IQ4_NL  = 20
-    GGML_TYPE_IQ3_S   = 21
-    GGML_TYPE_IQ2_S   = 22
-    GGML_TYPE_IQ4_XS  = 23
-    GGML_TYPE_I8      = 24
-    GGML_TYPE_I16     = 25
-    GGML_TYPE_I32     = 26
-    GGML_TYPE_I64     = 27
-    GGML_TYPE_F64     = 28
-    GGML_TYPE_IQ1_M   = 29
-    GGML_TYPE_BF16    = 30
-    # GGML_TYPE_Q4_0_4_4 = 31 # support has been removed from gguf files
-    # GGML_TYPE_Q4_0_4_8 = 32
-    # GGML_TYPE_Q4_0_8_8 = 33
-    GGML_TYPE_TQ1_0   = 34
-    GGML_TYPE_TQ2_0   = 35
-    GGML_TYPE_IQ4_NL_4_4 = 36
-    # GGML_TYPE_IQ4_NL_4_4 = 36
-    # GGML_TYPE_IQ4_NL_4_8 = 37
-    # GGML_TYPE_IQ4_NL_8_8 = 38
-    GGML_TYPE_COUNT = 39
-
-
-cpdef enum ggml_sched_priority:
-    GGML_SCHED_PRIO_NORMAL
-    GGML_SCHED_PRIO_MEDIUM
-    GGML_SCHED_PRIO_HIGH
-    GGML_SCHED_PRIO_REALTIME
-
-cpdef enum llama_ftype:
-    LLAMA_FTYPE_ALL_F32              = 0
-    LLAMA_FTYPE_MOSTLY_F16           = 1
-    LLAMA_FTYPE_MOSTLY_Q4_0          = 2
-    LLAMA_FTYPE_MOSTLY_Q4_1          = 3
-    # LLAMA_FTYPE_MOSTLY_Q4_1_SOME_F16 = 4  # tok_embeddings.weight and output.weight are F16
-    # LLAMA_FTYPE_MOSTLY_Q4_2       = 5     # support has been removed
-    # LLAMA_FTYPE_MOSTLY_Q4_3       = 6     # support has been removed
-    LLAMA_FTYPE_MOSTLY_Q8_0          = 7
-    LLAMA_FTYPE_MOSTLY_Q5_0          = 8
-    LLAMA_FTYPE_MOSTLY_Q5_1          = 9
-    LLAMA_FTYPE_MOSTLY_Q2_K          = 10
-    LLAMA_FTYPE_MOSTLY_Q3_K_S        = 11
-    LLAMA_FTYPE_MOSTLY_Q3_K_M        = 12
-    LLAMA_FTYPE_MOSTLY_Q3_K_L        = 13
-    LLAMA_FTYPE_MOSTLY_Q4_K_S        = 14
-    LLAMA_FTYPE_MOSTLY_Q4_K_M        = 15
-    LLAMA_FTYPE_MOSTLY_Q5_K_S        = 16
-    LLAMA_FTYPE_MOSTLY_Q5_K_M        = 17
-    LLAMA_FTYPE_MOSTLY_Q6_K          = 18
-    LLAMA_FTYPE_MOSTLY_IQ2_XXS       = 19
-    LLAMA_FTYPE_MOSTLY_IQ2_XS        = 20
-    LLAMA_FTYPE_MOSTLY_Q2_K_S        = 21
-    LLAMA_FTYPE_MOSTLY_IQ3_XS        = 22
-    LLAMA_FTYPE_MOSTLY_IQ3_XXS       = 23
-    LLAMA_FTYPE_MOSTLY_IQ1_S         = 24
-    LLAMA_FTYPE_MOSTLY_IQ4_NL        = 25
-    LLAMA_FTYPE_MOSTLY_IQ3_S         = 26
-    LLAMA_FTYPE_MOSTLY_IQ3_M         = 27
-    LLAMA_FTYPE_MOSTLY_IQ2_S         = 28
-    LLAMA_FTYPE_MOSTLY_IQ2_M         = 29
-    LLAMA_FTYPE_MOSTLY_IQ4_XS        = 30
-    LLAMA_FTYPE_MOSTLY_IQ1_M         = 31
-    LLAMA_FTYPE_MOSTLY_BF16          = 32
-    # LLAMA_FTYPE_MOSTLY_Q4_0_4_4      = 33, # removed from gguf files, use Q4_0 and runtime repack
-    # LLAMA_FTYPE_MOSTLY_Q4_0_4_8      = 34, # removed from gguf files, use Q4_0 and runtime repack
-    # LLAMA_FTYPE_MOSTLY_Q4_0_8_8      = 35, # removed from gguf files, use Q4_0 and runtime repack
-    LLAMA_FTYPE_MOSTLY_TQ1_0         = 36 # except 1d tensors
-    LLAMA_FTYPE_MOSTLY_TQ2_0         = 37 # except 1d tensors
-    LLAMA_FTYPE_GUESSED              = 1024
-
-cpdef enum llama_rope_scaling_type:
-    LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED = -1
-    LLAMA_ROPE_SCALING_TYPE_NONE        = 0
-    LLAMA_ROPE_SCALING_TYPE_LINEAR      = 1
-    LLAMA_ROPE_SCALING_TYPE_YARN        = 2
-    LLAMA_ROPE_SCALING_TYPE_LONGROPE    = 3
-    LLAMA_ROPE_SCALING_TYPE_MAX_VALUE   = LLAMA_ROPE_SCALING_TYPE_LONGROPE
-
-cpdef enum llama_pooling_type:
-    LLAMA_POOLING_TYPE_UNSPECIFIED = -1
-    LLAMA_POOLING_TYPE_NONE = 0
-    LLAMA_POOLING_TYPE_MEAN = 1
-    LLAMA_POOLING_TYPE_CLS  = 2
-    LLAMA_POOLING_TYPE_LAST = 3
-    LLAMA_POOLING_TYPE_RANK = 4 # used by reranking models to attach the classification head to the graph
-
-cpdef enum llama_attention_type:
-    LLAMA_ATTENTION_TYPE_UNSPECIFIED = -1
-    LLAMA_ATTENTION_TYPE_CAUSAL      = 0
-    LLAMA_ATTENTION_TYPE_NON_CAUSAL  = 1
-
-cpdef enum llama_split_mode:
-    LLAMA_SPLIT_MODE_NONE  = 0
-    LLAMA_SPLIT_MODE_LAYER = 1
-    LLAMA_SPLIT_MODE_ROW   = 2
 
 
 cdef class LlamaLogitBias:
-    cdef llama_cpp.llama_logit_bias *p
+    cdef xllamacpp.llama_logit_bias *p
     cdef object owner
 
     @staticmethod
-    cdef LlamaLogitBias from_ptr(llama_cpp.llama_logit_bias *p, object owner):
+    cdef LlamaLogitBias from_ptr(xllamacpp.llama_logit_bias *p, object owner):
         cdef LlamaLogitBias wrapper = LlamaLogitBias.__new__(LlamaLogitBias)
         wrapper.p = p
         wrapper.owner = owner
@@ -245,11 +68,11 @@ cdef class LlamaLogitBias:
 
 
 cdef class CommonParamsSampling:
-    cdef llama_cpp.common_params_sampling *p
+    cdef xllamacpp.common_params_sampling *p
     cdef object owner
 
     @staticmethod
-    cdef CommonParamsSampling from_ptr(llama_cpp.common_params_sampling *params, object owner):
+    cdef CommonParamsSampling from_ptr(xllamacpp.common_params_sampling *params, object owner):
         cdef CommonParamsSampling wrapper = CommonParamsSampling.__new__(CommonParamsSampling)
         wrapper.p = params
         wrapper.owner = owner
@@ -537,13 +360,13 @@ cdef class CommonParamsSampling:
         """
         res = []
         for sampler_enum in self.p.samplers:
-            res.append(<str>llama_cpp.common_sampler_type_to_str(sampler_enum))
+            res.append(<str>xllamacpp.common_sampler_type_to_str(sampler_enum))
         return ";".join(res)
 
     @samplers.setter
     def samplers(self, value: str):
         cdef vector[string] split_values = value.split(";")
-        self.p.samplers = llama_cpp.common_sampler_types_from_names(split_values, True)
+        self.p.samplers = xllamacpp.common_sampler_types_from_names(split_values, True)
 
     @property
     def grammar(self) -> str:
@@ -567,7 +390,7 @@ cdef class CommonParamsSampling:
 
     @logit_bias.setter
     def logit_bias(self, elems: list[LlamaLogitBias]):
-        cdef vector[llama_cpp.llama_logit_bias] vec
+        cdef vector[xllamacpp.llama_logit_bias] vec
         for elem in elems:
             vec.push_back(elem.ptr[0])
         self.p.logit_bias = vec
@@ -575,11 +398,11 @@ cdef class CommonParamsSampling:
 
 
 cdef class CpuParams:
-    cdef llama_cpp.cpu_params *p
+    cdef xllamacpp.cpu_params *p
     cdef object owner
 
     @staticmethod
-    cdef CpuParams from_ptr(llama_cpp.cpu_params *params, object owner):
+    cdef CpuParams from_ptr(xllamacpp.cpu_params *params, object owner):
         cdef CpuParams wrapper = CpuParams.__new__(CpuParams)
         wrapper.p = params
         wrapper.owner = owner
@@ -624,12 +447,12 @@ cdef class CpuParams:
         self.p.mask_valid = value
 
     @property
-    def priority(self) -> llama_cpp.ggml_sched_priority:
+    def priority(self) -> xllamacpp.ggml_sched_priority:
         """Scheduling prio : (0 - normal, 1 - medium, 2 - high, 3 - realtime)."""
         return self.p.priority
 
     @priority.setter
-    def priority(self, value: llama_cpp.ggml_sched_priority):
+    def priority(self, value: xllamacpp.ggml_sched_priority):
         self.p.priority = value
 
     @property
@@ -652,11 +475,11 @@ cdef class CpuParams:
 
 
 cdef class CommonParamsModel:
-    cdef llama_cpp.common_params_model *p
+    cdef xllamacpp.common_params_model *p
     cdef object owner
 
     @staticmethod
-    cdef CommonParamsModel from_ptr(llama_cpp.common_params_model *params, object owner):
+    cdef CommonParamsModel from_ptr(xllamacpp.common_params_model *params, object owner):
         cdef CommonParamsModel wrapper = CommonParamsModel.__new__(CommonParamsModel)
         wrapper.p = params
         wrapper.owner = owner
@@ -703,11 +526,11 @@ cdef class CommonParamsModel:
 
 
 cdef class CommonParamsSpeculative:
-    cdef llama_cpp.common_params_speculative *p
+    cdef xllamacpp.common_params_speculative *p
     cdef object owner
 
     @staticmethod
-    cdef CommonParamsSpeculative from_ptr(llama_cpp.common_params_speculative *params, object owner):
+    cdef CommonParamsSpeculative from_ptr(xllamacpp.common_params_speculative *params, object owner):
         cdef CommonParamsSpeculative wrapper = CommonParamsSpeculative.__new__(CommonParamsSpeculative)
         wrapper.p = params
         wrapper.owner = owner
@@ -796,11 +619,11 @@ cdef class CommonParamsSpeculative:
 
 
 cdef class CommonParamsVocoder:
-    cdef llama_cpp.common_params_vocoder *p
+    cdef xllamacpp.common_params_vocoder *p
     cdef object owner
 
     @staticmethod
-    cdef CommonParamsVocoder from_ptr(llama_cpp.common_params_vocoder *params, owner):
+    cdef CommonParamsVocoder from_ptr(xllamacpp.common_params_vocoder *params, owner):
         cdef CommonParamsVocoder wrapper = CommonParamsVocoder.__new__(CommonParamsVocoder)
         wrapper.p = params
         wrapper.owner = owner
@@ -828,7 +651,7 @@ cdef class CommonParamsVocoder:
 
 
 cdef class CommonParams:
-    cdef llama_cpp.common_params p
+    cdef xllamacpp.common_params p
 
     @property
     def n_predict(self) -> int:
@@ -1080,7 +903,7 @@ cdef class CommonParams:
     @property
     def rope_scaling_type(self) -> llama_rope_scaling_type:
         """rope scaling type."""
-        return llama_rope_scaling_type(self.p.rope_scaling_type)
+        return self.p.rope_scaling_type
 
     @rope_scaling_type.setter
     def rope_scaling_type(self, llama_rope_scaling_type value):
@@ -1089,7 +912,7 @@ cdef class CommonParams:
     @property
     def pooling_type(self) -> llama_pooling_type:
         """pooling type for embeddings."""
-        return (self.p.pooling_type)
+        return self.p.pooling_type
 
     @pooling_type.setter
     def pooling_type(self, llama_pooling_type value):
@@ -1098,7 +921,7 @@ cdef class CommonParams:
     @property
     def attention_type(self) -> llama_attention_type:
         """attention type for embeddings."""
-        return llama_attention_type(self.p.attention_type)
+        return self.p.attention_type
 
     @attention_type.setter
     def attention_type(self, llama_attention_type value):
@@ -1602,21 +1425,21 @@ cdef class CommonParams:
         self.p.single_turn = value
 
     @property
-    def cache_type_k(self) -> ggml_type:
+    def cache_type_k(self) -> xllamacpp.ggml_type:
         """data type for K cache"""
-        return <ggml_type>self.p.cache_type_k
+        return <xllamacpp.ggml_type>self.p.cache_type_k
 
     @cache_type_k.setter
-    def cache_type_k(self, ggml_type value):
+    def cache_type_k(self, xllamacpp.ggml_type value):
         self.p.cache_type_k = value
 
     @property
-    def cache_type_v(self) -> ggml_type:
+    def cache_type_v(self) -> xllamacpp.ggml_type:
         """data type for V cache"""
-        return <ggml_type>self.p.cache_type_v
+        return <xllamacpp.ggml_type>self.p.cache_type_v
 
     @cache_type_v.setter
-    def cache_type_v(self, ggml_type value):
+    def cache_type_v(self, xllamacpp.ggml_type value):
         self.p.cache_type_v = value
 
     @property
@@ -2060,6 +1883,14 @@ cdef class CommonParams:
 
     # // batched-bench params
     # bool batched_bench_output_jsonl = false;
+
+
+def get_device_info():
+    cdef object data = c_get_device_info()
+    for info in data:
+        info["name"] = info["name"].decode("utf-8")
+        info["description"] = info["description"].decode("utf-8")
+    return data
 
 
 cdef void callback_wrapper(const string &data, void *py_cb) noexcept nogil:
