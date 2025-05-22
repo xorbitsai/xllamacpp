@@ -35,6 +35,11 @@ def test_common_params_sampling():
     # assert params.no_perf is False
 
 
+def test_enum_values():
+    assert xlc.GGML_MAX_N_THREADS == 512
+    assert xlc.GGML_ROPE_TYPE_VISION == 24
+
+
 def test_common_params():
     params = xlc.CommonParams()
     assert params.n_predict == -1

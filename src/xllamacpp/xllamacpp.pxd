@@ -7,26 +7,24 @@ from libcpp.set cimport set as std_set
 
 
 #------------------------------------------------------------------------------
-# constants
-
-cpdef enum:
-    GGML_DEFAULT_N_THREADS = 4
-    GGML_MAX_DIMS = 4
-    GGML_MAX_N_THREADS = 16
-    GGML_MAX_NAME = 64
-    GGML_MAX_OP_PARAMS = 64
-    GGML_MAX_SRC = 10
-
-cpdef enum:
-    GGML_ROPE_TYPE_NEOX   = 2
-    GGML_ROPE_TYPE_MROPE  = 8
-    GGML_ROPE_TYPE_VISION = 24
-
-
-#------------------------------------------------------------------------------
 # ggml.h
 
 cdef extern from "ggml.h":
+
+    cpdef enum:
+        GGML_DEFAULT_N_THREADS
+        GGML_MAX_DIMS
+        GGML_MAX_N_THREADS
+        GGML_MAX_NAME
+        GGML_MAX_OP_PARAMS
+        GGML_MAX_SRC
+
+
+    cpdef enum:
+        GGML_ROPE_TYPE_NEOX
+        GGML_ROPE_TYPE_MROPE
+        GGML_ROPE_TYPE_VISION
+
 
     cpdef enum ggml_sched_priority:
         GGML_SCHED_PRIO_NORMAL
@@ -172,9 +170,9 @@ cdef extern from "llama.h":
         LLAMA_ATTENTION_TYPE_NON_CAUSAL
 
     cpdef enum llama_split_mode:
-        LLAMA_SPLIT_MODE_NONE  = 0 # single GPU
-        LLAMA_SPLIT_MODE_LAYER = 1 # split layers and KV across GPUs
-        LLAMA_SPLIT_MODE_ROW   = 2 # split layers and KV across GPUs, use tensor parallelism if supported
+        LLAMA_SPLIT_MODE_NONE   # single GPU
+        LLAMA_SPLIT_MODE_LAYER  # split layers and KV across GPUs
+        LLAMA_SPLIT_MODE_ROW    # split layers and KV across GPUs, use tensor parallelism if supported
 
     cpdef enum llama_model_kv_override_type:
         LLAMA_KV_OVERRIDE_TYPE_INT
