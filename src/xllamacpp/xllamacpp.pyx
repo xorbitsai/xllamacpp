@@ -1885,58 +1885,12 @@ cdef class CommonParams:
     # bool batched_bench_output_jsonl = false;
 
 
-# cdef class GGMLBackendDevCaps:
-#     cdef xllamacpp.ggml_backend_dev_caps p
-
-#     @property
-#     def async(self) -> bool:
-#         return self.p.async
-
-#     @property
-#     def host_buffer(self) -> bool:
-#         return self.p.host_buffer
-
-#     @property
-#     def buffer_from_host_ptr(self) -> bool:
-#         return self.p.buffer_from_host_ptr
-
-#     @property
-#     def events(self) -> bool:
-#         return self.p.events
-
-
-# cdef class GGMLBackendDevProps:
-#     cdef xllamacpp.ggml_backend_dev_props p
-
-#     @property
-#     def name(self) -> str:
-#         return <str>self.p.name
-
-#     @property
-#     def description(self) -> str:
-#         return <str>self.p.description
-
-#     @property
-#     def memory_free(self) -> int:
-#         return self.p.memory_free
-
-#     @property
-#     def memory_total(self) -> int:
-#         return self.p.memory_total
-
-#     @property
-#     def type(self) -> ggml_backend_dev_type:
-#         return self.p.ggml_backend_dev_type
-
-#     @property
-#     def caps(self) -> GGMLBackendDevCaps:
-#         cdef GGMLBackendDevCaps value = GGMLBackendDevCaps.__new__(GGMLBackendDevCaps)
-#         value.p = self.p.ggml_backend_dev_caps
-#         return value
-
-
 def get_device_info():
-    return c_get_device_info()
+    cdef object data = c_get_device_info()
+    for info in data:
+        info["name"] = info["name"].decode("utf-8")
+        info["description"] = info["description"].decode("utf-8")
+    return data
 
 
 cdef void callback_wrapper(const string &data, void *py_cb) noexcept nogil:

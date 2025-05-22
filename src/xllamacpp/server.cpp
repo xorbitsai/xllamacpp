@@ -4103,11 +4103,13 @@ handle_metrics_impl(server_context &ctx_server,
 
 static void ggml_log_callback_default(enum ggml_log_level level,
                                       const char *text, void *user_data) {
+  (void)level;
+  (void)text;
   (void)user_data;
-  if (level == GGML_LOG_LEVEL_INFO || level == GGML_LOG_LEVEL_ERROR) {
-    fputs(text, stderr);
-    fflush(stderr);
-  }
+  // if (level == GGML_LOG_LEVEL_INFO || level == GGML_LOG_LEVEL_ERROR) {
+  //   fputs(text, stderr);
+  //   fflush(stderr);
+  // }
 }
 
 #include "server.h"
@@ -4116,12 +4118,10 @@ namespace xllamacpp {
 
 std::vector<ggml_backend_dev_props> get_device_info() {
   ggml_log_set(ggml_log_callback_default, nullptr);
+
   const size_t dev_count = ggml_backend_dev_count();
-  printf("Testing %zu devices\n\n", dev_count);
-  size_t n_ok = 0;
 
   std::vector<ggml_backend_dev_props> result;
-
   std::vector<ggml_backend_dev_t> devs;
   std::vector<ggml_backend_t> backends;
 
@@ -4147,12 +4147,6 @@ std::vector<ggml_backend_dev_props> get_device_info() {
 
     ggml_backend_dev_props prop;
     ggml_backend_dev_get_props(devs[i], &prop);
-
-    printf("Backend %zu/%zu: %s\n", i + 1, dev_count, prop.name);
-    printf("  Device description: %s\n", prop.description);
-    printf("  Device memory: %zu MB (%zu MB free)\n",
-           prop.memory_total / 1024 / 1024, prop.memory_free / 1024 / 1024);
-    printf("\n");
 
     result.push_back(prop);
   }

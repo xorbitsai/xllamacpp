@@ -9,6 +9,13 @@ print(sys.path)
 import xllamacpp as xlc
 
 
+def test_get_device_info():
+    xlc.get_device_info()
+    info = xlc.get_device_info()
+    assert len(info) > 0
+    assert "CPU" in [i["name"] for i in info]
+
+
 def test_llama_server(model_path):
     params = xlc.CommonParams()
 
