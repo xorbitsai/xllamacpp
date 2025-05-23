@@ -151,12 +151,12 @@ def test_common_params():
     assert params.flash_attn is False
     assert params.no_perf is False
     assert params.ctx_shift is True
+    assert params.swa_full is False
     assert params.input_prefix_bos is False
     assert params.use_mmap is True
     assert params.use_mlock is False
     assert params.verbose_prompt is False
     assert params.display_prompt is True
-    assert params.dump_kv_cache is False
     assert params.no_kv_offload is False
     assert params.warmup is True
     assert params.check_tensors is False
@@ -186,6 +186,11 @@ def test_common_params():
     assert params.public_path == ""
     assert params.chat_template == ""
     assert params.enable_chat_template is True
+    assert (
+        params.reasoning_format
+        == xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK
+    )
+    assert params.prefill_assistant is True
 
     assert params.api_keys == []
     assert params.ssl_file_key == ""

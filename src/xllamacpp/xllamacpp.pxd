@@ -196,6 +196,8 @@ cdef extern from "llama.h":
         llama_token token
         float bias
 
+    ctypedef bint (*llama_progress_callback)(float progress, void * user_data);
+
 
 #------------------------------------------------------------------------------
 # common.h
@@ -440,14 +442,13 @@ cdef extern from "common.h":
         bint flash_attn             # flash attention
         bint no_perf                # disable performance metric
         bint ctx_shift              # context shift on inifinite text generation
+        bint swa_full               # use full-size SWA cache (https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)
 
         bint input_prefix_bos       # prefix BOS to user inputs, preceding input_prefix
         bint use_mmap               # use mmap for faster loads
         bint use_mlock              # use mlock to keep model in memory
         bint verbose_prompt         # print prompt tokens before generation
         bint display_prompt         # print prompt before generation
-        bint infill                 # use infill mode
-        bint dump_kv_cache          # dump the KV cache contents for debugging purposes
         bint no_kv_offload          # disable KV offloading
         bint warmup                 # warmup run
         bint check_tensors          # validate tensor data
@@ -487,6 +488,7 @@ cdef extern from "common.h":
         bint enable_chat_template
 
         common_reasoning_format reasoning_format
+        bint prefill_assistant      # if true, any trailing assistant message will be prefilled into the response
 
         std_vector[std_string] api_keys
 
@@ -545,6 +547,13 @@ cdef extern from "common.h":
     
         # common params
         std_string out_file      # output filename for all example programs
+
+        # optional callback for model loading progress and cancellation:
+        # called with a progress value between 0.0 and 1.0.
+        # return false from callback to abort model loading or true to continue
+        llama_progress_callback load_progress_callback
+        void *                  load_progress_callback_user_data
+
 
     
 cdef extern from "sampling.h":
