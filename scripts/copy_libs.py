@@ -39,8 +39,8 @@ def copy_library_files():
     for lib_file in lib_files:
         filename = os.path.basename(lib_file)
         dst_file = os.path.join(dst_dir, filename)
-        logging.info(f"Copying {lib_file} to {dst_file}")
-        shutil.copy2(lib_file, dst_file)
+        logging.info(f"Linking {lib_file} to {dst_file}")
+        os.symlink(lib_file, dst_file)
 
     logging.info(f"Successfully copied {len(lib_files)} library files to {dst_dir}")
 
