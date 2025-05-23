@@ -24,7 +24,6 @@ VERSION = versioneer.get_version()
 
 PLATFORM = platform.system()
 
-LLAMACPP_INCLUDES_DIR = os.path.join(CWD, "src/llama.cpp/include")
 LLAMACPP_LIBS_DIR = os.path.join(CWD, "src/llama.cpp/lib")
 
 DEFINE_MACROS = []
@@ -36,7 +35,9 @@ EXTRA_LINK_ARGS = []
 EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
     "src/xllamacpp",
-    LLAMACPP_INCLUDES_DIR,
+    os.path.join(CWD, "thirdparty/llama.cpp/include"),
+    os.path.join(CWD, "thirdparty/llama.cpp/common"),
+    os.path.join(CWD, "thirdparty/llama.cpp/ggml/include"),
     os.path.join(
         CWD, "thirdparty/llama.cpp"
     ),  # For including 'common/base64.hpp' in server/utils.hpp
