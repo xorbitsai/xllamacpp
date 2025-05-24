@@ -32,7 +32,7 @@ build_llamacpp() {
 			cmake --build . --config Release -j ${NPROC} --target common llama ggml ggml-blas ggml-cpu mtmd_static
 		else
 			echo "Building for Apple Silicon"
-			cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_BUILD_RPATH="@loader_path" -DGGML_METAL_USE_BF16=ON -DGGML_METAL_EMBED_LIBRARY=ON -DLLAMA_CURL=OFF && \
+			cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_BUILD_RPATH="@loader_path" -DGGML_METAL_EMBED_LIBRARY=ON -DLLAMA_CURL=OFF && \
 			cmake --build . --config Release -j ${NPROC} --target common llama ggml ggml-blas ggml-cpu ggml-metal mtmd_static
 		fi
 	else
