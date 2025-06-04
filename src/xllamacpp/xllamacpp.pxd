@@ -27,6 +27,7 @@ cdef extern from "ggml.h":
 
 
     cpdef enum ggml_sched_priority:
+        GGML_SCHED_PRIO_LOW
         GGML_SCHED_PRIO_NORMAL
         GGML_SCHED_PRIO_MEDIUM
         GGML_SCHED_PRIO_HIGH
@@ -254,7 +255,7 @@ cdef extern from "common.h":
         COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN
         COMMON_GRAMMAR_TRIGGER_TYPE_WORD
         COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN
-        COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START
+        COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_FULL
 
     ctypedef struct common_grammar_trigger:
         common_grammar_trigger_type type
@@ -338,7 +339,8 @@ cdef extern from "common.h":
 
     cpdef enum common_reasoning_format:
         COMMON_REASONING_FORMAT_NONE
-        COMMON_REASONING_FORMAT_DEEPSEEK  # Extract thinking tag contents and return as `message.reasoning_content`
+        COMMON_REASONING_FORMAT_DEEPSEEK_LEGACY # Extract thinking tag contents and return as `message.reasoning_content`, or leave inline in <think> tags in stream mode
+        COMMON_REASONING_FORMAT_DEEPSEEK        # Extract thinking tag contents and return as `message.reasoning_content`, including in streaming deltas.
 
 
     ctypedef struct common_params:
@@ -411,6 +413,7 @@ cdef extern from "common.h":
         int32_t verbosity
         int32_t control_vector_layer_start # layer range for control vector
         int32_t control_vector_layer_end   # layer range for control vector
+        bint    offline
 
         int32_t ppl_stride          # stride for perplexity calculations. If left at 0, the pre-existing approach will be used.
         int32_t ppl_output_type     # = 0 -> ppl output is as usual, = 1 -> ppl output is num_tokens, ppl, one per line
@@ -488,6 +491,7 @@ cdef extern from "common.h":
         bint enable_chat_template
 
         common_reasoning_format reasoning_format
+        int32_t reasoning_budget
         bint prefill_assistant      # if true, any trailing assistant message will be prefilled into the response
 
         std_vector[std_string] api_keys

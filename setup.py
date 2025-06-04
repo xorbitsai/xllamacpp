@@ -43,6 +43,7 @@ INCLUDE_DIRS = [
     ),  # For including 'common/base64.hpp' in server/utils.hpp
     os.path.join(CWD, "thirdparty/llama.cpp/tools/server"),
     os.path.join(CWD, "thirdparty/llama.cpp/tools/mtmd"),
+    os.path.join(CWD, "thirdparty/llama.cpp/vendor"),
 ]
 LIBRARY_DIRS = [
     LLAMACPP_LIBS_DIR,
@@ -51,7 +52,7 @@ LIBRARIES = []
 
 if PLATFORM == "Windows":
     LIBRARIES.extend(
-        ["common", "llama", "ggml", "ggml-base", "ggml-cpu", "mtmd_static", "Advapi32"]
+        ["common", "llama", "ggml", "ggml-base", "ggml-cpu", "mtmd", "Advapi32"]
     )
     if BUILD_CUDA:
         LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "\\Lib\\x64"])
@@ -65,7 +66,7 @@ else:
             f"{LLAMACPP_LIBS_DIR}/libggml.a",
             f"{LLAMACPP_LIBS_DIR}/libggml-base.a",
             f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
-            f"{LLAMACPP_LIBS_DIR}/libmtmd_static.a",
+            f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
         ]
     )
     if BUILD_CUDA:

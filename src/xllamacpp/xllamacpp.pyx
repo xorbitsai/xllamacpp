@@ -1125,6 +1125,14 @@ cdef class CommonParams:
         self.p.control_vector_layer_end = value
 
     @property
+    def offline(self) -> bool:
+        return self.p.offline
+
+    @offline.setter
+    def offline(self, value: bool):
+        self.p.offline = value
+
+    @property
     def ppl_stride(self) -> int:
         """stride for perplexity calculations. If left at 0, the pre-existing approach will be used."""
         return self.p.ppl_stride
@@ -1615,6 +1623,14 @@ cdef class CommonParams:
     @reasoning_format.setter
     def reasoning_format(self, common_reasoning_format value):
         self.p.reasoning_format = value
+
+    @property
+    def reasoning_budget(self) -> int:
+        return self.p.reasoning_budget
+
+    @reasoning_budget.setter
+    def reasoning_budget(self, value: int):
+        self.p.reasoning_budget = value
 
     @property
     def prefill_assistant(self) -> bool:
