@@ -50,9 +50,9 @@ def test_enum_values():
     assert xlc.dimre_method.DIMRE_METHOD_MEAN == 1
     assert xlc.common_conversation_mode.COMMON_CONVERSATION_MODE_AUTO == 2
     assert (
-        xlc.common_grammar_trigger_type.COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START == 3
+        xlc.common_grammar_trigger_type.COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_FULL == 3
     )
-    assert xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK == 1
+    assert xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK == 2
 
 
 def test_common_params():
@@ -238,6 +238,8 @@ def test_common_params():
     assert params.sampling.samplers == sp
     params.sampling.samplers = "top_k;top_p;min_p;temperature;dry;typ_p;xtc"
     assert params.sampling.samplers == "top_k;top_p;min_p;temperature;dry;typ_p;xtc"
+    assert params.offline is False
+    assert params.reasoning_budget == -1
     # assert params.cvector_dimre_method  == cy.DIMRE_METHOD_PCA
     # assert params.cvector_outfile       == "control_vector.gguf"
     # assert params.cvector_positive_file == "examples/cvector-generator/positive.txt"
