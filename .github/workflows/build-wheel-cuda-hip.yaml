@@ -97,7 +97,7 @@ jobs:
       matrix:
         os: ["ubuntu-22.04", "ubuntu-22.04-arm", "windows-2019"]
         pyver: ["3.9", "3.10", "3.11", "3.12"]
-        cuda: ["12.4.1"]
+        cuda: ["12.4.1", "12.8.1"]
     defaults:
       run:
         shell: pwsh
