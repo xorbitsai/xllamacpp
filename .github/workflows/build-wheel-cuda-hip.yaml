@@ -240,10 +240,10 @@ jobs:
           auditwheel show dist/*.whl
           
           if [ "${{ matrix.platform }}" = "ubuntu-22.04-arm" ]; then
-            auditwheel repair --plat manylinux_2_35_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
+            auditwheel repair --plat manylinux_2_39_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
             rm -f dist/*-linux_aarch64.whl
           else
-            auditwheel repair --plat manylinux_2_35_x86_64 --exclude libcuda.so.1 dist/*.whl -w dist
+            auditwheel repair --plat manylinux_2_39_x86_64 --exclude libcuda.so.1 dist/*.whl -w dist
             rm -f dist/*-linux_x86_64.whl
           fi
           
