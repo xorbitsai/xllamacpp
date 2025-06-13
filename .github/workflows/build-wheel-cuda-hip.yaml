@@ -277,7 +277,6 @@ jobs:
         shell: pwsh
     env:
       CUDAVER: ${{ matrix.cuda }}
-      OS: windows-2019
 
     steps:
       - name: Clone
@@ -316,13 +315,9 @@ jobs:
 
       - name: Build Wheel
         run: |
-          Write-Host "System: $env:OS"
           $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
           $env:XLLAMACPP_BUILD_CUDA = 1
           $env:VERSIONEER_CLOSEST_TAG_ONLY = 1
-          $env:CUDA_PATH = $env:CONDA_PREFIX
-          $env:CUDA_HOME = $env:CONDA_PREFIX
-          $env:CUDA_TOOLKIT_ROOT_DIR = $env:CONDA_PREFIX
           $env:VERBOSE = '1'
           $env:CMAKE_ARGS = '-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=all -DGGML_CUDA_FORCE_MMQ=ON -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
           
