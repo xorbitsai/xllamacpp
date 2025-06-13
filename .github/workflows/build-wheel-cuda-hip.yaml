@@ -93,19 +93,15 @@ jobs:
 
 
   build_wheels_cuda_linux:
-    name: Build Wheel CUDA Linux ${{ matrix.arch }} ${{ matrix.pyver }} ${{ matrix.cuda }}
-    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-22.04-arm' || 'ubuntu-22.04' }}
+    name: Build Wheel CUDA Linux ${{ matrix.platform }} ${{ matrix.pyver }} ${{ matrix.cuda }}
+    runs-on: ${{ matrix.platform }}
     strategy:
       matrix:
-        arch: ["x86_64", "aarch64"]
+        platform: ["ubuntu-22.04", "ubuntu-22.04-arm"]
         pyver: ["3.9", "3.10", "3.11", "3.12"]
         cuda: ["12.4.1", "12.8.1"]
-    defaults:
-      run:
-        shell: pwsh
     env:
       CUDAVER: ${{ matrix.cuda }}
-      OS: ${{ matrix.arch == 'aarch64' && 'ubuntu-22.04-arm' || 'ubuntu-22.04' }}
 
     steps:
       - name: Clone
@@ -142,7 +138,7 @@ jobs:
 
       - name: Build Wheel
         run: |
-          echo "System: $OS"
+          echo "System: ${{ matrix.platform }}"
           cuda_version=${CUDAVER//./}
           cuda_version=${cuda_version:0:${#cuda_version}-1}
           export XLLAMACPP_BUILD_CUDA=1
@@ -157,7 +153,7 @@ jobs:
           make
           python -m build --wheel
           
-          if [ "$OS" = "ubuntu-22.04-arm" ]; then
+          if [ "${{ matrix.platform }}" = "ubuntu-22.04-arm" ]; then
             auditwheel repair --plat manylinux_2_35_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
             rm -f dist/*-linux_aarch64.whl
           else
