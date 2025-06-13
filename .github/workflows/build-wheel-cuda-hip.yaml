@@ -195,6 +195,9 @@ jobs:
 
       - name: Build Wheel
         run: |
+          # Echo glibc version
+          ldd --version
+
           # Initialize conda for shell
           source $CONDA/etc/profile.d/conda.sh
           conda activate llamacpp
