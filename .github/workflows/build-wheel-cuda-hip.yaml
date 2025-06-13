@@ -131,23 +131,53 @@ jobs:
           MAMBA_DOWNLOAD_FAILFAST: "0"
           MAMBA_NO_LOW_SPEED_LIMIT: "1"
         run: |
+          # First install basic build tools
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+          
+          # Install CUDA toolkit using the official NVIDIA repository
           cuda_version=${{ matrix.cuda }}
-          mamba install -y 'cuda' 'cuda-nvcc' -c nvidia/label/cuda-${cuda_version}
+          cuda_major_minor=$(echo $cuda_version | cut -d. -f1,2)
+          
+          # Install CUDA using conda
+          echo "Installing CUDA $cuda_version via conda..."
+          conda install -y -c conda-forge -c nvidia \
+            cudatoolkit=$cuda_version \
+            cudnn \
+            cuda-nvcc
+          
+          # Install build dependencies
           python -m pip install build wheel auditwheel
           python -m pip install -r requirements.txt
           
           # Verify CUDA installation
-          echo "CUDA installation check:"
-          ls -la $CONDA_PREFIX/lib | grep -i cuda
+          echo "=== CUDA Installation Check ==="
+          echo "CONDA_PREFIX: $CONDA_PREFIX"
+          echo "=== CUDA Files in CONDA_PREFIX ==="
+          find $CONDA_PREFIX -name "*cuda*" -o -name "*nvcc*" | sort
+          echo "=== NVCC Version ==="
           which nvcc || echo "nvcc not found in PATH"
           nvcc --version || echo "nvcc version check failed"
           
           # Set CUDA environment variables
-          echo "CUDA_HOME=$CONDA_PREFIX" >> $GITHUB_ENV
-          echo "CUDA_PATH=$CONDA_PREFIX" >> $GITHUB_ENV
-          echo "CUDA_TOOLKIT_ROOT_DIR=$CONDA_PREFIX" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "PATH=$CONDA_PREFIX/bin:$PATH" >> $GITHUB_ENV
+          echo "=== Setting CUDA Environment Variables ==="
+          export CUDA_HOME=$CONDA_PREFIX
+          export CUDA_PATH=$CONDA_PREFIX
+          export CUDA_TOOLKIT_ROOT_DIR=$CONDA_PREFIX
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+          export PATH="$CONDA_PREFIX/bin:$PATH"
+          
+          # Save to GITHUB_ENV for subsequent steps
+          echo "CUDA_HOME=$CUDA_HOME" >> $GITHUB_ENV
+          echo "CUDA_PATH=$CUDA_PATH" >> $GITHUB_ENV
+          echo "CUDA_TOOLKIT_ROOT_DIR=$CUDA_TOOLKIT_ROOT_DIR" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          
+          echo "=== Final Environment ==="
+          env | grep -i cuda
+          env | grep -i nvcc
+          env | grep -i path
 
       - name: Build Wheel
         run: |
