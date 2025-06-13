@@ -10,6 +10,8 @@ on:
   push:
     branches:
       - '*'
+  pull_request:
+    types: ['opened', 'reopened', 'synchronize']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
