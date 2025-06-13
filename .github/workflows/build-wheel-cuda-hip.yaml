@@ -308,9 +308,10 @@ jobs:
           echo "$(Get-Location)\w64devkit\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
       - name: Setup CUDA
-        uses: Jimver/cuda-toolkit@v0.2.24
+        uses: Jimver/cuda-toolkit@v0.2.25
         id: cuda-toolkit
         with:
+          use-github-cache: false
           cuda: ${{ matrix.cuda }}
 
       - name: Build Wheel
