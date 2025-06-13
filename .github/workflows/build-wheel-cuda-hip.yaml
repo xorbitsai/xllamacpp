@@ -139,12 +139,25 @@ jobs:
           cuda_version=${{ matrix.cuda }}
           cuda_major_minor=$(echo $cuda_version | cut -d. -f1,2)
           
-          # Install CUDA using conda
-          echo "Installing CUDA $cuda_version via conda..."
-          conda install -y -c conda-forge -c nvidia \
-            cudatoolkit=$cuda_version \
-            cudnn \
-            cuda-nvcc
+          # Try different CUDA package names and channels
+          echo "Attempting to install CUDA $cuda_version..."
+          
+          # First try with cuda-toolkit
+          if conda install -y -c nvidia/label/cuda-${cuda_major_minor} -c nvidia \
+             cuda-toolkit=$cuda_version cudnn cuda-nvcc; then
+            echo "Successfully installed CUDA $cuda_version using cuda-toolkit package"
+          # Fallback to cudatoolkit
+          elif conda install -y -c nvidia/label/cuda-${cuda_major_minor} -c nvidia \
+               cudatoolkit=$cuda_version cudnn cuda-nvcc; then
+            echo "Successfully installed CUDA $cuda_version using cudatoolkit package"
+          # Try with conda-forge as last resort
+          elif conda install -y -c conda-forge -c nvidia \
+               cudatoolkit=$cuda_version cudnn cuda-nvcc; then
+            echo "Successfully installed CUDA $cuda_version from conda-forge"
+          else
+            echo "Failed to install CUDA $cuda_version using any known method"
+            exit 1
+          fi
           
           # Install build dependencies
           python -m pip install build wheel auditwheel
