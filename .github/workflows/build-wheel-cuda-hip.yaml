@@ -1,10 +1,17 @@
 name: Build Wheels (CUDA & HIP)
 
+# on:
+#   push:
+#     tags:
+#       - '*'
+#   workflow_dispatch:
+
 on:
   push:
-    tags:
+    branches:
       - '*'
-  workflow_dispatch:
+  pull_request:
+    types: ['opened', 'reopened', 'synchronize']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -301,7 +308,7 @@ jobs:
           echo "$(Get-Location)\w64devkit\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
       - name: Setup CUDA
-        uses: Jimver/cuda-toolkit@v0.2.19
+        uses: Jimver/cuda-toolkit@v0.2.25
         id: cuda-toolkit
         with:
           cuda: ${{ matrix.cuda }}
