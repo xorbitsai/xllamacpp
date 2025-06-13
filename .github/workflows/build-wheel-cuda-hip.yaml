@@ -119,15 +119,12 @@ jobs:
 
       - name: Setup Mamba
         uses: conda-incubator/setup-miniconda@v3.1.1
-        id: conda
         with:
           activate-environment: "llamacpp"
           python-version: ${{ matrix.pyver }}
           miniforge-version: latest
           add-pip-as-python-dependency: true
           auto-activate-base: false
-          auto-update-conda: true
-          condarc-file: ${{ github.workspace }}/.condarc
 
       - name: Install Dependencies
         env:
