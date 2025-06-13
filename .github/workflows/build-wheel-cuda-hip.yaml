@@ -135,27 +135,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential
           
-          # Install CUDA toolkit using the official NVIDIA repository
-          cuda_version=${{ matrix.cuda }}
-          cuda_major_minor=$(echo $cuda_version | cut -d. -f1,2)
+          # Initialize conda for shell
+          source $CONDA/etc/profile.d/conda.sh
+          
+          # Activate the conda environment
+          conda activate llamacpp
+          
+          echo "CONDA_PREFIX after activation: $CONDA_PREFIX"
           
           # Try different CUDA package names and channels
           echo "Attempting to install CUDA $cuda_version..."
           
           # First try with cuda-toolkit
-          if conda install -y -c nvidia/label/cuda-${cuda_major_minor} -c nvidia \
-             cuda-toolkit=$cuda_version cudnn cuda-nvcc; then
-            echo "Successfully installed CUDA $cuda_version using cuda-toolkit package"
-          # Fallback to cudatoolkit
-          elif conda install -y -c nvidia/label/cuda-${cuda_major_minor} -c nvidia \
-               cudatoolkit=$cuda_version cudnn cuda-nvcc; then
-            echo "Successfully installed CUDA $cuda_version using cudatoolkit package"
-          # Try with conda-forge as last resort
-          elif conda install -y -c conda-forge -c nvidia \
-               cudatoolkit=$cuda_version cudnn cuda-nvcc; then
-            echo "Successfully installed CUDA $cuda_version from conda-forge"
-          else
-            echo "Failed to install CUDA $cuda_version using any known method"
+          conda install -y -c nvidia/label/cuda-${cuda_major_minor} -c nvidia \
+             cuda-toolkit=$cuda_version cudnn cuda-nvcc
+          echo "Successfully installed CUDA $cuda_version using cuda-toolkit package"
+          
+          # Verify CONDA_PREFIX is set
+          if [ -z "$CONDA_PREFIX" ]; then
+            echo "ERROR: CONDA_PREFIX is not set after conda activation"
             exit 1
           fi
           
