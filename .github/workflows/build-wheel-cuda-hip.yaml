@@ -131,6 +131,9 @@ jobs:
           MAMBA_DOWNLOAD_FAILFAST: "0"
           MAMBA_NO_LOW_SPEED_LIMIT: "1"
         run: |
+          # Echo glibc version
+          ldd --version
+
           # First install basic build tools
           sudo apt-get update
           sudo apt-get install -y build-essential
