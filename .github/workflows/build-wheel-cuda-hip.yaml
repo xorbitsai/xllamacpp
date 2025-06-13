@@ -239,22 +239,11 @@ jobs:
 
           auditwheel show dist/*.whl
           
-          # Set platform tag based on CUDA version
           if [ "${{ matrix.platform }}" = "ubuntu-22.04-arm" ]; then
-            if [ "${{ matrix.cuda }}" = "12.8.1" ]; then
-              PLATFORM_TAG="manylinux_2_39_aarch64"
-            else
-              PLATFORM_TAG="manylinux_2_35_aarch64"
-            fi
-            auditwheel repair --plat ${PLATFORM_TAG} --exclude libcuda.so.1 dist/*.whl -w dist
+            auditwheel repair --plat manylinux_2_35_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
             rm -f dist/*-linux_aarch64.whl
           else
-            if [ "${{ matrix.cuda }}" = "12.8.1" ]; then
-              PLATFORM_TAG="manylinux_2_39_x86_64"
-            else
-              PLATFORM_TAG="manylinux_2_35_x86_64"
-            fi
-            auditwheel repair --plat ${PLATFORM_TAG} --exclude libcuda.so.1 dist/*.whl -w dist
+            auditwheel repair --plat manylinux_2_35_x86_64 --exclude libcuda.so.1 dist/*.whl -w dist
             rm -f dist/*-linux_x86_64.whl
           fi
           
