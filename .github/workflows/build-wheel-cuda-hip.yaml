@@ -14,7 +14,9 @@ permissions:
   contents: write
 
 jobs:
+  # Skip HIP build for debugging
   build_wheels_hip_linux:
+    if: false  # Skip HIP build for debugging
     name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
     runs-on: ubuntu-22.04
     strategy:
