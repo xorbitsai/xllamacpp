@@ -6,6 +6,13 @@ on:
       - '*'
   workflow_dispatch:
 
+# on:
+#   push:
+#     branches:
+#       - '*'
+#   pull_request:
+#     types: ['opened', 'reopened', 'synchronize']
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -77,6 +84,7 @@ jobs:
           rm -rf build
           rm -rf thirdparty
           df -ha
+          auditwheel show dist/*.whl
           auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
           rm dist/*-linux_x86_64.whl
           ls -alh dist
@@ -90,33 +98,27 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
-  build_wheels_cuda:
-    name: Build Wheel CUDA ${{ matrix.os }} ${{ matrix.pyver }} ${{ matrix.cuda }}
-    runs-on: ${{ matrix.os }}
+  build_wheels_cuda_linux:
+    name: Build Wheel CUDA Linux ${{ matrix.platform }} ${{ matrix.pyver }} ${{ matrix.cuda }}
+    runs-on: ${{ matrix.platform }}
     strategy:
       matrix:
-        os: ["ubuntu-22.04", "ubuntu-22.04-arm", "windows-2019"]
+        platform: ["ubuntu-22.04", "ubuntu-22.04-arm"]
         pyver: ["3.9", "3.10", "3.11", "3.12"]
-        cuda: ["12.4.1"]
-    defaults:
-      run:
-        shell: pwsh
+        cuda: ["12.4.1", "12.8.1"]
     env:
       CUDAVER: ${{ matrix.cuda }}
-      OS: ${{ matrix.os }}
 
     steps:
-      - name: Add MSBuild to PATH
-        if: runner.os == 'Windows'
-        uses: microsoft/setup-msbuild@v2
-        with:
-          vs-version: '[16.11,16.12)'
-
-      - uses: actions/checkout@v4
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v4
         with:
           submodules: "recursive"
+          fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.pyver }}
           cache: 'pip'
@@ -130,81 +132,197 @@ jobs:
           add-pip-as-python-dependency: true
           auto-activate-base: false
 
-      - name: VS Integration Cache
-        id: vs-integration-cache
-        if: runner.os == 'Windows'
-        uses: actions/cache@v4
-        with:
-          path: ./MSBuildExtensions
-          key: cuda-${{ matrix.cuda }}-vs-integration
-
-      - name: Get Visual Studio Integration
-        if: runner.os == 'Windows' && steps.vs-integration-cache.outputs.cache-hit != 'true'
-        run: |
-          if ($env:CUDAVER -eq '12.1.1') {$x = '12.1.0'} else {$x = $env:CUDAVER}
-          $links = (Invoke-RestMethod 'https://raw.githubusercontent.com/Jimver/cuda-toolkit/master/src/links/windows-links.ts').Trim().split().where({$_ -ne ''})
-          for ($i=$q=0;$i -lt $links.count -and $q -lt 2;$i++) {if ($links[$i] -eq "'$x',") {$q++}}
-          Invoke-RestMethod $links[$i].Trim("'") -OutFile 'cudainstaller.zip'
-          & 'C:\Program Files\7-Zip\7z.exe' e cudainstaller.zip -oMSBuildExtensions -r *\MSBuildExtensions\* > $null
-          Remove-Item 'cudainstaller.zip'
-
-      - name: Install Visual Studio Integration
-        if: runner.os == 'Windows'
-        run: |
-          $y = (gi '.\MSBuildExtensions').fullname + '\*'
-          (gi 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Microsoft\VC\*\BuildCustomizations').fullname.foreach({cp $y $_})
-          $cupath = 'CUDA_PATH_V' + $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','_')
-          echo "$cupath=$env:CONDA_PREFIX" >> $env:GITHUB_ENV
-
       - name: Install Dependencies
         env:
           MAMBA_DOWNLOAD_FAILFAST: "0"
           MAMBA_NO_LOW_SPEED_LIMIT: "1"
         run: |
-          $cudaVersion = $env:CUDAVER
-          mamba install -y 'cuda' -c nvidia/label/cuda-$cudaVersion
-          python -m pip install build wheel auditwheel delvewheel
+          # Echo glibc version
+          ldd --version
+
+          # First install basic build tools
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+          
+          # Initialize conda for shell
+          source $CONDA/etc/profile.d/conda.sh
+          
+          # Activate the conda environment
+          conda activate llamacpp
+          
+          echo "CONDA_PREFIX after activation: $CONDA_PREFIX"
+          
+          # Try different CUDA package names and channels
+          echo "Attempting to install CUDA ${{ matrix.cuda }}..."
+          
+          # First try with cuda-toolkit
+          conda install -y -c nvidia/label/cuda-${{ matrix.cuda }} \
+             cuda-toolkit cudnn cuda-nvcc
+          echo "Successfully installed CUDA ${{ matrix.cuda }} using cuda-toolkit package"
+          
+          # Verify CONDA_PREFIX is set
+          if [ -z "$CONDA_PREFIX" ]; then
+            echo "ERROR: CONDA_PREFIX is not set after conda activation"
+            exit 1
+          fi
+          
+          # Install build dependencies
+          python -m pip install build wheel auditwheel
           python -m pip install -r requirements.txt
+          
+          # Verify CUDA installation
+          echo "=== CUDA Installation Check ==="
+          echo "CONDA_PREFIX: $CONDA_PREFIX"
+          echo "=== CUDA Files in CONDA_PREFIX ==="
+          find $CONDA_PREFIX -name "*cuda*" -o -name "*nvcc*" | sort
+          echo "=== NVCC Version ==="
+          which nvcc || echo "nvcc not found in PATH"
+          nvcc --version || echo "nvcc version check failed"
+          
+          # Set CUDA environment variables
+          echo "=== Setting CUDA Environment Variables ==="
+          export CUDA_HOME=$CONDA_PREFIX
+          export CUDA_PATH=$CONDA_PREFIX
+          export CUDA_TOOLKIT_ROOT_DIR=$CONDA_PREFIX
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+          export PATH="$CONDA_PREFIX/bin:$PATH"
+          
+          # Save to GITHUB_ENV for subsequent steps
+          echo "CUDA_HOME=$CUDA_HOME" >> $GITHUB_ENV
+          echo "CUDA_PATH=$CUDA_PATH" >> $GITHUB_ENV
+          echo "CUDA_TOOLKIT_ROOT_DIR=$CUDA_TOOLKIT_ROOT_DIR" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "PATH=$PATH" >> $GITHUB_ENV
 
       - name: Build Wheel
         run: |
-          Write-Host "System: $env:OS"
+          # Echo glibc version
+          ldd --version
+
+          # Initialize conda for shell
+          source $CONDA/etc/profile.d/conda.sh
+          conda activate llamacpp
+          
+          echo "=== Build Environment ==="
+          echo "System: ${{ matrix.platform }}"
+          echo "Python: $(which python)"
+          echo "Pip: $(which pip)"
+          pip list
+          echo "CUDA_HOME: $CUDA_HOME"
+          echo "PATH: $PATH"
+          echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+          echo "CONDA_PREFIX: $CONDA_PREFIX"
+          which nvcc
+          nvcc --version
+          
+          # Set build environment
+          cuda_version=${CUDAVER//./}
+          cuda_version=${cuda_version:0:${#cuda_version}-1}
+          
+          # Export build variables
+          export XLLAMACPP_BUILD_CUDA=1
+          export VERSIONEER_CLOSEST_TAG_ONLY=1
+          export VERBOSE=1
+          export CMAKE_ARGS="-DGGML_CUDA=on \
+            -DCMAKE_CUDA_ARCHITECTURES=all \
+            -DGGML_CUDA_FORCE_MMQ=ON \
+            -DGGML_AVX2=off \
+            -DGGML_FMA=off \
+            -DGGML_F16C=off \
+            -DCUDAToolkit_ROOT=$CONDA_PREFIX \
+            -DCMAKE_CUDA_COMPILER=$CONDA_PREFIX/bin/nvcc"
+          
+          echo "=== CMake Configuration ==="
+          echo "CMAKE_ARGS: $CMAKE_ARGS"
+          
+          make
+          python -m build --wheel
+
+          auditwheel show dist/*.whl
+          
+          if [ "${{ matrix.platform }}" = "ubuntu-22.04-arm" ]; then
+            auditwheel repair --plat manylinux_2_39_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
+            rm -f dist/*-linux_aarch64.whl
+          else
+            auditwheel repair --plat manylinux_2_39_x86_64 --exclude libcuda.so.1 dist/*.whl -w dist
+            rm -f dist/*-linux_x86_64.whl
+          fi
+          
+          echo "CUDA_VERSION=$cuda_version" >> $GITHUB_ENV
+
+      - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: dist/*
+          tag_name: ${{ github.ref_name }}-cu${{ env.CUDA_VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build_wheels_cuda_windows:
+    name: Build Wheel CUDA Windows ${{ matrix.pyver }} ${{ matrix.cuda }}
+    runs-on: windows-2019
+    strategy:
+      matrix:
+        pyver: ["3.9", "3.10", "3.11", "3.12"]
+        cuda: ["12.4.1", "12.8.1"]
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CUDAVER: ${{ matrix.cuda }}
+
+    steps:
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.pyver }}
+          cache: 'pip'
+
+      - name: Install python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build wheel delvewheel
+
+      - name: Download and install win64devkit
+        run: |
+          curl -L https://github.com/skeeto/w64devkit/releases/download/v1.22.0/w64devkit-1.22.0.zip --output w64devkit.zip
+          Expand-Archive w64devkit.zip -DestinationPath .
+
+      - name: Add w64devkit to PATH
+        run: |
+          echo "$(Get-Location)\w64devkit\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+
+      - name: Setup CUDA
+        uses: Jimver/cuda-toolkit@v0.2.24
+        id: cuda-toolkit
+        with:
+          use-github-cache: false
+          cuda: ${{ matrix.cuda }}
+
+      - name: Build Wheel
+        run: |
           $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
           $env:XLLAMACPP_BUILD_CUDA = 1
           $env:VERSIONEER_CLOSEST_TAG_ONLY = 1
-          $env:CUDA_PATH = $env:CONDA_PREFIX
-          $env:CUDA_HOME = $env:CONDA_PREFIX
-          $env:CUDA_TOOLKIT_ROOT_DIR = $env:CONDA_PREFIX
-          if ($IsLinux) {
-            $env:LD_LIBRARY_PATH = $env:CONDA_PREFIX + '/lib:' + $env:LD_LIBRARY_PATH
-          }
-          $env:VERBOSE = '1'
-          $env:CMAKE_ARGS = '-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=all'
-          $env:CMAKE_ARGS = '-DGGML_CUDA_FORCE_MMQ=ON $env:CMAKE_ARGS'
-          $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
-          dir env:
+          $env:CMAKE_ARGS = '-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=all -DGGML_CUDA_FORCE_MMQ=ON -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
+          
           make
           python -m build --wheel
-          if ($IsLinux) {
-            if ($env:OS -eq "ubuntu-22.04-arm") {
-              auditwheel repair --plat manylinux_2_35_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
-              dir dist/
-              rm dist/*-linux_aarch64.whl
-            } else {
-              auditwheel repair --plat manylinux_2_35_x86_64 --exclude libcuda.so.1 dist/*.whl -w dist
-              rm dist/*-linux_x86_64.whl
-            }
-          } else {
-            delvewheel repair --exclude nvcuda.dll dist/*.whl -w dist
-          }
-          # write the build tag to the output
+          delvewheel repair --exclude nvcuda.dll dist/*.whl -w dist
+          
           Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
 
       - uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         with:
           files: dist/*
-          # Set tag_name to <tag>-cu<cuda_version>
           tag_name: ${{ github.ref_name }}-cu${{ env.CUDA_VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
