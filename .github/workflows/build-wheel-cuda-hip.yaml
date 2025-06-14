@@ -22,6 +22,7 @@ permissions:
 
 jobs:
   build_wheels_hip_linux:
+    if: false
     name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
     runs-on: ubuntu-22.04
     strategy:
@@ -153,12 +154,12 @@ jobs:
           echo "CONDA_PREFIX after activation: $CONDA_PREFIX"
           
           # Try different CUDA package names and channels
-          echo "Attempting to install CUDA $cuda_version..."
+          echo "Attempting to install CUDA ${{ matrix.cuda }}..."
           
           # First try with cuda-toolkit
-          conda install -y -c nvidia/label/cuda-${cuda_major_minor} -c nvidia \
-             cuda-toolkit=$cuda_version cudnn cuda-nvcc
-          echo "Successfully installed CUDA $cuda_version using cuda-toolkit package"
+          conda install -y -c nvidia/label/cuda-${{ matrix.cuda }} \
+             cuda-toolkit cudnn cuda-nvcc
+          echo "Successfully installed CUDA ${{ matrix.cuda }} using cuda-toolkit package"
           
           # Verify CONDA_PREFIX is set
           if [ -z "$CONDA_PREFIX" ]; then
@@ -259,6 +260,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_wheels_cuda_windows:
+    if: false
     name: Build Wheel CUDA Windows ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: windows-2019
     strategy:
