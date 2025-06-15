@@ -1919,6 +1919,10 @@ cdef class Server:
     def __cinit__(self, CommonParams common_params):
         self.svr = make_shared[CServer](common_params.p)
 
+    def handle_metrics(self, res_error, res_ok):
+        with nogil:
+            self.svr.get().handle_metrics(callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
+
     def handle_completions(self, string prompt_json_str, res_error, res_ok):
         with nogil:
             self.svr.get().handle_completions(prompt_json_str, callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
@@ -1927,6 +1931,6 @@ cdef class Server:
         with nogil:
             self.svr.get().handle_chat_completions(prompt_json_str, callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
 
-    def handle_metrics(self, res_error, res_ok):
+    def handle_embeddings(self, string input_json_str, res_error, res_ok):
         with nogil:
-            self.svr.get().handle_metrics(callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
+            self.svr.get().handle_embeddings(input_json_str, callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
