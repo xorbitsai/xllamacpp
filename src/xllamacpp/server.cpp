@@ -4438,6 +4438,16 @@ Server::Server(const common_params &params)
 
 Server::~Server() { _ctx_server->queue_tasks.terminate(); }
 
+void Server::handle_metrics(Callback res_error, void *py_cb_error,
+                            Callback res_ok, void *py_cb_ok) {
+  handle_metrics_impl(
+      *_ctx_server,
+      [res_error, py_cb_error](const json &err) {
+        res_error(err.dump().c_str(), py_cb_error);
+      },
+      [res_ok, py_cb_ok](const std::string &ok) { res_ok(ok, py_cb_ok); });
+}
+
 void Server::handle_completions(const std::string &prompt_json_str,
                                 Callback res_error, void *py_cb_error,
                                 Callback res_ok, void *py_cb_ok) {
@@ -4472,13 +4482,19 @@ void Server::handle_chat_completions(const std::string &prompt_json_str,
       OAICOMPAT_TYPE_CHAT);
 }
 
-void Server::handle_metrics(Callback res_error, void *py_cb_error,
-                            Callback res_ok, void *py_cb_ok) {
-  handle_metrics_impl(
-      *_ctx_server,
+void Server::handle_embeddings(const std::string &input_json_str,
+                               Callback res_error, void *py_cb_error,
+                               Callback res_ok, void *py_cb_ok) {
+  auto body = json::parse(input_json_str);
+  handle_embeddings_impl(
+      *_ctx_server, body,
       [res_error, py_cb_error](const json &err) {
         res_error(err.dump().c_str(), py_cb_error);
       },
-      [res_ok, py_cb_ok](const std::string &ok) { res_ok(ok, py_cb_ok); });
+      [res_ok, py_cb_ok](const json &ok) {
+        res_ok(ok.dump().c_str(), py_cb_ok);
+      },
+      OAICOMPAT_TYPE_EMBEDDING);
 }
+
 } // namespace xllamacpp
