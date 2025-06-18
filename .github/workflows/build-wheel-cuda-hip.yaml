@@ -1,17 +1,17 @@
 name: Build Wheels (CUDA & HIP)
 
-on:
-  push:
-    tags:
-      - '*'
-  workflow_dispatch:
-
 # on:
 #   push:
-#     branches:
+#     tags:
 #       - '*'
-#   pull_request:
-#     types: ['opened', 'reopened', 'synchronize']
+#   workflow_dispatch:
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    types: ['opened', 'reopened', 'synchronize']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,8 +26,8 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        pyver: ["3.9", "3.10", "3.11", "3.12"]
-        hip: ["6.4.1"]
+        pyver: ["3.10"]
+        hip: ["6.3.4"]
     container: rocm/dev-ubuntu-22.04:${{matrix.hip}}
 
     steps:
@@ -89,6 +89,11 @@ jobs:
           rm dist/*-linux_x86_64.whl
           ls -alh dist
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts
+          path: ./dist/*.whl
+
       - uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         with:
@@ -99,6 +104,7 @@ jobs:
 
 
   build_wheels_cuda_linux:
+    if: false
     name: Build Wheel CUDA Linux ${{ matrix.platform }} ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: ${{ matrix.platform }}
     strategy:
@@ -259,6 +265,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_wheels_cuda_windows:
+    if: false
     name: Build Wheel CUDA Windows ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: windows-2019
     strategy:
