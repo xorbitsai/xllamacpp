@@ -70,7 +70,6 @@ jobs:
             --name rocm-container \
             -v /usr/bin/ccache:/usr/local/bin/ccache \
             -v ${{ github.workspace }}:/workspace \
-            -v ${{ steps.ccache.outputs.dir }}:/ccache \
             -e CCACHE_DIR=/ccache \
             -w /workspace \
             rocm/dev-ubuntu-22.04:${{ matrix.hip }}
