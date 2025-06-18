@@ -36,8 +36,16 @@ jobs:
         run: |
           df -ha
           sudo apt-get update
-          sudo apt-get install -y build-essential git cmake rocblas-dev hipblas-dev rocwmma-dev libcurl4-openssl-dev patchelf
+          sudo apt-get install -y build-essential git cmake libcurl4-openssl-dev patchelf
+          df -ha
+          sudo apt-get install -y rocblas-dev
+          df -ha
+          sudo apt-get install -y hipblas-dev
+          df -ha
+          sudo apt-get install -y rocwmma-dev
+          df -ha
           sudo apt-get clean
+          df -ha
           hipconfig --full
           ls -alh /opt/rocm/lib
 
