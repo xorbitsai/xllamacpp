@@ -51,21 +51,12 @@ jobs:
         with:
           submodules: "recursive"
 
-      - name: Setup ccache
-        id: ccache
-        uses: hendrikmuhs/ccache-action@v1.2.16
-        with:
-          key: ubuntu-22-cmake-hip
-          evict-old-files: 1d
-
       - name: Start ROCm container and setup Python
         run: |
           # Start the container with necessary device mappings and keep it running
           docker run -d \
             --name rocm-container \
-            -v /usr/bin/ccache:/usr/local/bin/ccache \
             -v ${{ github.workspace }}:/workspace \
-            -e CCACHE_DIR=/ccache \
             -w /workspace \
             rocm/dev-ubuntu-22.04:${{ matrix.hip}} \
             sleep infinity
@@ -76,7 +67,8 @@ jobs:
             apt-get install -y python${{ matrix.pyver }} python${{ matrix.pyver }}-venv python${{ matrix.pyver }}-dev python3-pip && \
             update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${{ matrix.pyver }} 1 && \
             update-alternatives --install /usr/bin/python python /usr/bin/python${{ matrix.pyver }} 1 && \
-            python3 -m pip install --upgrade pip setuptools wheel'
+            python3 -m pip install --upgrade pip setuptools wheel
+          '
           
           # Verify Python installation
           docker exec rocm-container python3 --version
