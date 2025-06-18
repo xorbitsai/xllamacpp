@@ -66,13 +66,29 @@ jobs:
 
       - name: Start ROCm container
         run: |
+          # Start the container with necessary device mappings and keep it running
           docker run -d \
             --name rocm-container \
+            --device=/dev/kfd \
+            --device=/dev/dri \
+            --group-add=video \
+            --cap-add=SYS_PTRACE \
+            --security-opt seccomp=unconfined \
+            --shm-size 8G \
             -v /usr/bin/ccache:/usr/local/bin/ccache \
             -v ${{ github.workspace }}:/workspace \
+            -v ${{ steps.ccache.outputs.dir }}:/ccache \
             -e CCACHE_DIR=/ccache \
             -w /workspace \
-            rocm/dev-ubuntu-22.04:${{ matrix.hip }}
+            rocm/dev-ubuntu-22.04:${{ matrix.hip}} \
+            sleep infinity
+          
+          # Wait for the container to be fully up
+          sleep 10
+          
+          # Check container status and logs if needed
+          docker ps -a
+          docker logs rocm-container
 
       - name: System Dependencies
         run: |
