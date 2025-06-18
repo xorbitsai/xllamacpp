@@ -21,15 +21,9 @@ permissions:
   contents: write
 
 jobs:
-  build_wheels_hip_linux:
-    name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
+  clean_disk:
+    name: Clean Disk
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        pyver: ["3.10"]
-        hip: ["6.3.4"]
-    container: rocm/dev-ubuntu-22.04:${{matrix.hip}}
-
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -47,6 +41,16 @@ jobs:
           docker-images: true
           swap-storage: true
 
+  build_wheels_hip_linux:
+    name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
+    needs: clean_disk
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        pyver: ["3.10"]
+        hip: ["6.3.4"]
+    container: rocm/dev-ubuntu-22.04:${{matrix.hip}}
+    steps:
       - name: System Dependencies
         id: system_depends
         run: |
