@@ -41,7 +41,7 @@ jobs:
           android: true
           dotnet: true
           haskell: true
-          large-packages: true
+          large-packages: false
           docker-images: true
           swap-storage: true
 
@@ -51,12 +51,6 @@ jobs:
         with:
           submodules: "recursive"
 
-      - name: Setup Python
-        id: setup-python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.pyver }}
-
       - name: Setup ccache
         id: ccache
         uses: hendrikmuhs/ccache-action@v1.2.16
@@ -64,7 +58,7 @@ jobs:
           key: ubuntu-22-cmake-hip
           evict-old-files: 1d
 
-      - name: Start ROCm container
+      - name: Start ROCm container and setup Python
         run: |
           # Start the container with necessary device mappings and keep it running
           docker run -d \
@@ -76,12 +70,17 @@ jobs:
             rocm/dev-ubuntu-22.04:${{ matrix.hip}} \
             sleep infinity
           
-          # Wait for the container to be fully up
-          sleep 10
+          # Install Python and set up the environment
+          docker exec rocm-container bash -c '
+            apt-get update && \
+            apt-get install -y python${{ matrix.pyver }} python${{ matrix.pyver }}-venv python${{ matrix.pyver }}-dev python3-pip && \
+            update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${{ matrix.pyver }} 1 && \
+            update-alternatives --install /usr/bin/python python /usr/bin/python${{ matrix.pyver }} 1 && \
+            python3 -m pip install --upgrade pip setuptools wheel
           
-          # Check container status and logs if needed
-          docker ps -a
-          docker logs rocm-container
+          # Verify Python installation
+          docker exec rocm-container python3 --version
+          docker exec rocm-container pip3 --version
 
       - name: System Dependencies
         run: |
