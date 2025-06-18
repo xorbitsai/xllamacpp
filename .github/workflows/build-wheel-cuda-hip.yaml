@@ -34,6 +34,7 @@ jobs:
       - name: System Dependencies
         id: system_depends
         run: |
+          df -ha
           sudo apt-get update
           sudo apt-get install -y build-essential git cmake rocblas-dev hipblas-dev rocwmma-dev libcurl4-openssl-dev patchelf
           sudo apt-get clean
