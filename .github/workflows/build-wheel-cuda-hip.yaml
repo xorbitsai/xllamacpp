@@ -79,14 +79,7 @@ jobs:
           docker exec rocm-container bash -c '
             df -ha
             apt-get update
-            apt-get install -y build-essential git cmake libcurl4-openssl-dev patchelf
-            df -ha
-            apt-get install -y rocblas-dev
-            df -ha
-            apt-get install -y hipblas-dev
-            df -ha
-            apt-get install -y rocwmma-dev
-            df -ha
+            apt-get install -y build-essential git cmake libcurl4-openssl-dev patchelf rocblas-dev hipblas-dev rocwmma-dev
             apt-get clean
             df -ha
             hipconfig --full
@@ -126,11 +119,22 @@ jobs:
             ls -alh dist
           '
 
-      - name: Stop ROCm container
+      - name: Stop ROCm container and verify wheel files
         if: always()
         run: |
+          # Always stop and remove the container
           docker stop rocm-container || true
           docker rm rocm-container || true
+          
+          # Check if any wheel files exist in the dist directory
+          if [ -z "$(ls -A dist/*.whl 2>/dev/null)" ]; then
+            echo "❌ No wheel files found in dist directory!"
+            echo "Current directory contents:"
+            ls -la dist/ 2>/dev/null || echo "No dist directory found"
+            exit 1
+          fi
+          
+          echo "✅ Wheel files found in dist directory"
 
       - uses: actions/upload-artifact@v4
         with:
