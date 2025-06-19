@@ -4265,6 +4265,13 @@ static void handle_embeddings_impl(server_context &ctx_server, const json &data,
                                    oaicompat_type oaicompat) {
   const json &body = data;
 
+  if (!ctx_server.params_base.embedding) {
+    res_error(format_error_response("This server does not support embeddings. "
+                                    "Start it with `--embeddings`",
+                                    ERROR_TYPE_NOT_SUPPORTED));
+    return;
+  }
+
   if (oaicompat != OAICOMPAT_TYPE_NONE &&
       llama_pooling_type(ctx_server.ctx) == LLAMA_POOLING_TYPE_NONE) {
     res_error(
