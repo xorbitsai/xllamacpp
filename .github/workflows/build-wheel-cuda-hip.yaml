@@ -27,18 +27,23 @@ jobs:
     strategy:
       matrix:
         pyver: ["3.9", "3.10", "3.11", "3.12"]
-        hip: ["6.4.1"]
-    container: rocm/dev-ubuntu-22.04:${{matrix.hip}}
-
+        hip: ["6.3.4"]
     steps:
-      - name: System Dependencies
-        id: system_depends
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential git cmake rocblas-dev hipblas-dev rocwmma-dev libcurl4-openssl-dev patchelf
-          sudo apt-get clean
-          hipconfig --full
-          ls -alh /opt/rocm/lib
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: false
+          
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: true
+          swap-storage: true
 
       - name: Clone
         id: checkout
@@ -46,48 +51,99 @@ jobs:
         with:
           submodules: "recursive"
 
-      - name: Setup Python
+      - name: Set up Python ${{ matrix.pyver }}
         id: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.pyver }}
 
-      - name: Symlink hostedtoolcache
+      - name: Start ROCm container
         run: |
-          sudo ln -s /__t /opt/hostedtoolcache
+          # Get Python location from setup-python
+          PYTHON_PATH=$(which python)
+          PYTHON_HOME=$(dirname $(dirname $PYTHON_PATH))
+          
+          # Start the container with Python from host mounted
+          docker run -d \
+            --name rocm-container \
+            -v ${{ github.workspace }}:/workspace \
+            -v $PYTHON_HOME:$PYTHON_HOME \
+            -e PATH=$PYTHON_HOME/bin:$PATH \
+            -w /workspace \
+            rocm/dev-ubuntu-22.04:${{ matrix.hip }} \
+            sleep infinity
+          
+          # Verify Python installation in container
+          docker exec rocm-container python --version
+          docker exec rocm-container pip --version
 
-      - name: Python Dependencies
-        id: python_depends
+      - name: System Dependencies
         run: |
-          python -m pip install build wheel auditwheel
-          python -m pip install -r requirements.txt
+          docker exec rocm-container bash -c '
+            df -ha
+            apt-get update
+            apt-get install -y build-essential git cmake libcurl4-openssl-dev patchelf rocblas-dev hipblas-dev rocwmma-dev
+            apt-get clean
+            df -ha
+            hipconfig --full
+            ls -alh /opt/rocm/lib
+          '
 
-      - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2.16
-        with:
-          key: ubuntu-22-cmake-hip
-          evict-old-files: 1d
+      - name: Setup Python environment
+        run: |
+          docker exec rocm-container bash -c '
+            python -m pip install --upgrade pip
+            python -m pip install build wheel auditwheel
+            python -m pip install -r requirements.txt
+          '
 
       - name: Build with native CMake HIP support
-        id: cmake_build
         env:
           XLLAMACPP_BUILD_HIP: "1"
           VERSIONEER_CLOSEST_TAG_ONLY: "1"
           VERBOSE: "1"
         run: |
-          printenv
-          git config --global --add safe.directory '*'
-          make
-          python -m build --wheel
-          df -ha
-          echo "Clean up"
-          rm -rf build
-          rm -rf thirdparty
-          df -ha
-          auditwheel show dist/*.whl
-          auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
-          rm dist/*-linux_x86_64.whl
-          ls -alh dist
+          docker exec -e XLLAMACPP_BUILD_HIP=$XLLAMACPP_BUILD_HIP \
+                     -e VERSIONEER_CLOSEST_TAG_ONLY=$VERSIONEER_CLOSEST_TAG_ONLY \
+                     -e VERBOSE=$VERBOSE \
+                     rocm-container bash -c '
+            python --version
+            printenv
+            git config --global --add safe.directory "*"
+            make
+            python -m build --wheel
+            df -ha
+            echo "Clean up"
+            rm -rf build
+            rm -rf thirdparty
+            df -ha
+            auditwheel show dist/*.whl
+            auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
+            rm dist/*-linux_x86_64.whl
+            ls -alh dist
+          '
+
+      - name: Stop ROCm container and verify wheel files
+        if: always()
+        run: |
+          # Always stop and remove the container
+          docker stop rocm-container || true
+          docker rm rocm-container || true
+          
+          # Check if any wheel files exist in the dist directory
+          if [ -z "$(ls -A dist/*.whl 2>/dev/null)" ]; then
+            echo "❌ No wheel files found in dist directory!"
+            echo "Current directory contents:"
+            ls -la dist/ 2>/dev/null || echo "No dist directory found"
+            exit 1
+          fi
+          
+          echo "✅ Wheel files found in dist directory"
+
+      # - uses: actions/upload-artifact@v4
+      #   with:
+      #     name: artifacts
+      #     path: ./dist/*.whl
 
       - uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
