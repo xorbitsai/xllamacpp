@@ -60,7 +60,7 @@ pip install -U xllamacpp
 - From github pypi for `HIP` AMD GPU (use `--force-reinstall` to replace the installed CPU version):
 
 ```sh
-pip install xllamacpp --force-reinstall --find-links https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1
+pip install xllamacpp --force-reinstall --find-links https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4
 ```
 
 ## Setup
