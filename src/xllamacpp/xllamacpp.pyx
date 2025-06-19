@@ -1527,15 +1527,6 @@ cdef class CommonParams:
         self.p.embd_sep = value.encode('utf8')
 
     @property
-    def reranking(self) -> bool:
-        """enable reranking support on server"""
-        return self.p.reranking
-
-    @reranking.setter
-    def reranking(self, value: bool):
-        self.p.reranking = value
-
-    @property
     def port(self) -> int:
         """server listens on this network port"""
         return self.p.port

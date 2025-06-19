@@ -49,9 +49,7 @@ def test_enum_values():
     assert xlc.llama_model_kv_override_type.LLAMA_KV_OVERRIDE_TYPE_STR == 3
     assert xlc.dimre_method.DIMRE_METHOD_MEAN == 1
     assert xlc.common_conversation_mode.COMMON_CONVERSATION_MODE_AUTO == 2
-    assert (
-        xlc.common_grammar_trigger_type.COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_FULL == 3
-    )
+    assert xlc.common_grammar_trigger_type.COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_FULL == 3
     assert xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK == 2
 
 
@@ -174,7 +172,6 @@ def test_common_params():
     assert params.embd_normalize == 2
     assert params.embd_out == ""
     assert params.embd_sep == "\n"
-    assert params.reranking is False
 
     assert params.port == 8080
     assert params.timeout_read == 600
