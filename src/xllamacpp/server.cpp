@@ -92,6 +92,26 @@ enum error_type {
   ERROR_TYPE_NOT_SUPPORTED, // custom error
 };
 
+static bool server_task_type_need_embd(server_task_type task_type) {
+  switch (task_type) {
+  case SERVER_TASK_TYPE_EMBEDDING:
+  case SERVER_TASK_TYPE_RERANK:
+    return true;
+  default:
+    return false;
+  }
+}
+
+static bool server_task_type_need_logits(server_task_type task_type) {
+  switch (task_type) {
+  case SERVER_TASK_TYPE_COMPLETION:
+  case SERVER_TASK_TYPE_INFILL:
+    return true;
+  default:
+    return false;
+  }
+}
+
 struct slot_params {
   bool stream = true;
   bool cache_prompt =
@@ -1402,13 +1422,20 @@ struct server_slot {
     n_draft_accepted = 0;
   }
 
-  bool is_non_causal() const {
-    return task_type == SERVER_TASK_TYPE_EMBEDDING ||
-           task_type == SERVER_TASK_TYPE_RERANK;
+  bool need_embd() const { return server_task_type_need_embd(task_type); }
+
+  bool need_logits() const { return server_task_type_need_logits(task_type); }
+
+  // if the context does not have a memory module then all embeddings have to be
+  // computed within a single ubatch also we cannot split if the pooling would
+  // require any past tokens
+  bool can_split() const {
+    return !need_embd() || (llama_get_memory(ctx) &&
+                            llama_pooling_type(ctx) == LLAMA_POOLING_TYPE_LAST);
   }
 
   bool can_batch_with(server_slot &other_slot) const {
-    return is_non_causal() == other_slot.is_non_causal() &&
+    return task_type == other_slot.task_type &&
            are_lora_equal(lora, other_slot.lora);
   }
 
@@ -1562,7 +1589,6 @@ struct server_slot {
         {"n_ctx", n_ctx},
         {"speculative", can_speculate()},
         {"is_processing", is_processing()},
-        {"non_causal", is_non_causal()},
         {"params", params.to_json()},
         {"prompt", prompt_tokens.detokenize(ctx, true)},
         {"next_token",
@@ -2902,6 +2928,7 @@ struct server_context {
         queue_tasks.defer(std::move(task));
         break;
       }
+
       if (slot->is_processing()) {
         // if requested slot is unavailable, we defer this task for processing
         // later
@@ -3295,7 +3322,17 @@ struct server_context {
               continue;
             }
 
-            if (slot.is_non_causal()) {
+            // TODO: support memory-less logits computation
+            if (slot.need_logits() && !llama_get_memory(ctx)) {
+              slot.release();
+              send_error(
+                  slot,
+                  "the current context does not logits computation. skipping",
+                  ERROR_TYPE_SERVER);
+              continue;
+            }
+
+            if (!slot.can_split()) {
               if (slot.n_prompt_tokens > n_ubatch) {
                 slot.release();
                 send_error(slot,
@@ -3484,9 +3521,8 @@ struct server_context {
             }
 
             if (slot.n_past == slot.n_prompt_tokens && slot.n_past > 0) {
-              // we have to evaluate at least 1 token to generate logits.
               SLT_WRN(slot,
-                      "need to evaluate at least 1 token to generate logits, "
+                      "need to evaluate at least 1 token for each active slot, "
                       "n_past = %d, n_prompt_tokens = %d\n",
                       slot.n_past, slot.n_prompt_tokens);
 
@@ -3496,9 +3532,7 @@ struct server_context {
             slot.n_prompt_tokens_processed = 0;
           }
 
-          // non-causal tasks require to fit the entire prompt in the physical
-          // batch
-          if (slot.is_non_causal()) {
+          if (!slot.can_split()) {
             // cannot fit the prompt in the current batch - will try next iter
             if (batch.n_tokens + slot.n_prompt_tokens > n_batch) {
               continue;
@@ -3555,11 +3589,8 @@ struct server_context {
               break; // end of text chunk
             }
 
-            // without pooling, we want to output the embeddings for all the
-            // tokens in the batch
-            const bool need_embd =
-                slot.task_type == SERVER_TASK_TYPE_EMBEDDING &&
-                llama_pooling_type(slot.ctx) == LLAMA_POOLING_TYPE_NONE;
+            // embedding requires all tokens in the batch to be output
+            const bool need_embd = server_task_type_need_embd(slot.task_type);
 
             common_batch_add(batch, cur_tok, slot.n_past, {slot.id}, need_embd);
             slot.cache_tokens.push_back(cur_tok);
@@ -3620,18 +3651,16 @@ struct server_context {
     SRV_DBG("decoding batch, n_tokens = %d\n", batch.n_tokens);
 
     if (slot_batched) {
-      // make sure we're in the right embedding mode
-      llama_set_embeddings(ctx, slot_batched->is_non_causal());
       // apply lora, only need to do it once per batch
       common_set_adapter_lora(ctx, slot_batched->lora);
-    }
 
-    const bool do_encode = (params_base.embedding || params_base.reranking);
+      llama_set_embeddings(ctx, slot_batched->need_embd());
+    }
 
     // pad the batch so that batch.n_tokens >= n_slots
     // TODO: temporary workaround for
     // https://github.com/ggml-org/llama.cpp/issues/13689
-    if (do_encode) {
+    if (slot_batched->need_embd()) {
       const int n_slots = slots.size();
 
       if (batch.n_tokens < n_slots) {
@@ -3654,8 +3683,11 @@ struct server_context {
                 seq_id);
 
         for (int j = 0; j < n_add; ++j) {
-          common_batch_add(batch, 0, j, {seq_id}, false);
+          common_batch_add(batch, 0, j, {seq_id}, true);
         }
+
+        slots[seq_id].cache_tokens.clear();
+        llama_memory_seq_rm(llama_get_memory(ctx), seq_id, -1, -1);
       }
     }
 
@@ -3992,13 +4024,6 @@ static void handle_completions_impl(server_context &ctx_server,
                                     oaicompat_type oaicompat) {
   GGML_ASSERT(type == SERVER_TASK_TYPE_COMPLETION ||
               type == SERVER_TASK_TYPE_INFILL);
-
-  if (ctx_server.params_base.embedding) {
-    res_error(format_error_response("This server does not support completions. "
-                                    "Start it without `--embeddings`",
-                                    ERROR_TYPE_NOT_SUPPORTED));
-    return;
-  }
 
   auto completion_id = gen_chatcmplid();
   std::unordered_set<int> task_ids;
