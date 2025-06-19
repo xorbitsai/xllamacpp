@@ -4,7 +4,7 @@ dynamic = ["version", "license"]
 description = "A Python wrapper of llama.cpp"
 readme = "README.md"
 authors = [
-    { name = "Shakeeb Alireza", email = "me@example.org" }
+    { name = "codingl2k1", email = "codingl2k1@outlook.com" }
 ]
 requires-python = ">=3.8"
 # dependencies = ["numpy >= 2"]
