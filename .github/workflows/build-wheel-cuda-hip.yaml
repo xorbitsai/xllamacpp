@@ -61,18 +61,48 @@ jobs:
             rocm/dev-ubuntu-22.04:${{ matrix.hip}} \
             sleep infinity
           
-          # Install Python and set up the environment
+          # Install pyenv and required dependencies
           docker exec rocm-container bash -c '
+            # Install pyenv dependencies
             apt-get update && \
-            apt-get install -y python${{ matrix.pyver }} python${{ matrix.pyver }}-venv python${{ matrix.pyver }}-dev python3-pip && \
-            update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${{ matrix.pyver }} 1 && \
-            update-alternatives --install /usr/bin/python python /usr/bin/python${{ matrix.pyver }} 1 && \
-            python3 -m pip install --upgrade pip setuptools wheel
+            apt-get install -y --no-install-recommends \
+              make build-essential libssl-dev zlib1g-dev \
+              libbz2-dev libreadline-dev libsqlite3-dev wget \
+              curl llvm libncurses5-dev libncursesw5-dev \
+              xz-utils tk-dev libffi-dev liblzma-dev \
+              git python3-pip python3-venv && \
+            # Clean up apt cache
+            apt-get clean && \
+            rm -rf /var/lib/apt/lists/*
+          '
+
+          # Install pyenv and Python version
+          docker exec rocm-container bash -c '
+            # Install pyenv
+            curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash && \
+            # Add pyenv to PATH
+            echo "export PYENV_ROOT=\"$HOME/.pyenv\"" >> ~/.bashrc && \
+            echo "export PATH=\"$PYENV_ROOT/bin:$PATH\"" >> ~/.bashrc && \
+            echo "eval \"$(pyenv init --path)\"" >> ~/.bashrc && \
+            echo "eval \"$(pyenv virtualenv-init -)\"" >> ~/.bashrc && \
+            # Apply environment variables for current shell
+            export PYENV_ROOT="$HOME/.pyenv" && \
+            export PATH="$PYENV_ROOT/bin:$PATH" && \
+            eval "$(pyenv init --path)" && \
+            # Install required Python version
+            pyenv install ${{ matrix.pyver }} && \
+            pyenv global ${{ matrix.pyver }} && \
+            # Ensure pip is up to date
+            python -m pip install --upgrade pip setuptools wheel
           '
           
           # Verify Python installation
-          docker exec rocm-container python3 --version
-          docker exec rocm-container pip3 --version
+          docker exec rocm-container bash -c '
+            export PATH="$HOME/.pyenv/bin:$PATH" && \
+            eval "$(pyenv init --path)" && \
+            python --version && \
+            pip --version
+          '
 
       - name: System Dependencies
         run: |
@@ -89,8 +119,11 @@ jobs:
       - name: Setup Python environment
         run: |
           docker exec rocm-container bash -c '
-            python -m pip install --upgrade pip
-            python -m pip install build wheel auditwheel
+            export PATH="$HOME/.pyenv/bin:$PATH" && \
+            eval "$(pyenv init --path)" && \
+            # Install build tools and requirements
+            python -m pip install --upgrade pip && \
+            python -m pip install build wheel auditwheel && \
             python -m pip install -r requirements.txt
           '
 
@@ -104,6 +137,7 @@ jobs:
                      -e VERSIONEER_CLOSEST_TAG_ONLY=$VERSIONEER_CLOSEST_TAG_ONLY \
                      -e VERBOSE=$VERBOSE \
                      rocm-container bash -c '
+            python --version
             printenv
             git config --global --add safe.directory "*"
             make
