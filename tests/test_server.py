@@ -123,3 +123,48 @@ def test_llama_server_multimodal(model_path):
         lambda s: pprint.pprint(json.loads(s)),
         lambda s: pprint.pprint(json.loads(s)),
     )
+
+
+def test_llama_server_embedding(model_path):
+    params = xlc.CommonParams()
+
+    params.model.path = os.path.join(model_path, "Qwen3-Embedding-0.6B-Q8_0.gguf")
+    params.embedding = True
+    params.n_predict = -1
+    params.n_ctx = 512
+    params.n_batch = 128
+    params.n_ubatch = 128
+    params.sampling.seed = 42
+    params.cpuparams.n_threads = 2
+    params.cpuparams_batch.n_threads = 2
+    params.pooling_type = xlc.llama_pooling_type.LLAMA_POOLING_TYPE_LAST
+
+    server = xlc.Server(params)
+
+    embedding_input = {
+        "input": [
+            "I believe the meaning of life is",
+            "Write a joke about AI from a very long prompt which will not be truncated",
+            "This is a test",
+            "This is another test",
+        ],
+    }
+
+    result = None
+
+    def _check_ok(json_str):
+        nonlocal result
+        result = json.loads(json_str)
+        pprint.pprint(result)
+
+    server.handle_embeddings(
+        json.dumps(embedding_input),
+        lambda s: pprint.pprint(json.loads(s)),
+        _check_ok,
+    )
+
+    assert result is not None
+
+    assert len(result["data"]) == 4
+    for d in result["data"]:
+        assert len(d["embedding"]) == 1024

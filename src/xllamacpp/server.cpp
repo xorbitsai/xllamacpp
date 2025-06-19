@@ -4013,11 +4013,108 @@ static void init(common_params &params, server_context &ctx_server,
   llama_backend_free();
 }
 
+// handle metrics requests
+static void
+handle_metrics_impl(server_context &ctx_server,
+                    std::function<void(const json &)> res_error,
+                    std::function<void(const std::string &)> res_ok) {
+  if (!ctx_server.params_base.endpoint_metrics) {
+    res_error(format_error_response("This server does not support metrics "
+                                    "endpoint. Start it with `--metrics`",
+                                    ERROR_TYPE_NOT_SUPPORTED));
+    return;
+  }
+
+  // request slots data using task queue
+  int task_id = ctx_server.queue_tasks.get_new_id();
+  {
+    server_task task(SERVER_TASK_TYPE_METRICS);
+    task.id = task_id;
+    ctx_server.queue_results.add_waiting_task_id(task_id);
+    ctx_server.queue_tasks.post(std::move(task), true); // high-priority task
+  }
+
+  // get the result
+  server_task_result_ptr result = ctx_server.queue_results.recv(task_id);
+  ctx_server.queue_results.remove_waiting_task_id(task_id);
+
+  if (result->is_error()) {
+    res_error(result->to_json());
+    return;
+  }
+
+  // TODO: get rid of this dynamic_cast
+  auto res_metrics = dynamic_cast<server_task_result_metrics *>(result.get());
+  GGML_ASSERT(res_metrics != nullptr);
+
+  // metrics definition:
+  // https://prometheus.io/docs/practices/naming/#metric-names
+  json all_metrics_def = json{
+      {"counter",
+       {{{"name", "prompt_tokens_total"},
+         {"help", "Number of prompt tokens processed."},
+         {"value", (uint64_t)res_metrics->n_prompt_tokens_processed_total}},
+        {{"name", "prompt_seconds_total"},
+         {"help", "Prompt process time"},
+         {"value", (uint64_t)res_metrics->t_prompt_processing_total / 1.e3}},
+        {{"name", "tokens_predicted_total"},
+         {"help", "Number of generation tokens processed."},
+         {"value", (uint64_t)res_metrics->n_tokens_predicted_total}},
+        {{"name", "tokens_predicted_seconds_total"},
+         {"help", "Predict process time"},
+         {"value", (uint64_t)res_metrics->t_tokens_generation_total / 1.e3}},
+        {{"name", "n_decode_total"},
+         {"help", "Total number of llama_decode() calls"},
+         {"value", res_metrics->n_decode_total}},
+        {{"name", "n_busy_slots_per_decode"},
+         {"help", "Average number of busy slots per llama_decode() call"},
+         {"value", (float)res_metrics->n_busy_slots_total /
+                       std::max((float)res_metrics->n_decode_total, 1.f)}}}},
+      {"gauge",
+       {{{"name", "prompt_tokens_seconds"},
+         {"help", "Average prompt throughput in tokens/s."},
+         {"value", res_metrics->n_prompt_tokens_processed
+                       ? 1.e3 / res_metrics->t_prompt_processing *
+                             res_metrics->n_prompt_tokens_processed
+                       : 0.}},
+        {{"name", "predicted_tokens_seconds"},
+         {"help", "Average generation throughput in tokens/s."},
+         {"value", res_metrics->n_tokens_predicted
+                       ? 1.e3 / res_metrics->t_tokens_generation *
+                             res_metrics->n_tokens_predicted
+                       : 0.}},
+        {{"name", "requests_processing"},
+         {"help", "Number of requests processing."},
+         {"value", (uint64_t)res_metrics->n_processing_slots}},
+        {{"name", "requests_deferred"},
+         {"help", "Number of requests deferred."},
+         {"value", (uint64_t)res_metrics->n_tasks_deferred}}}}};
+
+  std::stringstream prometheus;
+
+  for (const auto &el : all_metrics_def.items()) {
+    const auto &type = el.key();
+    const auto &metrics_def = el.value();
+
+    for (const auto &metric_def : metrics_def) {
+      const std::string name = metric_def.at("name");
+      const std::string help = metric_def.at("help");
+
+      auto value = json_value(metric_def, "value", 0.);
+      prometheus << "# HELP llamacpp:" << name << " " << help << "\n"
+                 << "# TYPE llamacpp:" << name << " " << type << "\n"
+                 << "llamacpp:" << name << " " << value << "\n";
+    }
+  }
+
+  res_ok(prometheus.str());
+};
+
 // handle completion-like requests (completion, chat, infill)
 // we can optionally provide a custom format for partial results and final
 // results
 static void handle_completions_impl(server_context &ctx_server,
-                                    server_task_type type, json &data,
+                                    server_task_type type, const json &data,
                                     const std::vector<raw_buffer> &files,
                                     std::function<void(const json &)> res_error,
                                     std::function<void(const json &)> res_ok,
@@ -4162,101 +4259,118 @@ static void handle_completions_impl(server_context &ctx_server,
   }
 };
 
-// handle metrics requests
-static void
-handle_metrics_impl(server_context &ctx_server,
-                    std::function<void(const json &)> res_error,
-                    std::function<void(const std::string &)> res_ok) {
-  if (!ctx_server.params_base.endpoint_metrics) {
-    res_error(format_error_response("This server does not support metrics "
-                                    "endpoint. Start it with `--metrics`",
+static void handle_embeddings_impl(server_context &ctx_server, const json &data,
+                                   std::function<void(const json &)> res_error,
+                                   std::function<void(const json &)> res_ok,
+                                   oaicompat_type oaicompat) {
+  const json &body = data;
+
+  if (!ctx_server.params_base.embedding) {
+    res_error(format_error_response("This server does not support embeddings. "
+                                    "Start it with `--embeddings`",
                                     ERROR_TYPE_NOT_SUPPORTED));
     return;
   }
 
-  // request slots data using task queue
-  int task_id = ctx_server.queue_tasks.get_new_id();
-  {
-    server_task task(SERVER_TASK_TYPE_METRICS);
-    task.id = task_id;
-    ctx_server.queue_results.add_waiting_task_id(task_id);
-    ctx_server.queue_tasks.post(std::move(task), true); // high-priority task
-  }
-
-  // get the result
-  server_task_result_ptr result = ctx_server.queue_results.recv(task_id);
-  ctx_server.queue_results.remove_waiting_task_id(task_id);
-
-  if (result->is_error()) {
-    res_error(result->to_json());
+  if (oaicompat != OAICOMPAT_TYPE_NONE &&
+      llama_pooling_type(ctx_server.ctx) == LLAMA_POOLING_TYPE_NONE) {
+    res_error(
+        format_error_response("Pooling type 'none' is not OAI compatible. "
+                              "Please use a different pooling type",
+                              ERROR_TYPE_INVALID_REQUEST));
     return;
   }
 
-  // TODO: get rid of this dynamic_cast
-  auto res_metrics = dynamic_cast<server_task_result_metrics *>(result.get());
-  GGML_ASSERT(res_metrics != nullptr);
+  // for the shape of input/content, see tokenize_input_prompts()
+  json prompt;
+  if (body.count("input") != 0) {
+    prompt = body.at("input");
+  } else if (body.contains("content")) {
+    oaicompat = OAICOMPAT_TYPE_NONE; // "content" field is not OAI compatible
+    prompt = body.at("content");
+  } else {
+    res_error(format_error_response("\"input\" or \"content\" must be provided",
+                                    ERROR_TYPE_INVALID_REQUEST));
+    return;
+  }
 
-  // metrics definition:
-  // https://prometheus.io/docs/practices/naming/#metric-names
-  json all_metrics_def = json{
-      {"counter",
-       {{{"name", "prompt_tokens_total"},
-         {"help", "Number of prompt tokens processed."},
-         {"value", (uint64_t)res_metrics->n_prompt_tokens_processed_total}},
-        {{"name", "prompt_seconds_total"},
-         {"help", "Prompt process time"},
-         {"value", (uint64_t)res_metrics->t_prompt_processing_total / 1.e3}},
-        {{"name", "tokens_predicted_total"},
-         {"help", "Number of generation tokens processed."},
-         {"value", (uint64_t)res_metrics->n_tokens_predicted_total}},
-        {{"name", "tokens_predicted_seconds_total"},
-         {"help", "Predict process time"},
-         {"value", (uint64_t)res_metrics->t_tokens_generation_total / 1.e3}},
-        {{"name", "n_decode_total"},
-         {"help", "Total number of llama_decode() calls"},
-         {"value", res_metrics->n_decode_total}},
-        {{"name", "n_busy_slots_per_decode"},
-         {"help", "Average number of busy slots per llama_decode() call"},
-         {"value", (float)res_metrics->n_busy_slots_total /
-                       std::max((float)res_metrics->n_decode_total, 1.f)}}}},
-      {"gauge",
-       {{{"name", "prompt_tokens_seconds"},
-         {"help", "Average prompt throughput in tokens/s."},
-         {"value", res_metrics->n_prompt_tokens_processed
-                       ? 1.e3 / res_metrics->t_prompt_processing *
-                             res_metrics->n_prompt_tokens_processed
-                       : 0.}},
-        {{"name", "predicted_tokens_seconds"},
-         {"help", "Average generation throughput in tokens/s."},
-         {"value", res_metrics->n_tokens_predicted
-                       ? 1.e3 / res_metrics->t_tokens_generation *
-                             res_metrics->n_tokens_predicted
-                       : 0.}},
-        {{"name", "requests_processing"},
-         {"help", "Number of requests processing."},
-         {"value", (uint64_t)res_metrics->n_processing_slots}},
-        {{"name", "requests_deferred"},
-         {"help", "Number of requests deferred."},
-         {"value", (uint64_t)res_metrics->n_tasks_deferred}}}}};
-
-  std::stringstream prometheus;
-
-  for (const auto &el : all_metrics_def.items()) {
-    const auto &type = el.key();
-    const auto &metrics_def = el.value();
-
-    for (const auto &metric_def : metrics_def) {
-      const std::string name = metric_def.at("name");
-      const std::string help = metric_def.at("help");
-
-      auto value = json_value(metric_def, "value", 0.);
-      prometheus << "# HELP llamacpp:" << name << " " << help << "\n"
-                 << "# TYPE llamacpp:" << name << " " << type << "\n"
-                 << "llamacpp:" << name << " " << value << "\n";
+  bool use_base64 = false;
+  if (body.count("encoding_format") != 0) {
+    const std::string &format = body.at("encoding_format");
+    if (format == "base64") {
+      use_base64 = true;
+    } else if (format != "float") {
+      res_error(format_error_response("The format to return the embeddings in. "
+                                      "Can be either float or base64",
+                                      ERROR_TYPE_INVALID_REQUEST));
+      return;
     }
   }
 
-  res_ok(prometheus.str());
+  auto tokenized_prompts =
+      tokenize_input_prompts(ctx_server.vocab, prompt, true, true);
+  for (const auto &tokens : tokenized_prompts) {
+    // this check is necessary for models that do not add BOS token to the input
+    if (tokens.empty()) {
+      res_error(format_error_response("Input content cannot be empty",
+                                      ERROR_TYPE_INVALID_REQUEST));
+      return;
+    }
+  }
+
+  // create and queue the task
+  json responses = json::array();
+  bool error = false;
+  std::unordered_set<int> task_ids;
+  {
+    std::vector<server_task> tasks;
+    for (size_t i = 0; i < tokenized_prompts.size(); i++) {
+      server_task task = server_task(SERVER_TASK_TYPE_EMBEDDING);
+
+      task.id = ctx_server.queue_tasks.get_new_id();
+      task.index = i;
+      task.prompt_tokens =
+          server_tokens(tokenized_prompts[i], ctx_server.mctx != nullptr);
+
+      // OAI-compat
+      task.params.oaicompat = oaicompat;
+
+      tasks.push_back(std::move(task));
+    }
+
+    task_ids = server_task::get_list_id(tasks);
+    ctx_server.queue_results.add_waiting_tasks(tasks);
+    ctx_server.queue_tasks.post(std::move(tasks));
+  }
+
+  // get the result
+  ctx_server.receive_multi_results(
+      task_ids,
+      [&](std::vector<server_task_result_ptr> &results) {
+        for (auto &res : results) {
+          GGML_ASSERT(dynamic_cast<server_task_result_embd *>(res.get()) !=
+                      nullptr);
+          responses.push_back(res->to_json());
+        }
+      },
+      [&](const json &error_data) {
+        res_error(error_data);
+        error = true;
+      },
+      [] { return false; });
+
+  ctx_server.queue_results.remove_waiting_task_ids(task_ids);
+
+  if (error) {
+    return;
+  }
+
+  // write JSON response
+  json root =
+      oaicompat == OAICOMPAT_TYPE_EMBEDDING
+          ? format_embeddings_response_oaicompat(body, responses, use_base64)
+          : json(responses);
+  res_ok(root);
 };
 
 static void ggml_log_callback_default(enum ggml_log_level level,
@@ -4331,6 +4445,16 @@ Server::Server(const common_params &params)
 
 Server::~Server() { _ctx_server->queue_tasks.terminate(); }
 
+void Server::handle_metrics(Callback res_error, void *py_cb_error,
+                            Callback res_ok, void *py_cb_ok) {
+  handle_metrics_impl(
+      *_ctx_server,
+      [res_error, py_cb_error](const json &err) {
+        res_error(err.dump().c_str(), py_cb_error);
+      },
+      [res_ok, py_cb_ok](const std::string &ok) { res_ok(ok, py_cb_ok); });
+}
+
 void Server::handle_completions(const std::string &prompt_json_str,
                                 Callback res_error, void *py_cb_error,
                                 Callback res_ok, void *py_cb_ok) {
@@ -4365,13 +4489,19 @@ void Server::handle_chat_completions(const std::string &prompt_json_str,
       OAICOMPAT_TYPE_CHAT);
 }
 
-void Server::handle_metrics(Callback res_error, void *py_cb_error,
-                            Callback res_ok, void *py_cb_ok) {
-  handle_metrics_impl(
-      *_ctx_server,
+void Server::handle_embeddings(const std::string &input_json_str,
+                               Callback res_error, void *py_cb_error,
+                               Callback res_ok, void *py_cb_ok) {
+  auto body = json::parse(input_json_str);
+  handle_embeddings_impl(
+      *_ctx_server, body,
       [res_error, py_cb_error](const json &err) {
         res_error(err.dump().c_str(), py_cb_error);
       },
-      [res_ok, py_cb_ok](const std::string &ok) { res_ok(ok, py_cb_ok); });
+      [res_ok, py_cb_ok](const json &ok) {
+        res_ok(ok.dump().c_str(), py_cb_ok);
+      },
+      OAICOMPAT_TYPE_EMBEDDING);
 }
+
 } // namespace xllamacpp
