@@ -108,8 +108,10 @@ jobs:
                      -e VERBOSE=$VERBOSE \
                      rocm-container bash -c '
             python --version
+            gcc -v
             printenv
             git config --global --add safe.directory "*"
+            export LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/11:$LD_LIBRARY_PATH
             make
             python -m build --wheel
             df -ha
