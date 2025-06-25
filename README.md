@@ -55,21 +55,21 @@ pip install -U xllamacpp
 
   - CUDA 12.4
     ```sh
-    pip install xllamacpp --force-reinstall --find-links https://xorbitsai.github.io/xllamacpp/whl/cu124
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu124
     ```
 
   - CUDA 12.8
     ```sh
-    pip install xllamacpp --force-reinstall --find-links https://xorbitsai.github.io/xllamacpp/whl/cu128
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128
     ```
 
 - From github pypi for `HIP` AMD GPU (use `--force-reinstall` to replace the installed CPU version):
 
 ```sh
-pip install xllamacpp --force-reinstall --find-links https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4
+pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4
 ```
 
-## Setup
+## Build from source
 
 To build `xllamacpp`:
 
