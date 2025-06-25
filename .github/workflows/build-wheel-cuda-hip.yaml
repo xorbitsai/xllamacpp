@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        pyver: ["3.11"]
+        pyver: ["3.9", "3.10", "3.11", "3.12"]
         hip: ["6.3.4"]
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -142,10 +142,10 @@ jobs:
           
           echo "✅ Wheel files found in dist directory"
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: artifacts
-          path: ./dist/*.whl
+      # - uses: actions/upload-artifact@v4
+      #   with:
+      #     name: artifacts
+      #     path: ./dist/*.whl
 
       - uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -157,7 +157,6 @@ jobs:
 
 
   build_wheels_cuda_linux:
-    if: false
     name: Build Wheel CUDA Linux ${{ matrix.platform }} ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: ${{ matrix.platform }}
     strategy:
@@ -318,7 +317,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_wheels_cuda_windows:
-    if: false
     name: Build Wheel CUDA Windows ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: windows-2019
     strategy:
