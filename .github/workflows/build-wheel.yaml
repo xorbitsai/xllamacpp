@@ -143,6 +143,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.22.0
         env:
+          XLLAMACPP_BUILD_AARCH64: ${{ matrix.arch == 'aarch64' && '1' || ''}}
           VERSIONEER_CLOSEST_TAG_ONLY: 1
           CIBW_SKIP: pp* *i686
           CIBW_ARCHS: ${{ matrix.arch }}

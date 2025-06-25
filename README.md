@@ -39,6 +39,12 @@ As the intent is to provide a very thin wrapping layer and play to the strengths
 
 ## Install
 
+**Note on Performance and Compatibility**
+
+For maximum performance, you can build `xllamacpp` from source to optimize for your specific native CPU architecture. The pre-built wheels are designed for broad compatibility.
+
+Specifically, the `aarch64` wheels are built for the `armv8-a` architecture. This ensures they run on a wide range of ARM64 devices, but it means that more advanced CPU instruction sets (like SVE) are not enabled. If your CPU supports these advanced features, building from source will provide better performance.
+
 - From pypi for `CPU` or `Mac`:
 
 ```sh
