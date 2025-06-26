@@ -17,13 +17,14 @@ This project forks from [cyllama](https://github.com/shakfu/cyllama) and provide
 
 The following table provide an overview of the current implementations / features:
 
-| implementations / features             | xllamacpp     | llama-cpp-python |
-| :--------------------------- | :-----------: | :--------------: |     
-| Wrapper-type                 | cython        | ctypes           |
-| API                           | Server & Params API  | Llama API |
-| Server implementation   | C++           | Python through wrapped LLama API |
-| Continuous batching    | yes           | no |
-| Thread safe     | yes           | no |
+| implementations / features |      xllamacpp      |         llama-cpp-python         |
+|:---------------------------|:-------------------:|:--------------------------------:|
+| Wrapper-type               |       cython        |              ctypes              |
+| API                        | Server & Params API |            Llama API             |
+| Server implementation      |         C++         | Python through wrapped LLama API |
+| Continuous batching        |         yes         |                no                |
+| Thread safe                |         yes         |                no                |
+| Release package            |      prebuilt       |    build during installation     |
 
 It goes without saying that any help / collaboration / contributions to accelerate the above would be welcome!
 
