@@ -17,13 +17,14 @@ This project forks from [cyllama](https://github.com/shakfu/cyllama) and provide
 
 The following table provide an overview of the current implementations / features:
 
-| implementations / features             | xllamacpp     | llama-cpp-python |
-| :--------------------------- | :-----------: | :--------------: |     
-| Wrapper-type                 | cython        | ctypes           |
-| API                           | Server & Params API  | Llama API |
-| Server implementation   | C++           | Python through wrapped LLama API |
-| Continuous batching    | yes           | no |
-| Thread safe     | yes           | no |
+| implementations / features |      xllamacpp      |         llama-cpp-python         |
+|:---------------------------|:-------------------:|:--------------------------------:|
+| Wrapper-type               |       cython        |              ctypes              |
+| API                        | Server & Params API |            Llama API             |
+| Server implementation      |         C++         | Python through wrapped LLama API |
+| Continuous batching        |         yes         |                no                |
+| Thread safe                |         yes         |                no                |
+| Release package            |      prebuilt       |    build during installation     |
 
 It goes without saying that any help / collaboration / contributions to accelerate the above would be welcome!
 
@@ -39,6 +40,12 @@ As the intent is to provide a very thin wrapping layer and play to the strengths
 
 ## Install
 
+**Note on Performance and Compatibility**
+
+For maximum performance, you can build `xllamacpp` from source to optimize for your specific native CPU architecture. The pre-built wheels are designed for broad compatibility.
+
+Specifically, the `aarch64` wheels are built for the `armv8-a` architecture. This ensures they run on a wide range of ARM64 devices, but it means that more advanced CPU instruction sets (like SVE) are not enabled. If your CPU supports these advanced features, building from source will provide better performance.
+
 - From pypi for `CPU` or `Mac`:
 
 ```sh
@@ -49,21 +56,21 @@ pip install -U xllamacpp
 
   - CUDA 12.4
     ```sh
-    pip install xllamacpp --force-reinstall --find-links https://xorbitsai.github.io/xllamacpp/whl/cu124
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu124
     ```
 
   - CUDA 12.8
     ```sh
-    pip install xllamacpp --force-reinstall --find-links https://xorbitsai.github.io/xllamacpp/whl/cu128
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128
     ```
 
 - From github pypi for `HIP` AMD GPU (use `--force-reinstall` to replace the installed CPU version):
 
 ```sh
-pip install xllamacpp --force-reinstall --find-links https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4
+pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4
 ```
 
-## Setup
+## Build from source
 
 To build `xllamacpp`:
 

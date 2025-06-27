@@ -108,6 +108,7 @@ jobs:
                      -e VERBOSE=$VERBOSE \
                      rocm-container bash -c '
             python --version
+            gcc -v
             printenv
             git config --global --add safe.directory "*"
             make
