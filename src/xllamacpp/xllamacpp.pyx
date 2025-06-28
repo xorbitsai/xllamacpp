@@ -594,6 +594,24 @@ cdef class CommonParamsSpeculative:
         self.p.p_min = value
 
     @property
+    def cache_type_k(self) -> ggml_type:
+        """data type for K cache"""
+        return self.p.cache_type_k
+
+    @cache_type_k.setter
+    def cache_type_k(self, value: ggml_type):
+        self.p.cache_type_k = value
+
+    @property
+    def cache_type_v(self) -> ggml_type:
+        """data type for V cache"""
+        return self.p.cache_type_v
+
+    @cache_type_v.setter
+    def cache_type_v(self, ggml_type value):
+        self.p.cache_type_v = value
+
+    @property
     def cpuparams(self) -> CpuParams:
         return CpuParams.from_ptr(&self.p.cpuparams, self)
 
@@ -1525,6 +1543,15 @@ cdef class CommonParams:
     @embd_sep.setter
     def embd_sep(self, value: str):
         self.p.embd_sep = value.encode('utf8')
+
+    @property
+    def cls_sep(self) -> str:
+        """separator of classification sequences"""
+        return self.p.cls_sep.decode()
+
+    @cls_sep.setter
+    def cls_sep(self, value: str):
+        self.p.cls_sep = value.encode('utf8')
 
     @property
     def port(self) -> int:
