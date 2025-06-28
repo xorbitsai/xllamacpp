@@ -82,7 +82,7 @@ jobs:
           OS: ${{ matrix.os }}
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-timeout requests
+          pip install pytest pytest-timeout requests gguf
           make
           make download
         working-directory: .
