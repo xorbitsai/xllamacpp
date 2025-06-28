@@ -326,6 +326,9 @@ cdef extern from "common.h":
         float   p_split         # speculative decoding split probability
         float   p_min           # minimum speculative decoding probability (greedy)
 
+        ggml_type cache_type_k  # KV cache data type for the K
+        ggml_type cache_type_v  # KV cache data type for the V
+
         cpu_params cpuparams
         cpu_params cpuparams_batch
         common_params_model model
@@ -475,6 +478,7 @@ cdef extern from "common.h":
         int32_t embd_normalize      # normalisation for embeddings (-1=none, 0=max absolute int16, 1=taxicab, 2=euclidean, >2=p-norm)
         std_string embd_out         # empty = default, "array" = [[],[]...], "json" = openai style, "json+" = same "json" + cosine similarity matrix
         std_string embd_sep         # separator of embeddings
+        std_string cls_sep          # separator of classification sequences
 
         # server params
         int32_t port                # server listens on this network port

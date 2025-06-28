@@ -235,6 +235,9 @@ def test_common_params():
     assert params.sampling.samplers == sp
     params.sampling.samplers = "top_k;top_p;min_p;temperature;dry;typ_p;xtc"
     assert params.sampling.samplers == "top_k;top_p;min_p;temperature;dry;typ_p;xtc"
+    assert params.speculative.cache_type_k == xlc.ggml_type.GGML_TYPE_F16
+    assert params.speculative.cache_type_v == xlc.ggml_type.GGML_TYPE_F16
+    assert params.cls_sep == '\t'
     assert params.offline is False
     assert params.reasoning_budget == -1
     # assert params.cvector_dimre_method  == cy.DIMRE_METHOD_PCA
