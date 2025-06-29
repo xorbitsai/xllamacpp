@@ -4404,14 +4404,23 @@ Server::Server(const common_params &params)
   std::future<int> fut = out.get_future();
   _loop_thread = std::thread(init, std::ref(_params), std::ref(*_ctx_server),
                              std::move(out));
-  _loop_thread.detach();
   if (fut.get() != 0) {
+    if (_loop_thread.joinable()) {
+      _loop_thread.join();
+    }
     throw std::runtime_error(
         "Failed to init server, please check the input params.");
   }
 }
 
-Server::~Server() { _ctx_server->queue_tasks.terminate(); }
+Server::~Server() {
+  _ctx_server->queue_tasks.terminate();
+  LOG_INF("%s: waiting for main loop exit\n", __func__);
+  if (_loop_thread.joinable()) {
+    _loop_thread.join();
+  }
+  LOG_INF("%s: main loop exited\n", __func__);
+}
 
 void Server::handle_metrics(Callback res_error, void *py_cb_error,
                             Callback res_ok, void *py_cb_ok) {
