@@ -14,7 +14,7 @@ from libcpp.memory cimport shared_ptr, make_shared
 from cython.operator cimport dereference as deref
 
 cimport xllamacpp
-from server cimport CServer, c_get_device_info
+from server cimport CServer, c_get_device_info, c_get_system_info
 
 
 # constants
@@ -1925,6 +1925,10 @@ cdef class CommonParams:
 
     # // batched-bench params
     # bool batched_bench_output_jsonl = false;
+
+
+def get_system_info():
+    return <str>c_get_system_info()
 
 
 def get_device_info():

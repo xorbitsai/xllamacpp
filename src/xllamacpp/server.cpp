@@ -4356,6 +4356,8 @@ static void ggml_log_callback_default(enum ggml_log_level level,
 
 namespace xllamacpp {
 
+std::string get_system_info() { return llama_print_system_info(); }
+
 std::vector<ggml_backend_dev_props> get_device_info() {
   ggml_log_set(ggml_log_callback_default, nullptr);
 

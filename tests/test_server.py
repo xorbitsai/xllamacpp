@@ -9,6 +9,10 @@ print(sys.path)
 import xllamacpp as xlc
 
 
+def test_get_system_info():
+    assert "CPU :" in xlc.get_system_info()
+
+
 def test_get_device_info():
     xlc.get_device_info()
     info = xlc.get_device_info()
