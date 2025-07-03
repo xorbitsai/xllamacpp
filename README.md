@@ -38,6 +38,23 @@ As the intent is to provide a very thin wrapping layer and play to the strengths
 
 - Minimize non-wrapper python code.
 
+## Prerequisites for Prebuilt Wheels
+
+Before pip installing `xllamacpp`, please ensure your system meets the following requirements based on your build type:
+
+- **CPU (aarch64)**:
+  - Requires ARMv8-A or later architecture
+  - For best performance, build from source if your CPU supports advanced instruction sets
+
+- **CUDA (Linux)**:
+  - Requires glibc 2.35 or later
+  - Compatible NVIDIA GPU with appropriate drivers (CUDA 12.4 or 12.8)
+
+- **ROCm (Linux)**:
+  - Requires glibc 2.35 or later
+  - Requires gcc 10 or later (ROCm libraries have this dependency)
+  - Compatible AMD GPU with ROCm support (ROCM 6.3.4)
+
 ## Install
 
 **Note on Performance and Compatibility**
@@ -70,7 +87,7 @@ pip install -U xllamacpp
 pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4
 ```
 
-## Build from source
+## Build from Source
 
 To build `xllamacpp`:
 
