@@ -4,6 +4,7 @@ from libc.stdint cimport int32_t, uint32_t, int64_t
 from libcpp.string cimport string as std_string
 from libcpp.vector cimport vector as std_vector
 from libcpp.set cimport set as std_set
+from libcpp.map cimport map as std_map
 
 
 #------------------------------------------------------------------------------
@@ -501,6 +502,8 @@ cdef extern from "common.h":
 
         std_string ssl_file_key 
         std_string ssl_file_cert
+
+        std_map[std_string, std_string] default_template_kwargs
 
         bint webui
         bint endpoint_slots

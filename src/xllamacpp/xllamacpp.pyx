@@ -1692,6 +1692,14 @@ cdef class CommonParams:
         self.p.ssl_file_cert = value.encode('utf8')
 
     @property
+    def default_template_kwargs(self) -> dict:
+        return self.p.default_template_kwargs
+
+    @default_template_kwargs.setter
+    def default_template_kwargs(self, value: dict):
+        self.p.default_template_kwargs = value
+
+    @property
     def webui(self) -> bool:
         """enable webui"""
         return self.p.webui
