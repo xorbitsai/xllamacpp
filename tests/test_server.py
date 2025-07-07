@@ -75,7 +75,7 @@ def test_llama_server(model_path):
 
     server.handle_metrics(
         lambda s: pprint.pprint(json.loads(s)),
-        lambda s: print(s.decode("utf-8")),
+        lambda s: print(s),
     )
 
 
