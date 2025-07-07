@@ -318,7 +318,7 @@ jobs:
 
   build_wheels_cuda_windows:
     name: Build Wheel CUDA Windows ${{ matrix.pyver }} ${{ matrix.cuda }}
-    runs-on: windows-2019
+    runs-on: windows-2022
     strategy:
       matrix:
         pyver: ["3.9", "3.10", "3.11", "3.12"]
