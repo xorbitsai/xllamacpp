@@ -193,6 +193,9 @@ def test_common_params():
     assert params.ssl_file_key == ""
     assert params.ssl_file_cert == ""
 
+    params.default_template_kwargs = {"abc": "def"}
+    assert params.default_template_kwargs == {"abc": "def"}
+
     assert params.webui is True
     assert params.endpoint_slots is False
     assert params.endpoint_props is False

@@ -2,7 +2,8 @@
 # cython: profile=False
 # cython: embedsignature = True
 # cython: language_level = 3
-# cython: c_string_encoding = default
+# cython: c_string_encoding = utf8
+# cython: c_string_type=unicode
 
 """
 xllamacpp: a thin cython wrapper of llama.cpp
@@ -28,9 +29,9 @@ LLAMA_DEFAULT_SEED = 0xFFFFFFFF
 
 BUILD_INFO = {
     'build_number': xllamacpp.LLAMA_BUILD_NUMBER,
-    'commit': xllamacpp.LLAMA_COMMIT.decode(),
-    'compiler': xllamacpp.LLAMA_COMPILER.decode(),
-    'build_target': xllamacpp.LLAMA_BUILD_TARGET.decode(),
+    'commit': xllamacpp.LLAMA_COMMIT,
+    'compiler': xllamacpp.LLAMA_COMPILER,
+    'build_target': xllamacpp.LLAMA_BUILD_TARGET,
 }
 
 
@@ -360,7 +361,7 @@ cdef class CommonParamsSampling:
         """
         res = []
         for sampler_enum in self.p.samplers:
-            res.append(<str>xllamacpp.common_sampler_type_to_str(sampler_enum))
+            res.append(xllamacpp.common_sampler_type_to_str(sampler_enum))
         return ";".join(res)
 
     @samplers.setter
@@ -491,38 +492,38 @@ cdef class CommonParamsModel:
     @property
     def path(self) -> str:
         """model local path"""
-        return self.p.path.decode()
+        return self.p.path
 
     @path.setter
     def path(self, value: str):
-        self.p.path = value.encode()
+        self.p.path = value
 
     @property
     def url(self) -> str:
         """model url to download"""
-        return self.p.url.decode()
+        return self.p.url
 
     @url.setter
     def url(self, value: str):
-        self.p.url = value.encode()
+        self.p.url = value
 
     @property
     def hf_repo(self) -> str:
         """HF repo"""
-        return self.p.hf_repo.decode()
+        return self.p.hf_repo
 
     @hf_repo.setter
     def hf_repo(self, value: str):
-        self.p.hf_repo = value.encode()
+        self.p.hf_repo = value
 
     @property
     def hf_file(self) -> str:
         """HF file"""
-        return self.p.hf_file.decode()
+        return self.p.hf_file
 
     @hf_file.setter
     def hf_file(self, value: str):
-        self.p.hf_file = value.encode()
+        self.p.hf_file = value
 
 
 cdef class CommonParamsSpeculative:
@@ -661,11 +662,11 @@ cdef class CommonParamsVocoder:
     @property
     def speaker_file(self) -> str:
         """speaker file path"""
-        return self.p.speaker_file.decode()
+        return self.p.speaker_file
 
     @speaker_file.setter
     def speaker_file(self, value: str):
-        self.p.speaker_file = value.encode()
+        self.p.speaker_file = value
 
 
 cdef class CommonParams:
@@ -983,120 +984,120 @@ cdef class CommonParams:
     @property
     def model_alias(self) -> str:
         """model alias"""
-        return self.p.model_alias.decode()
+        return self.p.model_alias
 
     @model_alias.setter
     def model_alias(self, value: str):
-        self.p.model_alias = value.encode('utf8')
+        self.p.model_alias = value
 
     @property
     def hf_token(self) -> str:
         """hf token"""
-        return self.p.hf_token.decode()
+        return self.p.hf_token
 
     @hf_token.setter
     def hf_token(self, value: str):
-        self.p.hf_token = value.encode('utf8')
+        self.p.hf_token = value
 
     @property
     def prompt(self) -> str:
         """the prompt text"""
-        return self.p.prompt.decode()
+        return self.p.prompt
 
     @prompt.setter
     def prompt(self, value: str):
-        self.p.prompt = value.encode('utf8')
+        self.p.prompt = value
 
     @property
     def prompt_file(self) -> str:
         """store the external prompt file name"""
-        return self.p.prompt_file.decode()
+        return self.p.prompt_file
 
     @prompt_file.setter
     def prompt_file(self, value: str):
-        self.p.prompt_file = value.encode('utf8')
+        self.p.prompt_file = value
 
     @property
     def path_prompt_cache(self) -> str:
         """path to file for saving/loading prompt eval state"""
-        return self.p.path_prompt_cache.decode()
+        return self.p.path_prompt_cache
 
     @path_prompt_cache.setter
     def path_prompt_cache(self, value: str):
-        self.p.path_prompt_cache = value.encode('utf8')
+        self.p.path_prompt_cache = value
 
     @property
     def input_prefix(self) -> str:
         """string to prefix user inputs with"""
-        return self.p.input_prefix.decode()
+        return self.p.input_prefix
 
     @input_prefix.setter
     def input_prefix(self, value: str):
-        self.p.input_prefix = value.encode('utf8')
+        self.p.input_prefix = value
 
     @property
     def input_suffix(self) -> str:
         """string to suffix user inputs with"""
-        return self.p.input_suffix.decode()
+        return self.p.input_suffix
 
     @input_suffix.setter
     def input_suffix(self, value: str):
-        self.p.input_suffix = value.encode('utf8')
+        self.p.input_suffix = value
 
     @property
     def lookup_cache_static(self) -> str:
         """path of static ngram cache file for lookup decoding"""
-        return self.p.lookup_cache_static.decode()
+        return self.p.lookup_cache_static
 
     @lookup_cache_static.setter
     def lookup_cache_static(self, value: str):
-        self.p.lookup_cache_static = value.encode('utf8')
+        self.p.lookup_cache_static = value
 
     @property
     def lookup_cache_dynamic(self) -> str:
         """path of dynamic ngram cache file for lookup decoding"""
-        return self.p.lookup_cache_dynamic.decode()
+        return self.p.lookup_cache_dynamic
 
     @lookup_cache_dynamic.setter
     def lookup_cache_dynamic(self, value: str):
-        self.p.lookup_cache_dynamic = value.encode('utf8')
+        self.p.lookup_cache_dynamic = value
 
     @property
     def logits_file(self) -> str:
         """file for saving *all* logits"""
-        return self.p.logits_file.decode()
+        return self.p.logits_file
 
     @logits_file.setter
     def logits_file(self, value: str):
-        self.p.logits_file = value.encode('utf8')
+        self.p.logits_file = value
 
     @property
     def in_files(self) -> list[str]:
         """all input files."""
         result = []
         for i in range(self.p.in_files.size()):
-            result.append(self.p.in_files[i].decode())
+            result.append(self.p.in_files[i])
         return result
 
     @in_files.setter
     def in_files(self, files: list[str]):
         self.p.in_files.clear()
         for i in files:
-            self.p.in_files.push_back(i.encode('utf8'))
+            self.p.in_files.push_back(i)
 
     @property
     def antiprompt(self) -> list[str]:
         """strings upon which more user input is prompted (a.k.a. reverse prompts)."""
         result = []
         for i in range(self.p.antiprompt.size()):
-            result.append(self.p.antiprompt[i].decode())
+            result.append(self.p.antiprompt[i])
         return result
 
     @antiprompt.setter
     def antiprompt(self, values: list[str]):
         self.p.antiprompt.clear()
         for i in values:
-            self.p.antiprompt.push_back(i.encode('utf8'))
+            self.p.antiprompt.push_back(i)
 
     # std::vector<llama_model_kv_override> kv_overrides;
     # std::vector<llama_model_tensor_buft_override> tensor_buft_overrides;
@@ -1499,14 +1500,14 @@ cdef class CommonParams:
         """paths to image file(s)"""
         result = []
         for i in range(self.p.image.size()):
-            result.append(self.p.image[i].decode())
+            result.append(self.p.image[i])
         return result
 
     @image.setter
     def image(self, files: list[str]):
         self.p.image.clear()
         for i in files:
-            self.p.image.push_back(i.encode('utf8'))
+            self.p.image.push_back(i)
 
     @property
     def embedding(self) -> bool:
@@ -1529,29 +1530,29 @@ cdef class CommonParams:
     @property
     def embd_out(self) -> str:
         """empty = default, "array" = [[],[]...], "json" = openai style, "json+" = same "json" + cosine similarity matrix"""
-        return self.p.embd_out.decode()
+        return self.p.embd_out
 
     @embd_out.setter
     def embd_out(self, value: str):
-        self.p.embd_out = value.encode('utf8')
+        self.p.embd_out = value
 
     @property
     def embd_sep(self) -> str:
         """separator of embendings"""
-        return self.p.embd_sep.decode()
+        return self.p.embd_sep
 
     @embd_sep.setter
     def embd_sep(self, value: str):
-        self.p.embd_sep = value.encode('utf8')
+        self.p.embd_sep = value
 
     @property
     def cls_sep(self) -> str:
         """separator of classification sequences"""
-        return self.p.cls_sep.decode()
+        return self.p.cls_sep
 
     @cls_sep.setter
     def cls_sep(self, value: str):
-        self.p.cls_sep = value.encode('utf8')
+        self.p.cls_sep = value
 
     @property
     def port(self) -> int:
@@ -1601,29 +1602,29 @@ cdef class CommonParams:
     @property
     def hostname(self) -> str:
         """server hostname"""
-        return self.p.hostname.decode()
+        return self.p.hostname
 
     @hostname.setter
     def hostname(self, value: str):
-        self.p.hostname = value.encode('utf8')
+        self.p.hostname = value
 
     @property
     def public_path(self) -> str:
         """server public_path"""
-        return self.p.public_path.decode()
+        return self.p.public_path
 
     @public_path.setter
     def public_path(self, value: str):
-        self.p.public_path = value.encode('utf8')
+        self.p.public_path = value
 
     @property
     def chat_template(self) -> str:
         """chat template"""
-        return self.p.chat_template.decode()
+        return self.p.chat_template
 
     @chat_template.setter
     def chat_template(self, value: str):
-        self.p.chat_template = value.encode('utf8')
+        self.p.chat_template = value
 
     @property
     def enable_chat_template(self) -> bool:
@@ -1664,32 +1665,40 @@ cdef class CommonParams:
         """list of api keys"""
         result = []
         for i in range(self.p.api_keys.size()):
-            result.append(self.p.api_keys[i].decode())
+            result.append(self.p.api_keys[i])
         return result
 
     @api_keys.setter
     def api_keys(self, files: list[str]):
         self.p.api_keys.clear()
         for i in files:
-            self.p.api_keys.push_back(i.encode('utf8'))
+            self.p.api_keys.push_back(i)
 
     @property
     def ssl_file_key(self) -> str:
         """ssl file key"""
-        return self.p.ssl_file_key.decode()
+        return self.p.ssl_file_key
 
     @ssl_file_key.setter
     def ssl_file_key(self, value: str):
-        self.p.ssl_file_key = value.encode('utf8')
+        self.p.ssl_file_key = value
 
     @property
     def ssl_file_cert(self) -> str:
         """ssl file cert"""
-        return self.p.ssl_file_cert.decode()
+        return self.p.ssl_file_cert
 
     @ssl_file_cert.setter
     def ssl_file_cert(self, value: str):
-        self.p.ssl_file_cert = value.encode('utf8')
+        self.p.ssl_file_cert = value
+
+    @property
+    def default_template_kwargs(self) -> dict:
+        return self.p.default_template_kwargs
+
+    @default_template_kwargs.setter
+    def default_template_kwargs(self, value: dict):
+        self.p.default_template_kwargs = value
 
     @property
     def webui(self) -> bool:
@@ -1739,11 +1748,11 @@ cdef class CommonParams:
     @property
     def slot_save_path(self) -> str:
         """slot save path"""
-        return self.p.slot_save_path.decode()
+        return self.p.slot_save_path
 
     @slot_save_path.setter
     def slot_save_path(self, value: str):
-        self.p.slot_save_path = value.encode('utf8')
+        self.p.slot_save_path = value
 
     @property
     def slot_prompt_similarity(self) -> float:
@@ -1790,7 +1799,7 @@ cdef class CommonParams:
     @property
     def context_files(self) -> list[str]:
         """context files to embed"""
-        return [name.decode() for name in self.p.context_files]
+        return [name for name in self.p.context_files]
 
     @context_files.setter
     def context_files(self, list[str] values):
@@ -1808,11 +1817,11 @@ cdef class CommonParams:
     @property
     def chunk_separator(self) -> str:
         """chunk separator for context embedding"""
-        return self.p.chunk_separator.decode()
+        return self.p.chunk_separator
 
     @chunk_separator.setter
     def chunk_separator(self, value: str):
-        self.p.chunk_separator = value.encode('utf8')
+        self.p.chunk_separator = value
 
     @property
     def n_junk(self) -> int:
@@ -1835,11 +1844,11 @@ cdef class CommonParams:
     @property
     def out_file(self) -> str:
         """output filename for all example programs"""
-        return self.p.out_file.decode()
+        return self.p.out_file
 
     @out_file.setter
     def out_file(self, value: str):
-        self.p.out_file = value.encode('utf8')
+        self.p.out_file = value
 
     @property
     def n_out_freq(self) -> int:
@@ -1928,15 +1937,11 @@ cdef class CommonParams:
 
 
 def get_system_info():
-    return <str>c_get_system_info()
+    return c_get_system_info()
 
 
 def get_device_info():
-    cdef object data = c_get_device_info()
-    for info in data:
-        info["name"] = info["name"].decode("utf-8")
-        info["description"] = info["description"].decode("utf-8")
-    return data
+    return c_get_device_info()
 
 
 cdef void callback_wrapper(const string &data, void *py_cb) noexcept nogil:
