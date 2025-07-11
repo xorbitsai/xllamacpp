@@ -53,7 +53,7 @@ Before pip installing `xllamacpp`, please ensure your system meets the following
 - **ROCm (Linux)**:
   - Requires glibc 2.35 or later
   - Requires gcc 10 or later (ROCm libraries have this dependency)
-  - Compatible AMD GPU with ROCm support (ROCM 6.3.4)
+  - Compatible AMD GPU with ROCm support (ROCM 6.3.4 or 6.4.1)
 
 ## Install
 
@@ -83,9 +83,15 @@ pip install -U xllamacpp
 
 - From github pypi for `HIP` AMD GPU (use `--force-reinstall` to replace the installed CPU version):
 
-```sh
-pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4
-```
+  - ROCm 6.3.4
+    ```sh
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4
+    ```
+
+  - ROCm 6.4.1
+    ```sh
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1
+    ```
 
 ## Build from Source
 
