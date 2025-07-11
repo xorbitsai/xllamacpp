@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         pyver: ["3.9", "3.10", "3.11", "3.12"]
-        hip: ["6.3.4"]
+        hip: ["6.3.4", "6.4.1"]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
