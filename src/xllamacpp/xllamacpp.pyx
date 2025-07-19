@@ -396,6 +396,24 @@ cdef class CommonParamsSampling:
             vec.push_back(elem.ptr[0])
         self.p.logit_bias = vec
 
+    @property
+    def logit_bias_eog(self) -> list[LlamaLogitBias]:
+        """pre-calculated logit biases for EOG tokens
+        
+        std_vector[llama_logit_bias] logit_bias_eog
+        """
+        result = []
+        for i in range(self.p.logit_bias_eog.size()):
+            result.append(LlamaLogitBias.from_ptr(&self.p.logit_bias_eog[i], self))
+        return result
+
+    @logit_bias_eog.setter
+    def logit_bias_eog(self, elems: list[LlamaLogitBias]):
+        cdef vector[xllamacpp.llama_logit_bias] vec
+        for elem in elems:
+            vec.push_back(elem.ptr[0])
+        self.p.logit_bias_eog = vec
+
 
 
 cdef class CpuParams:
@@ -669,6 +687,66 @@ cdef class CommonParamsVocoder:
         self.p.speaker_file = value
 
 
+cdef class CommonParamsDiffusion:
+    cdef xllamacpp.common_params_diffusion *p
+    cdef object owner
+
+    @staticmethod
+    cdef CommonParamsDiffusion from_ptr(xllamacpp.common_params_diffusion *params, owner):
+        cdef CommonParamsDiffusion wrapper = CommonParamsDiffusion.__new__(CommonParamsDiffusion)
+        wrapper.p = params
+        wrapper.owner = owner
+        return wrapper
+
+    def __init__(self):
+        raise Exception(f"Can't construct an instance of {type(self).__name__}")
+
+    @property
+    def steps(self) -> int:
+        """number of diffusion steps"""
+        return self.p.steps
+
+    @steps.setter
+    def steps(self, int32_t value):
+        self.p.steps = value
+
+    @property
+    def eps(self) -> float:
+        """epsilon for timesteps"""
+        return self.p.eps
+
+    @eps.setter
+    def eps(self, value: float):
+        self.p.eps = value
+
+    @property
+    def algorithm(self) -> int:
+        """diffusion algorithm (0=ORIGIN, 1=MASKGIT_PLUS, 2=TOPK_MARGIN, 3=ENTROPY)"""
+        return self.p.algorithm
+
+    @algorithm.setter
+    def algorithm(self, int32_t value):
+        self.p.algorithm = value
+
+    @property
+    def alg_temp(self) -> float:
+        """algorithm temperature"""
+        return self.p.alg_temp
+
+    @alg_temp.setter
+    def alg_temp(self, value: float):
+        self.p.alg_temp = value
+
+    @property
+    def visual_mode(self) -> bool:
+        """show progressive diffusion on screen"""
+        return self.p.visual_mode
+
+    @visual_mode.setter
+    def visual_mode(self, value: bool):
+        self.p.visual_mode = value
+
+
 cdef class CommonParams:
     cdef xllamacpp.common_params p
 
@@ -825,7 +903,6 @@ cdef class CommonParams:
     def yarn_beta_slow(self, value: float):
         self.p.yarn_beta_slow = value
 
-
     @property
     def yarn_orig_ctx(self) -> int:
         """YaRN original context length."""
@@ -972,6 +1049,15 @@ cdef class CommonParams:
     @vocoder.setter
     def vocoder(self, value: CommonParamsVocoder):
         self.p.vocoder = deref(value.p)
+
+    @property
+    def diffusion(self) -> CommonParamsDiffusion:
+        """common params diffusion."""
+        return CommonParamsDiffusion.from_ptr(&self.p.diffusion, self)
+
+    @diffusion.setter
+    def diffusion(self, value: CommonParamsDiffusion):
+        self.p.diffusion = deref(value.p)
 
     @property
     def model(self) -> CommonParamsModel:
@@ -1362,6 +1448,15 @@ cdef class CommonParams:
         self.p.swa_full = value
 
     @property
+    def kv_unified(self) -> bool:
+        """enable unified KV cache"""
+        return self.p.kv_unified
+
+    @kv_unified.setter
+    def kv_unified(self, value: bool):
+        self.p.kv_unified = value
+
+    @property
     def input_prefix_bos(self) -> bool:
         """prefix BOS to user inputs, preceding input_prefix"""
         return self.p.input_prefix_bos
@@ -1616,6 +1711,14 @@ cdef class CommonParams:
     @public_path.setter
     def public_path(self, value: str):
         self.p.public_path = value
+
+    @property
+    def api_prefix(self) -> str:
+        return self.p.api_prefix
+
+    @api_prefix.setter
+    def api_prefix(self, value: str):
+        self.p.api_prefix = value
 
     @property
     def chat_template(self) -> str:
