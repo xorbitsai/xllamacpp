@@ -150,6 +150,7 @@ def test_common_params():
     assert params.no_perf is False
     assert params.ctx_shift is True
     assert params.swa_full is False
+    assert params.kv_unified is False
     assert params.input_prefix_bos is False
     assert params.use_mmap is True
     assert params.use_mlock is False
@@ -181,6 +182,7 @@ def test_common_params():
 
     assert params.hostname == "127.0.0.1"
     assert params.public_path == ""
+    assert params.api_prefix == ""
     assert params.chat_template == ""
     assert params.enable_chat_template is True
     assert (
@@ -240,9 +242,25 @@ def test_common_params():
     assert params.sampling.samplers == "top_k;top_p;min_p;temperature;dry;typ_p;xtc"
     assert params.speculative.cache_type_k == xlc.ggml_type.GGML_TYPE_F16
     assert params.speculative.cache_type_v == xlc.ggml_type.GGML_TYPE_F16
-    assert params.cls_sep == '\t'
+    assert params.cls_sep == "\t"
     assert params.offline is False
     assert params.reasoning_budget == -1
+
+    assert params.diffusion.steps == 64
+    params.diffusion.steps = 13
+    assert params.diffusion.steps == 13
+    assert params.diffusion.eps < 0.01
+    params.diffusion.eps = 1.2
+    assert 1.19 < params.diffusion.eps < 1.21
+    assert params.diffusion.algorithm == 0
+    params.diffusion.algorithm = 1
+    assert params.diffusion.algorithm == 1
+    assert params.diffusion.alg_temp == 0.0
+    params.diffusion.alg_temp = 1.1
+    assert 1.09 < params.diffusion.alg_temp < 1.11
+    assert params.diffusion.visual_mode is False
+    params.diffusion.visual_mode = True
+    assert params.diffusion.visual_mode is True
     # assert params.cvector_dimre_method  == cy.DIMRE_METHOD_PCA
     # assert params.cvector_outfile       == "control_vector.gguf"
     # assert params.cvector_positive_file == "examples/cvector-generator/positive.txt"

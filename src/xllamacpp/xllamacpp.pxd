@@ -305,7 +305,8 @@ cdef extern from "common.h":
         std_vector[common_grammar_trigger]  grammar_triggers  # optional triggers (for lazy grammars)
         std_set[llama_token]                preserved_tokens
 
-        std_vector[llama_logit_bias] logit_bias # logit biases to apply
+        std_vector[llama_logit_bias] logit_bias      # logit biases to apply
+        std_vector[llama_logit_bias] logit_bias_eog  # pre-calculated logit biases for EOG tokens
 
         # print the parameters into a string
         # std_string print() const
@@ -339,6 +340,14 @@ cdef extern from "common.h":
         common_params_model model
         std_string speaker_file # speaker file path                                      // NOLINT
         bint use_guide_tokens  # enable guide tokens to improve TTS accuracy            // NOLINT
+
+
+    ctypedef struct common_params_diffusion:
+        int32_t steps        # number of diffusion steps
+        float   eps          # epsilon for timesteps
+        int32_t algorithm    # diffusion algorithm (0=ORIGIN, 1=MASKGIT_PLUS, 2=TOPK_MARGIN, 3=ENTROPY)
+        float   alg_temp     # algorithm temperature
+        bint    visual_mode  # show progressive diffusion on screen
 
 
     cpdef enum common_reasoning_format:
@@ -390,6 +399,7 @@ cdef extern from "common.h":
         common_params_sampling sampling
         common_params_speculative speculative
         common_params_vocoder     vocoder
+        common_params_diffusion   diffusion
         common_params_model model
 
         std_string model_alias          # model alias
@@ -450,6 +460,7 @@ cdef extern from "common.h":
         bint no_perf                # disable performance metric
         bint ctx_shift              # context shift on inifinite text generation
         bint swa_full               # use full-size SWA cache (https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)
+        bint kv_unified             # enable unified KV cache
 
         bint input_prefix_bos       # prefix BOS to user inputs, preceding input_prefix
         bint use_mmap               # use mmap for faster loads
@@ -490,6 +501,7 @@ cdef extern from "common.h":
 
         std_string hostname
         std_string public_path
+        std_string api_prefix
         std_string chat_template
         bint use_jinja
         bint enable_chat_template
