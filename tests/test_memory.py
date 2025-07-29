@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os.path
+import json
 from dataclasses import dataclass
 
 from xllamacpp import estimate_gpu_layers
+from xllamacpp.memory import graph_size
 
 TEST_GGUF = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dummy.gguf")
+TEST_METADATA_JSON = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "bge-m3-metadata.json"
+)
 
 
 def test_estimate_gpu_layers():
@@ -98,3 +103,12 @@ def test_estimate_gpu_layers():
         else:
             assert estimate.vram_size == estimate.total_size
             assert estimate.total_size == layer_sums
+
+
+def test_missing_keys():
+    with open(TEST_METADATA_JSON, "r") as f:
+        metadata = json.load(f)
+    kv, partial_offload, full_offload = graph_size(
+        metadata, context_length=4096, batch_size=2048, num_parallel=8, kv_cache_type=""
+    )
+    assert full_offload == 67108864.0

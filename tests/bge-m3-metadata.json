@@ -1,0 +1,233 @@
+{
+  "GGUF.version": {
+    "index": 0,
+    "type": "UINT32",
+    "offset": 4,
+    "value": 3
+  },
+  "GGUF.tensor_count": {
+    "index": 1,
+    "type": "UINT64",
+    "offset": 8,
+    "value": 389
+  },
+  "GGUF.kv_count": {
+    "index": 2,
+    "type": "UINT64",
+    "offset": 16,
+    "value": 33
+  },
+  "general.architecture": {
+    "index": 3,
+    "type": "STRING",
+    "offset": 24,
+    "value": "bert"
+  },
+  "general.type": {
+    "index": 4,
+    "type": "STRING",
+    "offset": 68,
+    "value": "model"
+  },
+  "general.size_label": {
+    "index": 5,
+    "type": "STRING",
+    "offset": 105,
+    "value": "567M"
+  },
+  "general.license": {
+    "index": 6,
+    "type": "STRING",
+    "offset": 147,
+    "value": "mit"
+  },
+  "general.tags": {
+    "index": 7,
+    "type": "ARRAY",
+    "offset": 185,
+    "array_types": [
+      "STRING"
+    ],
+    "value": []
+  },
+  "bert.block_count": {
+    "index": 8,
+    "type": "UINT32",
+    "offset": 330,
+    "value": 24
+  },
+  "bert.context_length": {
+    "index": 9,
+    "type": "UINT32",
+    "offset": 362,
+    "value": 8192
+  },
+  "bert.embedding_length": {
+    "index": 10,
+    "type": "UINT32",
+    "offset": 397,
+    "value": 1024
+  },
+  "bert.feed_forward_length": {
+    "index": 11,
+    "type": "UINT32",
+    "offset": 434,
+    "value": 4096
+  },
+  "bert.attention.head_count": {
+    "index": 12,
+    "type": "UINT32",
+    "offset": 474,
+    "value": 16
+  },
+  "bert.attention.layer_norm_epsilon": {
+    "index": 13,
+    "type": "FLOAT32",
+    "offset": 515,
+    "value": 0.000009999999747378752
+  },
+  "general.file_type": {
+    "index": 14,
+    "type": "UINT32",
+    "offset": 564,
+    "value": 15
+  },
+  "bert.attention.causal": {
+    "index": 15,
+    "type": "BOOL",
+    "offset": 597,
+    "value": false
+  },
+  "bert.pooling_type": {
+    "index": 16,
+    "type": "UINT32",
+    "offset": 631,
+    "value": 2
+  },
+  "tokenizer.ggml.model": {
+    "index": 17,
+    "type": "STRING",
+    "offset": 664,
+    "value": "t5"
+  },
+  "tokenizer.ggml.pre": {
+    "index": 18,
+    "type": "STRING",
+    "offset": 706,
+    "value": "default"
+  },
+  "tokenizer.ggml.tokens": {
+    "index": 19,
+    "type": "ARRAY",
+    "offset": 751,
+    "array_types": [
+      "STRING"
+    ],
+    "value": []
+  },
+  "tokenizer.ggml.scores": {
+    "index": 20,
+    "type": "ARRAY",
+    "offset": 4582162,
+    "array_types": [
+      "FLOAT32"
+    ],
+    "value": []
+  },
+  "tokenizer.ggml.token_type": {
+    "index": 21,
+    "type": "ARRAY",
+    "offset": 5582215,
+    "array_types": [
+      "INT32"
+    ],
+    "value": []
+  },
+  "tokenizer.ggml.add_space_prefix": {
+    "index": 22,
+    "type": "BOOL",
+    "offset": 6582272,
+    "value": true
+  },
+  "tokenizer.ggml.token_type_count": {
+    "index": 23,
+    "type": "UINT32",
+    "offset": 6582316,
+    "value": 1
+  },
+  "tokenizer.ggml.remove_extra_whitespaces": {
+    "index": 24,
+    "type": "BOOL",
+    "offset": 6582363,
+    "value": true
+  },
+  "tokenizer.ggml.precompiled_charsmap": {
+    "index": 25,
+    "type": "ARRAY",
+    "offset": 6582415,
+    "array_types": [
+      "UINT8"
+    ],
+    "value": []
+  },
+  "tokenizer.ggml.bos_token_id": {
+    "index": 26,
+    "type": "UINT32",
+    "offset": 6820013,
+    "value": 0
+  },
+  "tokenizer.ggml.eos_token_id": {
+    "index": 27,
+    "type": "UINT32",
+    "offset": 6820056,
+    "value": 2
+  },
+  "tokenizer.ggml.unknown_token_id": {
+    "index": 28,
+    "type": "UINT32",
+    "offset": 6820099,
+    "value": 3
+  },
+  "tokenizer.ggml.seperator_token_id": {
+    "index": 29,
+    "type": "UINT32",
+    "offset": 6820146,
+    "value": 2
+  },
+  "tokenizer.ggml.padding_token_id": {
+    "index": 30,
+    "type": "UINT32",
+    "offset": 6820195,
+    "value": 1
+  },
+  "tokenizer.ggml.cls_token_id": {
+    "index": 31,
+    "type": "UINT32",
+    "offset": 6820242,
+    "value": 0
+  },
+  "tokenizer.ggml.mask_token_id": {
+    "index": 32,
+    "type": "UINT32",
+    "offset": 6820285,
+    "value": 250001
+  },
+  "tokenizer.ggml.add_bos_token": {
+    "index": 33,
+    "type": "BOOL",
+    "offset": 6820329,
+    "value": true
+  },
+  "tokenizer.ggml.add_eos_token": {
+    "index": 34,
+    "type": "BOOL",
+    "offset": 6820370,
+    "value": true
+  },
+  "general.quantization_version": {
+    "index": 35,
+    "type": "UINT32",
+    "offset": 6820411,
+    "value": 2
+  }
+}

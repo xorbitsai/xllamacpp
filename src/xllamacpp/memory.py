@@ -87,7 +87,7 @@ def _get_max_min(value):
 
 
 def graph_size(
-    data: dict,
+    metadata: dict,
     context_length: int,
     batch_size: int,
     num_parallel: int,
@@ -99,15 +99,14 @@ def graph_size(
     if context_length < batch_size:
         batch_size = context_length
 
-    metadata = data["metadata"]
     architecture = metadata["general.architecture"]["value"]
     embedding_length = metadata[f"{architecture}.embedding_length"]["value"]
     block_count = metadata[f"{architecture}.block_count"]["value"]
     head_count_max, head_count_min = _get_max_min(
-        metadata[f"{architecture}.attention.head_count"]["value"]
+        metadata.get(f"{architecture}.attention.head_count", {}).get("value", 1)
     )
     head_count_kv_max, head_count_kv_min = _get_max_min(
-        metadata[f"{architecture}.attention.head_count_kv"]["value"]
+        metadata.get(f"{architecture}.attention.head_count_kv", {}).get("value", 1)
     )
     vocab = len(metadata["tokenizer.ggml.tokens"]["value"])
     embedding_head_count_max = (
@@ -303,15 +302,15 @@ def estimate_gpu_layers(
         context_length = max(context_length, 2048)
     reader = GGUFReader(model_path, "r")
     data = dump_metadata_json(reader, model_path)
+    metadata = data["metadata"]
     kv, graph_partial_offload, graph_full_offload = graph_size(
-        data,
+        metadata,
         context_length=context_length,
         batch_size=batch_size,
         num_parallel=num_parallel,
         kv_cache_type=kv_cache_type,
     )
     # Get all layer sizes
-    metadata = data["metadata"]
     architecture = metadata["general.architecture"]["value"]
     block_count = metadata[f"{architecture}.block_count"]["value"]
     layer_sizes = [0] * block_count
