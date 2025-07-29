@@ -73,29 +73,59 @@ pip install -U xllamacpp
 
   - CUDA 12.4
     ```sh
-    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu124
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu124 --extra-index-url https://pypi.org/simple
     ```
 
   - CUDA 12.8
     ```sh
-    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://pypi.org/simple
     ```
 
 - From github pypi for `HIP` AMD GPU (use `--force-reinstall` to replace the installed CPU version):
 
   - ROCm 6.3.4
     ```sh
-    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4 --extra-index-url https://pypi.org/simple
     ```
 
   - ROCm 6.4.1
     ```sh
-    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1 --extra-index-url https://pypi.org/simple
     ```
 
 ## Build from Source
 
-To build `xllamacpp`:
+### (Optional) Preparation
+
+- CUDA
+
+  This provides GPU acceleration using an NVIDIA GPU. Make sure to have the [CUDA toolkit](https://developer.nvidia.com/cuda-toolkit) installed.
+  
+  #### Download directly from NVIDIA
+  You may find the official downloads here: [NVIDIA developer site](https://developer.nvidia.com/cuda-downloads).
+  
+  
+  #### Compile and run inside a Fedora Toolbox Container
+  We also have a [guide](./backend/CUDA-FEDORA.md) for setting up CUDA toolkit in a Fedora [toolbox container](https://containertoolbx.org/).
+  
+  **Recommended for:**
+  - ***Necessary*** for users of [Atomic Desktops for Fedora](https://fedoraproject.org/atomic-desktops/); such as: [Silverblue](https://fedoraproject.org/atomic-desktops/silverblue/) and [Kinoite](https://fedoraproject.org/atomic-desktops/kinoite/).
+    - (there are no supported CUDA packages for these systems)
+  - ***Necessary*** for users that have a host that is not a: [Supported Nvidia CUDA Release Platform](https://developer.nvidia.com/cuda-downloads).
+    - (for example, you may have [Fedora 42 Beta](https://fedoramagazine.org/announcing-fedora-linux-42-beta/) as your your host operating system)
+  - ***Convenient*** For those running [Fedora Workstation](https://fedoraproject.org/workstation/) or [Fedora KDE Plasma Desktop](https://fedoraproject.org/spins/kde), and want to keep their host system clean.
+  - *Optionally* toolbox packages are available: [Arch Linux](https://archlinux.org/), [Red Hat Enterprise Linux >= 8.5](https://www.redhat.com/en/technologies/linux-platforms/enterprise-linux), or [Ubuntu](https://ubuntu.com/download)
+
+- HIP
+
+  This provides GPU acceleration on HIP-supported AMD GPUs.
+  Make sure to have ROCm installed.
+  You can download it from your Linux distro's package manager or from here: [ROCm Quick Start (Linux)](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/quick-start.html#rocm-install-quick).
+
+  
+  Or you can try to build inside the [ROCm docker container](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/docker.html).
+
+### Build `xllamacpp`
 
 1. A recent version of `python3` (testing on python 3.12)
 
