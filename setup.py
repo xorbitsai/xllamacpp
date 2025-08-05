@@ -119,7 +119,7 @@ if PLATFORM == "Darwin":
     )
 
 if PLATFORM == "Linux":
-    EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc", "-static-libstdc++"])
+    EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc", "-static-libstdc++", "-Bsymbolic"])
 
 
 def mk_extension(name, sources, define_macros=None):
