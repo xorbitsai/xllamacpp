@@ -119,6 +119,7 @@ if PLATFORM == "Darwin":
     )
 
 if PLATFORM == "Linux":
+    EXTRA_COMPILE_ARGS.extend(["-fvisibility=hidden"])
     EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc", "-static-libstdc++", "-Bsymbolic"])
 
 
