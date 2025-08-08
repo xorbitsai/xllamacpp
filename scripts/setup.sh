@@ -26,7 +26,7 @@ build_llamacpp() {
 	cmake --build . --config Release -j ${NPROC} --target common llama ggml ggml-cpu ggml-hip mtmd
   elif [[ -n "${XLLAMACPP_BUILD_AARCH64}" ]]; then
 	echo "Building for aarch64"
-	cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DLLAMA_CURL=OFF -DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8-a -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS && \
+	cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DLLAMA_CURL=OFF -DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8-a && \
 	cmake --build . --config Release -j ${NPROC} --target common llama ggml ggml-cpu mtmd
   else
 	if [[ "$(uname -s)" == "Darwin" ]]; then
@@ -41,14 +41,8 @@ build_llamacpp() {
 		fi
 	else
 		echo "Building for non-MacOS CPU (optimize for native CPU)"
-		if [[ "$(uname -s)" == "Linux" ]]; then
-			echo "Enabling OpenBLAS for Linux"
-			cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DLLAMA_CURL=OFF -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS && \
-			cmake --build . --config Release -j ${NPROC} --target common llama ggml ggml-cpu ggml-blas mtmd
-		else
-			cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DLLAMA_CURL=OFF && \
-			cmake --build . --config Release -j ${NPROC} --target common llama ggml ggml-cpu mtmd
-		fi
+		cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DLLAMA_CURL=OFF && \
+		cmake --build . --config Release -j ${NPROC} --target common llama ggml ggml-cpu mtmd
 	fi
   fi
   rm -rf ${PREFIX}

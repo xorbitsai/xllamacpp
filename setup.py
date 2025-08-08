@@ -66,7 +66,6 @@ else:
             f"{LLAMACPP_LIBS_DIR}/libggml.a",
             f"{LLAMACPP_LIBS_DIR}/libggml-base.a",
             f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
-            f"{LLAMACPP_LIBS_DIR}/libggml-blas.a",
             f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
         ]
     )
@@ -106,6 +105,12 @@ if PLATFORM == "Darwin":
         EXTRA_OBJECTS.extend(
             [
                 f"{LLAMACPP_LIBS_DIR}/libggml-metal.a",
+            ]
+        )
+    else:
+        EXTRA_OBJECTS.extend(
+            [
+                f"{LLAMACPP_LIBS_DIR}/libggml-blas.a",
             ]
         )
 elif PLATFORM == "Linux":
