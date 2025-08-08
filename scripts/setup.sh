@@ -41,8 +41,14 @@ build_llamacpp() {
 		fi
 	else
 		echo "Building for non-MacOS CPU (optimize for native CPU)"
-		cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DLLAMA_CURL=OFF && \
-		cmake --build . --config Release -j ${NPROC} --target common llama ggml ggml-cpu mtmd
+		if [[ "$(uname -s)" == "Linux" ]]; then
+			echo "Enabling OpenBLAS for Linux"
+			cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DLLAMA_CURL=OFF -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS && \
+			cmake --build . --config Release -j ${NPROC} --target common llama ggml ggml-cpu ggml-blas mtmd
+		else
+			cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_LIBDIR=lib -DLLAMA_CURL=OFF && \
+			cmake --build . --config Release -j ${NPROC} --target common llama ggml ggml-cpu mtmd
+		fi
 	fi
   fi
   rm -rf ${PREFIX}

@@ -66,6 +66,7 @@ else:
             f"{LLAMACPP_LIBS_DIR}/libggml.a",
             f"{LLAMACPP_LIBS_DIR}/libggml-base.a",
             f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
+            f"{LLAMACPP_LIBS_DIR}/libggml-blas.a",
             f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
         ]
     )
@@ -90,24 +91,8 @@ else:
         )
         LIBRARY_DIRS.extend(["/opt/rocm/lib"])
         LIBRARIES.extend(["amdhip64", "hipblas", "rocblas"])
-if PLATFORM == "Darwin":
-    EXTRA_OBJECTS.extend(
-        [
-            f"{LLAMACPP_LIBS_DIR}/libggml-blas.a",
-        ]
-    )
-    if platform.processor() == "arm":
-        EXTRA_OBJECTS.extend(
-            [
-                f"{LLAMACPP_LIBS_DIR}/libggml-metal.a",
-            ]
-        )
-
-INCLUDE_DIRS.append(os.path.join(CWD, "src/xllamacpp"))
 
 if PLATFORM == "Darwin":
-    # EXTRA_LINK_ARGS.append("-mmacosx-version-min=11")
-    # add local rpath
     EXTRA_LINK_ARGS.append("-Wl,-rpath," + LLAMACPP_LIBS_DIR)
     os.environ["LDFLAGS"] = " ".join(
         [
@@ -117,9 +102,16 @@ if PLATFORM == "Darwin":
             "-framework MetalKit",
         ]
     )
+    if platform.processor() == "arm":
+        EXTRA_OBJECTS.extend(
+            [
+                f"{LLAMACPP_LIBS_DIR}/libggml-metal.a",
+            ]
+        )
+elif PLATFORM == "Linux":
+    EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc"])
 
-if PLATFORM == "Linux":
-    EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc", "-static-libstdc++"])
+INCLUDE_DIRS.append(os.path.join(CWD, "src/xllamacpp"))
 
 
 def mk_extension(name, sources, define_macros=None):
