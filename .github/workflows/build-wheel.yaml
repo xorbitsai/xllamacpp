@@ -150,7 +150,7 @@ jobs:
           CIBW_TEST_REQUIRES: pytest requests pytest-asyncio pytest-timeout
           CIBW_BEFORE_BUILD_LINUX: yum install -y openblas-devel && pip install -r requirements.txt && make
           CIBW_BEFORE_BUILD: pip install -r requirements.txt && make
-          CIBW_REPAIR_WHEEL_COMMAND_LINUX: auditwheel show {wheel}
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: auditwheel repair --plat manylinux_2_31_x86_64 -w {dest_dir} {wheel}
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ENVIRONMENT: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
         with:
