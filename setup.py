@@ -101,16 +101,16 @@ if PLATFORM == "Darwin":
             "-framework MetalKit",
         ]
     )
+    # Both the Intel and ARM platforms need to be linked with BLAS.
+    EXTRA_OBJECTS.extend(
+        [
+            f"{LLAMACPP_LIBS_DIR}/libggml-blas.a",
+        ]
+    )
     if platform.processor() == "arm":
         EXTRA_OBJECTS.extend(
             [
                 f"{LLAMACPP_LIBS_DIR}/libggml-metal.a",
-            ]
-        )
-    else:
-        EXTRA_OBJECTS.extend(
-            [
-                f"{LLAMACPP_LIBS_DIR}/libggml-blas.a",
             ]
         )
 elif PLATFORM == "Linux":
