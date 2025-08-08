@@ -148,7 +148,7 @@ jobs:
           CIBW_ARCHS: ${{ matrix.arch }}
           CIBW_PROJECT_REQUIRES_PYTHON: ${{ matrix.requires-python }}
           CIBW_TEST_REQUIRES: pytest requests pytest-asyncio pytest-timeout
-          CIBW_BEFORE_BUILD_LINUX: apt install -y libopenblas-dev && pip install -r requirements.txt && make
+          CIBW_BEFORE_BUILD_LINUX: apt-get install -y libopenblas-dev && pip install -r requirements.txt && make
           CIBW_BEFORE_BUILD: pip install -r requirements.txt && make
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ENVIRONMENT: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
