@@ -17,64 +17,68 @@ build_llamacpp() {
 		mkdir -p build &&
 		cd build
   # Base CMake arguments
-  CMAKE_ARGS=(
+  local cmake_args=(
     "-DBUILD_SHARED_LIBS=OFF"
     "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
     "-DCMAKE_INSTALL_LIBDIR=lib"
     "-DLLAMA_CURL=OFF"
   )
-  
-  # Add any additional CMake arguments from environment
-  if [ -n "${CMAKE_ARGS}" ]; then
-    CMAKE_ARGS+=(${CMAKE_ARGS})
-  fi
 
   # Build targets
-  TARGETS=("common" "llama" "ggml" "ggml-cpu" "mtmd")
+  local targets=("common" "llama" "ggml" "ggml-cpu" "mtmd")
   
   if [[ -n "${XLLAMACPP_BUILD_CUDA}" ]]; then
     echo "Building for CUDA"
-    CMAKE_ARGS+=("-DGGML_NATIVE=OFF" "-DGGML_CUDA=ON" "-DGGML_CUDA_FORCE_MMQ=ON")
-    TARGETS+=("ggml-cuda")
+    cmake_args+=(
+      "-DGGML_NATIVE=OFF"
+      "-DGGML_CUDA=ON"
+      "-DGGML_CUDA_FORCE_MMQ=ON"
+    )
+    targets+=("ggml-cuda")
   elif [[ -n "${XLLAMACPP_BUILD_HIP}" ]]; then
     echo "Building for AMD GPU"
-    CMAKE_ARGS+=(
+    cmake_args+=(
       "-DGGML_NATIVE=OFF"
       "-DAMDGPU_TARGETS=gfx1100;gfx1101;gfx1102;gfx1030;gfx1031;gfx1032"
       "-DCMAKE_HIP_COMPILER=$(hipconfig -l)/clang"
       "-DGGML_HIP_ROCWMMA_FATTN=ON"
       "-DGGML_HIP=ON"
     )
-    TARGETS+=("ggml-hip")
+    targets+=("ggml-hip")
   elif [[ -n "${XLLAMACPP_BUILD_AARCH64}" ]]; then
     echo "Building for aarch64"
-    CMAKE_ARGS+=("-DGGML_NATIVE=OFF" "-DGGML_CPU_ARM_ARCH=armv8-a")
+    cmake_args+=(
+      "-DGGML_NATIVE=OFF"
+      "-DGGML_CPU_ARM_ARCH=armv8-a"
+    )
   else
     if [[ "$(uname -s)" == "Darwin" ]]; then
-      CMAKE_ARGS+=("-DCMAKE_BUILD_RPATH=@loader_path")
+      cmake_args+=("-DCMAKE_BUILD_RPATH=@loader_path")
       if [[ "$(uname -m)" == "x86_64" ]]; then
         echo "Building for Intel"
-        CMAKE_ARGS+=("-DGGML_METAL=OFF")
-        TARGETS+=("ggml-blas")
+        cmake_args+=("-DGGML_METAL=OFF")
+        targets+=("ggml-blas")
       else
         echo "Building for Apple Silicon"
-        CMAKE_ARGS+=("-DGGML_METAL_EMBED_LIBRARY=ON")
-        TARGETS+=("ggml-blas" "ggml-metal")
+        cmake_args+=("-DGGML_METAL_EMBED_LIBRARY=ON")
+        targets+=("ggml-blas" "ggml-metal")
       fi
     else
       echo "Building for non-MacOS CPU (optimize for native CPU)"
-      # Check if BLAS is enabled in CMake args
-      if [[ " ${CMAKE_ARGS[*]} " =~ " -DGGML_BLAS=ON " ]]; then
-        echo "BLAS is enabled, adding ggml-blas to build targets"
-        TARGETS+=("ggml-blas")
+      # Let CMake handle GGML_BLAS from environment
+      if [[ "${CMAKE_ARGS:-}" == *"-DGGML_BLAS=ON"* ]]; then
+        echo "BLAS is enabled via CMAKE_ARGS, adding ggml-blas to build targets"
+        targets+=("ggml-blas")
       fi
     fi
   fi
 
   # Run CMake and build
-  cmake .. "${CMAKE_ARGS[@]}" && \
-  # Build all targets in one command
-  cmake --build . --config Release -j ${NPROC} --target ${TARGETS[*]}
+  echo "Running CMake with arguments: ${cmake_args[*]}"
+  echo "Building targets: ${targets[*]}"
+
+  cmake .. "${cmake_args[@]}" && \
+  cmake --build . --config Release -j ${NPROC} --target "${targets[@]}"
   rm -rf ${PREFIX}
   python ${CWD}/scripts/copy_libs.py
   cd ${CWD}
