@@ -24,6 +24,11 @@ build_llamacpp() {
     "-DLLAMA_CURL=OFF"
   )
 
+  # Add any additional CMake arguments from environment
+  if [ -n "${CMAKE_ARGS}" ]; then
+    cmake_args+=(${CMAKE_ARGS})
+  fi
+
   # Build targets
   local targets=("common" "llama" "ggml" "ggml-cpu" "mtmd")
   
@@ -51,6 +56,11 @@ build_llamacpp() {
       "-DGGML_NATIVE=OFF"
       "-DGGML_CPU_ARM_ARCH=armv8-a"
     )
+    # Add ggml-blas target if BLAS is enabled via CMAKE_ARGS
+    if [[ "${CMAKE_ARGS:-}" == *"-DGGML_BLAS=ON"* ]]; then
+      echo "BLAS is enabled via CMAKE_ARGS, adding ggml-blas to build targets"
+      targets+=("ggml-blas")
+    fi
   else
     if [[ "$(uname -s)" == "Darwin" ]]; then
       cmake_args+=("-DCMAKE_BUILD_RPATH=@loader_path")
