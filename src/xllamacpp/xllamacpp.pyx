@@ -8,7 +8,7 @@
 """
 xllamacpp: a thin cython wrapper of llama.cpp
 """
-from libc.stdint cimport int32_t, uint32_t
+from libc.stdint cimport int32_t, uint32_t, int8_t
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.memory cimport shared_ptr, make_shared
@@ -613,6 +613,15 @@ cdef class CommonParamsSpeculative:
         self.p.p_min = value
 
     @property
+    def replacements(self) -> list:
+        """# main to speculative model replacements"""
+        return self.p.replacements
+
+    @replacements.setter
+    def replacements(self, value: list):
+        self.p.replacements = value
+
+    @property
     def cache_type_k(self) -> ggml_type:
         """data type for K cache"""
         return self.p.cache_type_k
@@ -711,6 +720,15 @@ cdef class CommonParamsDiffusion:
         self.p.steps = value
 
     @property
+    def visual_mode(self) -> bool:
+        """show progressive diffusion on screen"""
+        return self.p.visual_mode
+
+    @visual_mode.setter
+    def visual_mode(self, value: bool):
+        self.p.visual_mode = value
+
+    @property
     def eps(self) -> float:
         """epsilon for timesteps"""
         return self.p.eps
@@ -718,6 +736,15 @@ cdef class CommonParamsDiffusion:
     @eps.setter
     def eps(self, value: float):
         self.p.eps = value
+
+    @property
+    def block_length(self) -> int:
+        """block length for generation"""
+        return self.p.block_length
+
+    @block_length.setter
+    def block_length(self, int32_t value):
+        self.p.block_length = value
 
     @property
     def algorithm(self) -> int:
@@ -738,13 +765,22 @@ cdef class CommonParamsDiffusion:
         self.p.alg_temp = value
 
     @property
-    def visual_mode(self) -> bool:
-        """show progressive diffusion on screen"""
-        return self.p.visual_mode
+    def cfg_scale(self) -> float:
+        """classifier-free guidance scale"""
+        return self.p.cfg_scale
 
-    @visual_mode.setter
-    def visual_mode(self, value: bool):
-        self.p.visual_mode = value
+    @cfg_scale.setter
+    def cfg_scale(self, value: float):
+        self.p.cfg_scale = value
+
+    @property
+    def add_gumbel_noise(self) -> bool:
+        """add gumbel noise to the logits if temp > 0.0"""
+        return self.p.add_gumbel_noise
+
+    @add_gumbel_noise.setter
+    def add_gumbel_noise(self, value: bool):
+        self.p.add_gumbel_noise = value
 
 
 cdef class CommonParams:
@@ -1538,6 +1574,15 @@ cdef class CommonParams:
         self.p.no_op_offload = value
 
     @property
+    def no_extra_bufts(self) -> bool:
+        """disable extra buffer types (used for weight repacking)"""
+        return self.p.no_extra_bufts
+
+    @no_extra_bufts.setter
+    def no_extra_bufts(self, value: bool):
+        self.p.no_extra_bufts = value
+
+    @property
     def single_turn(self) -> bool:
         """single turn chat conversation"""
         return self.p.single_turn
@@ -1981,6 +2026,15 @@ cdef class CommonParams:
         self.p.i_chunk = value
 
     @property
+    def imat_dat(self) -> int:
+        """whether the legacy imatrix.dat format should be output (gguf <= 0 < dat)"""
+        return self.p.imat_dat
+
+    @imat_dat.setter
+    def imat_dat(self, value: int8_t):
+        self.p.imat_dat = value
+
+    @property
     def process_output(self) -> bool:
         """collect data for the output tensor"""
         return self.p.process_output
@@ -1997,6 +2051,15 @@ cdef class CommonParams:
     @compute_ppl.setter
     def compute_ppl(self, value: bool):
         self.p.compute_ppl = value
+
+    @property
+    def show_statistics(self) -> bool:
+        """show imatrix statistics per tensor"""
+        return self.p.show_statistics
+
+    @show_statistics.setter
+    def show_statistics(self, value: bool):
+        self.p.show_statistics = value
 
     @property
     def parse_special(self) -> bool:
