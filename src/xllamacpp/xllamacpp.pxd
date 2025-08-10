@@ -1,10 +1,11 @@
 # distutils: language=c++
 
-from libc.stdint cimport int32_t, uint32_t, int64_t
+from libc.stdint cimport int32_t, uint32_t, int64_t, int8_t
 from libcpp.string cimport string as std_string
 from libcpp.vector cimport vector as std_vector
 from libcpp.set cimport set as std_set
 from libcpp.map cimport map as std_map
+from libcpp.utility cimport pair as std_pair
 
 
 #------------------------------------------------------------------------------
@@ -84,6 +85,7 @@ cdef extern from "ggml.h":
         # GGML_TYPE_IQ4_NL_4_4 = 36,
         # GGML_TYPE_IQ4_NL_4_8 = 37,
         # GGML_TYPE_IQ4_NL_8_8 = 38,
+        GGML_TYPE_MXFP4
         GGML_TYPE_COUNT
 
 
@@ -327,6 +329,7 @@ cdef extern from "common.h":
         int32_t n_gpu_layers    # number of layers to store in VRAM for the draft model (-1 - use default)
         float   p_split         # speculative decoding split probability
         float   p_min           # minimum speculative decoding probability (greedy)
+        std_vector[std_pair[std_string, std_string]] replacements  # main to speculative model replacements
 
         ggml_type cache_type_k  # KV cache data type for the K
         ggml_type cache_type_v  # KV cache data type for the V
@@ -344,16 +347,24 @@ cdef extern from "common.h":
 
     ctypedef struct common_params_diffusion:
         int32_t steps        # number of diffusion steps
+        bint    visual_mode  # show progressive diffusion on screen
+
         float   eps          # epsilon for timesteps
+        int32_t block_length # block length for generation
+
         int32_t algorithm    # diffusion algorithm (0=ORIGIN, 1=MASKGIT_PLUS, 2=TOPK_MARGIN, 3=ENTROPY)
         float   alg_temp     # algorithm temperature
-        bint    visual_mode  # show progressive diffusion on screen
+
+        float   cfg_scale    # classifier-free guidance scale
+        bint    add_gumbel_noise  # add gumbel noise to the logits if temp > 0.0
 
 
     cpdef enum common_reasoning_format:
         COMMON_REASONING_FORMAT_NONE
+        COMMON_REASONING_FORMAT_AUTO
         COMMON_REASONING_FORMAT_DEEPSEEK_LEGACY # Extract thinking tag contents and return as `message.reasoning_content`, or leave inline in <think> tags in stream mode
         COMMON_REASONING_FORMAT_DEEPSEEK        # Extract thinking tag contents and return as `message.reasoning_content`, including in streaming deltas.
+        COMMON_REASONING_FORMAT_GRANITE         # Extract thinking tag contents and return as `message.reasoning_content`, including in streaming deltas.
 
 
     ctypedef struct common_params:
@@ -471,6 +482,7 @@ cdef extern from "common.h":
         bint warmup                 # warmup run
         bint check_tensors          # validate tensor data
         bint no_op_offload          # globally disable offload host tensor operations to device
+        bint no_extra_bufts         # disable extra buffer types (used for weight repacking)
         bint single_turn            # single turn chat conversation
 
         ggml_type cache_type_k      # KV cache data type for the K
@@ -550,9 +562,11 @@ cdef extern from "common.h":
         int32_t n_out_freq       # output the imatrix every n_out_freq iterations
         int32_t n_save_freq      # save the imatrix every n_save_freq iterations
         int32_t i_chunk          # start processing from this chunk
+        int8_t  imat_dat         # whether the legacy imatrix.dat format should be output (gguf <= 0 < dat)
 
         bint process_output      # collect data for the output tensor
         bint compute_ppl         # whether to compute perplexity
+        bint show_statistics     # show imatrix statistics per tensor
         bint parse_special       # whether to parse special tokens during imatrix tokenization
 
         # cvector-generator params
