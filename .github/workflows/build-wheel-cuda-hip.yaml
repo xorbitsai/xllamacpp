@@ -280,18 +280,7 @@ jobs:
           # Export build variables
           export XLLAMACPP_BUILD_CUDA=1
           export VERSIONEER_CLOSEST_TAG_ONLY=1
-          export VERBOSE=1
-          export CMAKE_ARGS="-DGGML_CUDA=on \
-            -DCMAKE_CUDA_ARCHITECTURES=all \
-            -DGGML_CUDA_FORCE_MMQ=ON \
-            -DGGML_AVX2=off \
-            -DGGML_FMA=off \
-            -DGGML_F16C=off \
-            -DCUDAToolkit_ROOT=$CONDA_PREFIX \
-            -DCMAKE_CUDA_COMPILER=$CONDA_PREFIX/bin/nvcc"
-          
-          echo "=== CMake Configuration ==="
-          echo "CMAKE_ARGS: $CMAKE_ARGS"
+          export VERBOSE=1S
           
           make
           python -m build --wheel
@@ -299,10 +288,10 @@ jobs:
           auditwheel show dist/*.whl
           
           if [ "${{ matrix.platform }}" = "ubuntu-22.04-arm" ]; then
-            auditwheel repair --plat manylinux_2_35_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
+            auditwheel repair --plat manylinux_2_39_aarch64 --exclude libcuda.so.1 dist/*.whl -w dist
             rm -f dist/*-linux_aarch64.whl
           else
-            auditwheel repair --plat manylinux_2_35_x86_64 --exclude libcuda.so.1 dist/*.whl -w dist
+            auditwheel repair --plat manylinux_2_39_x86_64 --exclude libcuda.so.1 dist/*.whl -w dist
             rm -f dist/*-linux_x86_64.whl
           fi
           
@@ -325,7 +314,7 @@ jobs:
         cuda: ["12.4.1", "12.8.1"]
     defaults:
       run:
-        shell: pwsh
+        shell: bash
     env:
       CUDAVER: ${{ matrix.cuda }}
 
@@ -347,15 +336,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build wheel delvewheel
+          python -m pip install -r requirements.txt
 
       - name: Download and install win64devkit
         run: |
           curl -L https://github.com/skeeto/w64devkit/releases/download/v1.22.0/w64devkit-1.22.0.zip --output w64devkit.zip
-          Expand-Archive w64devkit.zip -DestinationPath .
+          unzip -q w64devkit.zip -d .
 
       - name: Add w64devkit to PATH
         run: |
-          echo "$(Get-Location)\w64devkit\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+          echo "$(pwd)/w64devkit/bin" >> $GITHUB_PATH
 
       - name: Setup CUDA
         uses: Jimver/cuda-toolkit@v0.2.24
@@ -366,16 +356,20 @@ jobs:
 
       - name: Build Wheel
         run: |
-          $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
-          $env:XLLAMACPP_BUILD_CUDA = 1
-          $env:VERSIONEER_CLOSEST_TAG_ONLY = 1
-          $env:CMAKE_ARGS = '-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=all -DGGML_CUDA_FORCE_MMQ=ON -DGGML_AVX2=off -DGGML_FMA=off -DGGML_F16C=off'
+          cuda_version=${CUDAVER//./}
+          cuda_version=${cuda_version:0:${#cuda_version}-1}
           
+          export XLLAMACPP_BUILD_CUDA=1
+          export VERSIONEER_CLOSEST_TAG_ONLY=1
+          export VERBOSE=1
+                    
           make
           python -m build --wheel
-          delvewheel repair --exclude nvcuda.dll dist/*.whl -w dist
           
-          Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
+          # On Windows, we use delvewheel for wheel repair
+          python -m delvewheel repair --exclude nvcuda.dll dist/*.whl -w dist
+          
+          echo "CUDA_VERSION=$cuda_version" >> $GITHUB_ENV
 
       - uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')

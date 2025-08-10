@@ -90,7 +90,18 @@ else:
         )
         LIBRARY_DIRS.extend(["/opt/rocm/lib"])
         LIBRARIES.extend(["amdhip64", "hipblas", "rocblas"])
+
 if PLATFORM == "Darwin":
+    EXTRA_LINK_ARGS.append("-Wl,-rpath," + LLAMACPP_LIBS_DIR)
+    os.environ["LDFLAGS"] = " ".join(
+        [
+            "-framework Accelerate",
+            "-framework Foundation",
+            "-framework Metal",
+            "-framework MetalKit",
+        ]
+    )
+    # Both the Intel and ARM platforms need to be linked with BLAS.
     EXTRA_OBJECTS.extend(
         [
             f"{LLAMACPP_LIBS_DIR}/libggml-blas.a",
@@ -102,24 +113,14 @@ if PLATFORM == "Darwin":
                 f"{LLAMACPP_LIBS_DIR}/libggml-metal.a",
             ]
         )
+elif PLATFORM == "Linux":
+    EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc"])
+    # Check if BLAS is enabled in environment
+    if os.environ.get("CMAKE_ARGS", "").find("-DGGML_BLAS=ON") != -1:
+        print("BLAS is enabled, adding ggml-blas to link targets")
+        EXTRA_OBJECTS.extend([f"{LLAMACPP_LIBS_DIR}/libggml-blas.a"])
 
 INCLUDE_DIRS.append(os.path.join(CWD, "src/xllamacpp"))
-
-if PLATFORM == "Darwin":
-    # EXTRA_LINK_ARGS.append("-mmacosx-version-min=11")
-    # add local rpath
-    EXTRA_LINK_ARGS.append("-Wl,-rpath," + LLAMACPP_LIBS_DIR)
-    os.environ["LDFLAGS"] = " ".join(
-        [
-            "-framework Accelerate",
-            "-framework Foundation",
-            "-framework Metal",
-            "-framework MetalKit",
-        ]
-    )
-
-if PLATFORM == "Linux":
-    EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc", "-static-libstdc++"])
 
 
 def mk_extension(name, sources, define_macros=None):
