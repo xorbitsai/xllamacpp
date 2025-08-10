@@ -144,7 +144,7 @@ pip install -U xllamacpp
  pip install -r requirements.txt
  ```
 
-4. Type `make` in the terminal.
+4. Type `CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS" make` in the terminal to build xllamacpp with GGML_BLAS=ON.
 
 ## Testing
 
