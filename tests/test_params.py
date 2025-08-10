@@ -40,7 +40,7 @@ def test_enum_values():
     assert xlc.GGML_ROPE_TYPE_VISION == 24
     assert xlc.ggml_sched_priority.GGML_SCHED_PRIO_REALTIME == 3
     assert xlc.ggml_numa_strategy.GGML_NUMA_STRATEGY_COUNT == 5
-    assert xlc.ggml_type.GGML_TYPE_COUNT == 39
+    assert xlc.ggml_type.GGML_TYPE_COUNT == 40
     assert xlc.ggml_backend_dev_type.GGML_BACKEND_DEVICE_TYPE_ACCEL == 2
     assert xlc.llama_rope_scaling_type.LLAMA_ROPE_SCALING_TYPE_MAX_VALUE == 3
     assert xlc.llama_pooling_type.LLAMA_POOLING_TYPE_RANK == 4
@@ -50,7 +50,7 @@ def test_enum_values():
     assert xlc.dimre_method.DIMRE_METHOD_MEAN == 1
     assert xlc.common_conversation_mode.COMMON_CONVERSATION_MODE_AUTO == 2
     assert xlc.common_grammar_trigger_type.COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_FULL == 3
-    assert xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK == 2
+    assert xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK == 3
 
 
 def test_common_params():
@@ -160,6 +160,7 @@ def test_common_params():
     assert params.warmup is True
     assert params.check_tensors is False
     assert params.no_op_offload is False
+    assert params.no_extra_bufts is False
 
     assert params.cache_type_k == xlc.ggml_type.GGML_TYPE_F16
     assert params.cache_type_v == xlc.ggml_type.GGML_TYPE_F16
@@ -187,7 +188,7 @@ def test_common_params():
     assert params.enable_chat_template is True
     assert (
         params.reasoning_format
-        == xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK
+        == xlc.common_reasoning_format.COMMON_REASONING_FORMAT_AUTO
     )
     assert params.prefill_assistant is True
 
@@ -226,6 +227,7 @@ def test_common_params():
     assert params.n_out_freq == 10
     assert params.n_save_freq == 0
     assert params.i_chunk == 0
+    assert params.imat_dat == 0
 
     assert params.process_output is False
     assert params.compute_ppl is True
@@ -246,21 +248,31 @@ def test_common_params():
     assert params.offline is False
     assert params.reasoning_budget == -1
 
-    assert params.diffusion.steps == 64
+    assert params.diffusion.steps == 128
     params.diffusion.steps = 13
     assert params.diffusion.steps == 13
+    assert params.diffusion.visual_mode is False
+    params.diffusion.visual_mode = True
+    assert params.diffusion.visual_mode is True
     assert params.diffusion.eps < 0.01
     params.diffusion.eps = 1.2
     assert 1.19 < params.diffusion.eps < 1.21
-    assert params.diffusion.algorithm == 0
+    assert params.diffusion.block_length == 0
+    params.diffusion.block_length = 13
+    assert params.diffusion.block_length == 13
+    assert params.diffusion.algorithm == 4
     params.diffusion.algorithm = 1
     assert params.diffusion.algorithm == 1
     assert params.diffusion.alg_temp == 0.0
     params.diffusion.alg_temp = 1.1
     assert 1.09 < params.diffusion.alg_temp < 1.11
-    assert params.diffusion.visual_mode is False
-    params.diffusion.visual_mode = True
-    assert params.diffusion.visual_mode is True
+    assert params.diffusion.cfg_scale == 0.0
+    params.diffusion.cfg_scale = 1.1
+    assert 1.09 < params.diffusion.cfg_scale < 1.11
+    assert params.diffusion.add_gumbel_noise is False
+    params.diffusion.add_gumbel_noise = True
+    assert params.diffusion.add_gumbel_noise is True
+
     # assert params.cvector_dimre_method  == cy.DIMRE_METHOD_PCA
     # assert params.cvector_outfile       == "control_vector.gguf"
     # assert params.cvector_positive_file == "examples/cvector-generator/positive.txt"

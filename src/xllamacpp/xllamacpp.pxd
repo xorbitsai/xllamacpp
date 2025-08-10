@@ -352,7 +352,7 @@ cdef extern from "common.h":
         float   eps          # epsilon for timesteps
         int32_t block_length # block length for generation
 
-        int32_t algorithm    # diffusion algorithm (0=ORIGIN, 1=MASKGIT_PLUS, 2=TOPK_MARGIN, 3=ENTROPY)
+        int32_t algorithm    # default algorithm: low-confidence
         float   alg_temp     # algorithm temperature
 
         float   cfg_scale    # classifier-free guidance scale
