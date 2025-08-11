@@ -119,6 +119,7 @@ elif PLATFORM == "Linux":
     if os.path.exists(f"{LLAMACPP_LIBS_DIR}/libggml-blas.a"):
         print("BLAS is enabled, adding ggml-blas to link targets")
         EXTRA_OBJECTS.extend([f"{LLAMACPP_LIBS_DIR}/libggml-blas.a"])
+        EXTRA_LINK_ARGS.extend(["-lopenblas"])
 
 INCLUDE_DIRS.append(os.path.join(CWD, "src/xllamacpp"))
 
