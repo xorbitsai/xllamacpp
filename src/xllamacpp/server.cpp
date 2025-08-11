@@ -3968,6 +3968,7 @@ struct server_context {
 
 static void init(common_params &params, server_context &ctx_server,
                  std::promise<int> out) {
+  common_log_set_verbosity_thold(params.verbosity);
   common_init();
 
   llama_backend_init();
