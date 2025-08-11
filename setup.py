@@ -116,7 +116,7 @@ if PLATFORM == "Darwin":
 elif PLATFORM == "Linux":
     EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc"])
     # Check if BLAS is enabled in environment
-    if os.environ.get("CMAKE_ARGS", "").find("-DGGML_BLAS=ON") != -1:
+    if os.path.exists(f"{LLAMACPP_LIBS_DIR}/libggml-blas.a"):
         print("BLAS is enabled, adding ggml-blas to link targets")
         EXTRA_OBJECTS.extend([f"{LLAMACPP_LIBS_DIR}/libggml-blas.a"])
 
