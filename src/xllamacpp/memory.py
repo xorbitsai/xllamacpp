@@ -74,7 +74,7 @@ class MemoryEstimate:
     # The total size of the model if loaded into VRAM.  If all layers are loaded, vram_size == total_size
     total_size: int
     # For multi-GPU scenarios, this provides the tensor split parameter
-    tensor_split: str
+    tensor_split: list[float]
     # For multi-GPU scenarios, this is the size in bytes per GPU
     gpu_sizes: list[int]
 
@@ -427,16 +427,12 @@ def estimate_gpu_layers(
     memory_required_partial = sum(gpu_allocations)
     memory_required_total = memory_required_partial + overflow
 
-    tensor_split = ""
-    if len(gpus) > 1:
-        tensor_split = ",".join(str(c) for c in layer_counts)
-
     estimate = MemoryEstimate(
         layers=0,
         graph=0,
         vram_size=0,
         total_size=int(memory_required_total),
-        tensor_split="",
+        tensor_split=layer_counts,
         gpu_sizes=[],
     )
     if gpus[0]["name"] == "CPU":
@@ -448,6 +444,6 @@ def estimate_gpu_layers(
     estimate.graph = int(graph_offload)
     estimate.vram_size = int(memory_required_partial)
     estimate.total_size = int(memory_required_total)
-    estimate.tensor_split = tensor_split
+    estimate.tensor_split = layer_counts
     estimate.gpu_sizes = [int(i) for i in gpu_allocations]
     return estimate
