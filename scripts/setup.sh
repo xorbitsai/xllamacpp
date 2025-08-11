@@ -38,6 +38,7 @@ build_llamacpp() {
       "-DGGML_NATIVE=OFF"
       "-DGGML_CUDA=ON"
       "-DGGML_CUDA_FORCE_MMQ=ON"
+	  "-DCMAKE_CUDA_ARCHITECTURES=all"
     )
     targets+=("ggml-cuda")
   elif [[ -n "${XLLAMACPP_BUILD_HIP}" ]]; then
