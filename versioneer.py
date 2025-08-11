@@ -1402,6 +1402,7 @@ def git_pieces_from_vcs(
                                % (full_tag, tag_prefix))
             return pieces
         pieces["closest-tag"] = full_tag[len(tag_prefix):]
+        pieces["closest-tag"] = pieces["closest-tag"].split("-")[0]
 
         # distance: number of commits since tag
         pieces["distance"] = int(mo.group(2))
