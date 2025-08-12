@@ -164,7 +164,7 @@ jobs:
       matrix:
         platform: ["ubuntu-22.04"]
         pyver: ["3.11"]
-        cuda: ["12.4.1"]
+        cuda: ["12.8.1"]
     env:
       CUDAVER: ${{ matrix.cuda }}
 
