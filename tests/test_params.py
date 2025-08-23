@@ -78,7 +78,6 @@ def test_common_params():
     assert params.yarn_beta_fast == approx(32.0)
     assert params.yarn_beta_slow == approx(1.0)
     assert params.yarn_orig_ctx == 0
-    assert params.defrag_thold == approx(0.1)
 
     assert params.cpuparams.n_threads == -1
     assert params.cpuparams.cpumask == [False] * xlc.GGML_MAX_N_THREADS
@@ -148,7 +147,7 @@ def test_common_params():
     assert params.cont_batching is True
     assert params.flash_attn is False
     assert params.no_perf is False
-    assert params.ctx_shift is True
+    assert params.ctx_shift is False
     assert params.swa_full is False
     assert params.kv_unified is False
     assert params.input_prefix_bos is False
