@@ -4692,7 +4692,8 @@ void build_tensor_buffer_overrides(
 
   std::vector<std::string> parts;
   for (auto &override : overrides) {
-    std::string ov_str = std::string(override.pattern) + "=" + buft_list[override.buft];
+    std::string ov_str =
+        std::string(override.pattern) + "=" + buft_list[override.buft];
     parts.emplace_back(ov_str);
   }
 

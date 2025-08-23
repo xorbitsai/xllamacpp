@@ -22,5 +22,7 @@ cdef extern from "server.h" namespace "xllamacpp" nogil:
 
         std_string handle_embeddings(const std_string &input_json_str) except +
 
-    void c_parse_tensor_buffer_overrides "xllamacpp::parse_tensor_buffer_overrides" (const std_string & value, std_vector[llama_model_tensor_buft_override] & overrides)
-    void c_build_tensor_buffer_overrides "xllamacpp::build_tensor_buffer_overrides" (const std_vector[llama_model_tensor_buft_override] & overrides, std_string & value)
+    void c_parse_tensor_buffer_overrides "xllamacpp::parse_tensor_buffer_overrides" (
+        const std_string & value, std_vector[llama_model_tensor_buft_override] & overrides) except +
+    void c_build_tensor_buffer_overrides "xllamacpp::build_tensor_buffer_overrides" (
+        const std_vector[llama_model_tensor_buft_override] & overrides, std_string & value) except +

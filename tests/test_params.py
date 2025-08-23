@@ -179,6 +179,7 @@ def test_common_params():
     assert params.timeout_write == 600
     assert params.n_threads_http == -1
     assert params.n_cache_reuse == 0
+    assert params.n_swa_checkpoints == 3
 
     assert params.hostname == "127.0.0.1"
     assert params.public_path == ""
@@ -278,6 +279,19 @@ def test_common_params():
     assert params.diffusion.add_gumbel_noise is False
     params.diffusion.add_gumbel_noise = True
     assert params.diffusion.add_gumbel_noise is True
+
+    assert params.tensor_buft_overrides == ""
+    with pytest.raises(ValueError, match="unknown buffer type"):
+        params.tensor_buft_overrides = (
+            "blk\\.([0-3])\\.ffn_.*=GPU0,blk\\.4\\.ffn_(down|up)_exps\\..*=GPU0"
+        )
+    params.tensor_buft_overrides = (
+        "blk\\.([0-3])\\.ffn_.*=CPU,blk\\.4\\.ffn_(down|up)_exps\\..*=CPU"
+    )
+    assert (
+        params.tensor_buft_overrides
+        == "blk\\.([0-3])\\.ffn_.*=CPU,blk\\.4\\.ffn_(down|up)_exps\\..*=CPU"
+    )
 
     # assert params.cvector_dimre_method  == cy.DIMRE_METHOD_PCA
     # assert params.cvector_outfile       == "control_vector.gguf"
