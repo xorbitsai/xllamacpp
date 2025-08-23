@@ -330,6 +330,7 @@ cdef extern from "common.h":
         float   p_split         # speculative decoding split probability
         float   p_min           # minimum speculative decoding probability (greedy)
         std_vector[std_pair[std_string, std_string]] replacements  # main to speculative model replacements
+        std_vector[llama_model_tensor_buft_override] tensor_buft_overrides
 
         ggml_type cache_type_k  # KV cache data type for the K
         ggml_type cache_type_v  # KV cache data type for the V
@@ -359,13 +360,15 @@ cdef extern from "common.h":
         bint    add_gumbel_noise  # add gumbel noise to the logits if temp > 0.0
 
 
+    # reasoning API response format (not to be confused as chat template's reasoning format)
     cpdef enum common_reasoning_format:
         COMMON_REASONING_FORMAT_NONE
-        COMMON_REASONING_FORMAT_AUTO
+        COMMON_REASONING_FORMAT_AUTO            # Same as deepseek, using `message.reasoning_content`
         COMMON_REASONING_FORMAT_DEEPSEEK_LEGACY # Extract thinking tag contents and return as `message.reasoning_content`, or leave inline in <think> tags in stream mode
         COMMON_REASONING_FORMAT_DEEPSEEK        # Extract thinking tag contents and return as `message.reasoning_content`, including in streaming deltas.
-        COMMON_REASONING_FORMAT_GRANITE         # Extract thinking tag contents and return as `message.reasoning_content`, including in streaming deltas.
-
+        # do not extend this enum unless you absolutely have to
+        # in most cases, use COMMON_REASONING_FORMAT_AUTO
+        # see: https://github.com/ggml-org/llama.cpp/pull/15408
 
     ctypedef struct common_params:
         int32_t n_predict          # new tokens to predict
@@ -386,7 +389,6 @@ cdef extern from "common.h":
         float   yarn_beta_fast     # YaRN low correction dim
         float   yarn_beta_slow     # YaRN high correction dim
         int32_t yarn_orig_ctx      # YaRN original context length
-        float   defrag_thold       # KV cache defragmentation threshold
 
         std_vector[ggml_backend_dev_t] devices # devices to use for offloading
         int32_t n_gpu_layers       # number of layers to store in VRAM (-1 - use default)
@@ -497,6 +499,9 @@ cdef extern from "common.h":
 
         std_vector[std_string] image # path to image file(s)
 
+        # finetune
+        # We do not need to export finetune fields to Python
+
         # embedding
         bint embedding              # get only sentence embedding
         int32_t embd_normalize      # normalisation for embeddings (-1=none, 0=max absolute int16, 1=taxicab, 2=euclidean, >2=p-norm)
@@ -510,6 +515,7 @@ cdef extern from "common.h":
         int32_t timeout_write       # http write timeout in seconds
         int32_t n_threads_http      # number of threads to process HTTP requests (TODO: support threadpool)
         int32_t n_cache_reuse       # min chunk size to reuse from the cache via KV shifting
+        int32_t n_swa_checkpoints   # max number of SWA checkpoints per slot
 
         std_string hostname
         std_string public_path

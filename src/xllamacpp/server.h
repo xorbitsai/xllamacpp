@@ -33,4 +33,11 @@ private:
       _ctx_server; // incomplete type of server_context
   std::thread _loop_thread;
 };
+
+void parse_tensor_buffer_overrides(
+    const std::string &value,
+    std::vector<llama_model_tensor_buft_override> &overrides);
+void build_tensor_buffer_overrides(
+    const std::vector<llama_model_tensor_buft_override> &overrides,
+    std::string &value);
 } // namespace xllamacpp
