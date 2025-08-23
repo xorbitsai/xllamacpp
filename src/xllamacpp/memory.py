@@ -423,6 +423,12 @@ def estimate_gpu_layers(
     else:
         graph_offload = graph_partial_offload
 
+    # Normalize splits
+    tensor_split = layer_counts
+    if layer_count != 0:
+        for i in range(len(tensor_split)):
+            tensor_split[i] /= layer_count
+
     # Summaries
     memory_required_partial = sum(gpu_allocations)
     memory_required_total = memory_required_partial + overflow
@@ -432,7 +438,7 @@ def estimate_gpu_layers(
         graph=0,
         vram_size=0,
         total_size=int(memory_required_total),
-        tensor_split=layer_counts,
+        tensor_split=tensor_split,
         gpu_sizes=[],
     )
     if gpus[0]["name"] == "CPU":
@@ -444,6 +450,6 @@ def estimate_gpu_layers(
     estimate.graph = int(graph_offload)
     estimate.vram_size = int(memory_required_partial)
     estimate.total_size = int(memory_required_total)
-    estimate.tensor_split = layer_counts
+    estimate.tensor_split = tensor_split
     estimate.gpu_sizes = [int(i) for i in gpu_allocations]
     return estimate
