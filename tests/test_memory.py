@@ -95,7 +95,10 @@ def test_estimate_gpu_layers():
             kv_cache_type="",
         )
         assert s.expect0 + s.expect1 == estimate.layers
-        assert [s.expect0, s.expect1] == estimate.tensor_split
+        assert [
+            s.expect0 / estimate.layers,
+            s.expect1 / estimate.layers,
+        ] == estimate.tensor_split
         layer_sums = sum(estimate.gpu_sizes)
         if estimate.layers < 6:
             assert estimate.vram_size < estimate.total_size
