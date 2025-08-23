@@ -16,7 +16,7 @@ from cython.operator cimport dereference as deref
 
 cimport xllamacpp
 import orjson as json
-from server cimport CServer, c_get_device_info, c_get_system_info
+from server cimport CServer, c_get_device_info, c_get_system_info, c_parse_tensor_buffer_overrides, c_build_tensor_buffer_overrides
 
 
 # constants
@@ -623,6 +623,16 @@ cdef class CommonParamsSpeculative:
         self.p.replacements = value
 
     @property
+    def tensor_buft_overrides(self) -> str:
+        cdef string value 
+        c_build_tensor_buffer_overrides(self.p.tensor_buft_overrides, value)
+        return value
+
+    @tensor_buft_overrides.setter
+    def tensor_buft_overrides(self, value: str):
+        c_parse_tensor_buffer_overrides(value, self.p.tensor_buft_overrides)
+
+    @property
     def cache_type_k(self) -> ggml_type:
         """data type for K cache"""
         return self.p.cache_type_k
@@ -950,15 +960,6 @@ cdef class CommonParams:
         self.p.yarn_orig_ctx = value
 
     @property
-    def defrag_thold(self) -> float:
-        """KV cache defragmentation threshold."""
-        return self.p.defrag_thold
-
-    @defrag_thold.setter
-    def defrag_thold(self, value: float):
-        self.p.defrag_thold = value
-
-    @property
     def n_gpu_layers(self) -> int:
         """number of layers to store in VRAM (-1 - use default)."""
         return self.p.n_gpu_layers
@@ -1223,7 +1224,16 @@ cdef class CommonParams:
             self.p.antiprompt.push_back(i)
 
     # std::vector<llama_model_kv_override> kv_overrides;
-    # std::vector<llama_model_tensor_buft_override> tensor_buft_overrides;
+
+    @property
+    def tensor_buft_overrides(self) -> str:
+        cdef string value 
+        c_build_tensor_buffer_overrides(self.p.tensor_buft_overrides, value)
+        return value
+
+    @tensor_buft_overrides.setter
+    def tensor_buft_overrides(self, value: str):
+        c_parse_tensor_buffer_overrides(value, self.p.tensor_buft_overrides)
 
     @property
     def lora_init_without_apply(self) -> bool:
@@ -1739,6 +1749,15 @@ cdef class CommonParams:
     @n_cache_reuse.setter
     def n_cache_reuse(self, value: int):
         self.p.n_cache_reuse = value
+
+    @property
+    def n_swa_checkpoints(self) -> int:
+        """max number of SWA checkpoints per slot"""
+        return self.p.n_swa_checkpoints
+
+    @n_swa_checkpoints.setter
+    def n_swa_checkpoints(self, value: int):
+        self.p.n_swa_checkpoints = value
 
     @property
     def hostname(self) -> str:
