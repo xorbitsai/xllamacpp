@@ -15,6 +15,7 @@ from libcpp.memory cimport shared_ptr, make_shared
 from cython.operator cimport dereference as deref
 
 cimport xllamacpp
+import orjson as json
 from server cimport CServer, c_get_device_info, c_get_system_info
 
 
@@ -2118,29 +2119,35 @@ def get_device_info():
     return c_get_device_info()
 
 
-cdef void callback_wrapper(const string &data, void *py_cb) noexcept nogil:
-    with gil:
-        (<object>py_cb)(data)
-
-
 cdef class Server:
     cdef shared_ptr[CServer] svr
 
     def __cinit__(self, CommonParams common_params):
         self.svr = make_shared[CServer](common_params.p)
 
-    def handle_metrics(self, res_error, res_ok):
+    def handle_metrics(self):
+        cdef string result
         with nogil:
-            self.svr.get().handle_metrics(callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
+            result = self.svr.get().handle_metrics()
+        return result
 
-    def handle_completions(self, string prompt_json_str, res_error, res_ok):
+    def handle_completions(self, dict prompt_dict):
+        cdef string result
+        cdef string prompt_json_string = json.dumps(prompt_dict)
         with nogil:
-            self.svr.get().handle_completions(prompt_json_str, callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
+            result = self.svr.get().handle_completions(prompt_json_string)
+        return json.loads(<bytes>result)
 
-    def handle_chat_completions(self, string prompt_json_str, res_error, res_ok):
+    def handle_chat_completions(self, dict prompt_dict):
+        cdef string result
+        cdef string prompt_json_string = json.dumps(prompt_dict)
         with nogil:
-            self.svr.get().handle_chat_completions(prompt_json_str, callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
+            result = self.svr.get().handle_chat_completions(prompt_json_string)
+        return json.loads(<bytes>result)
 
-    def handle_embeddings(self, string input_json_str, res_error, res_ok):
+    def handle_embeddings(self, dict prompt_dict):
+        cdef string result
+        cdef string prompt_json_string = json.dumps(prompt_dict)
         with nogil:
-            self.svr.get().handle_embeddings(input_json_str, callback_wrapper, <void*>res_error, callback_wrapper, <void*>res_ok)
+            result = self.svr.get().handle_embeddings(prompt_json_string)
+        return json.loads(<bytes>result)

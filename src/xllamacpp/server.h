@@ -19,19 +19,13 @@ public:
   Server(const common_params &params);
   ~Server();
 
-  void handle_metrics(Callback res_error, void *py_cb_error, Callback res_ok,
-                      void *py_cb_ok);
+  std::string handle_metrics();
 
-  void handle_completions(const std::string &prompt_json_str,
-                          Callback res_error, void *py_cb_error,
-                          Callback res_ok, void *py_cb_ok);
+  std::string handle_completions(const std::string &prompt_json_str);
 
-  void handle_chat_completions(const std::string &prompt_json_str,
-                               Callback res_error, void *py_cb_error,
-                               Callback res_ok, void *py_cb_ok);
+  std::string handle_chat_completions(const std::string &prompt_json_str);
 
-  void handle_embeddings(const std::string &input_json_str, Callback res_error,
-                         void *py_cb_error, Callback res_ok, void *py_cb_ok);
+  std::string handle_embeddings(const std::string &input_json_str);
 
 private:
   common_params _params;

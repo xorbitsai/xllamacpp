@@ -14,25 +14,10 @@ cdef extern from "server.h" namespace "xllamacpp" nogil:
 
         CServer(const common_params& params) except +
 
-        void handle_metrics(Callback res_error,
-                void *py_cb_error,
-                Callback res_ok,
-                void *py_cb_ok) except +
+        std_string handle_metrics() except +
         
-        void handle_completions(const std_string &prompt_json_str,
-                Callback res_error,
-                void *py_cb_error,
-                Callback res_ok,
-                void *py_cb_ok) except +
+        std_string handle_completions(const std_string &prompt_json_str) except +
         
-        void handle_chat_completions(const std_string &prompt_json_str,
-                Callback res_error,
-                void *py_cb_error,
-                Callback res_ok,
-                void *py_cb_ok) except +
+        std_string handle_chat_completions(const std_string &prompt_json_str) except +
 
-        void handle_embeddings(const std_string &input_json_str,
-                Callback res_error,
-                void *py_cb_error,
-                Callback res_ok,
-                void *py_cb_ok) except +
+        std_string handle_embeddings(const std_string &input_json_str) except +
