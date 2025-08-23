@@ -1,4 +1,3 @@
-import json
 import pprint
 import os
 import sys
@@ -38,18 +37,14 @@ def test_llama_server(model_path):
         "prompt": "Write the fibonacci function in c++.",
     }
 
-    server.handle_completions(
-        json.dumps(complete_prompt),
-        lambda s: pprint.pprint(json.loads(s)),
-        lambda s: pprint.pprint(json.loads(s)),
-    )
-    complete_prompt["stream"] = True
+    result = server.handle_completions(complete_prompt)
+    assert type(result) is dict
+    pprint.pprint(result)
 
-    server.handle_completions(
-        json.dumps(complete_prompt),
-        lambda s: pprint.pprint(json.loads(s)),
-        lambda s: pprint.pprint(json.loads(s)),
-    )
+    complete_prompt["stream"] = True
+    result = server.handle_completions(complete_prompt)
+    assert type(result) is dict
+    pprint.pprint(result)
 
     chat_complete_prompt = {
         "max_tokens": 128,
@@ -59,24 +54,18 @@ def test_llama_server(model_path):
         ],
     }
 
-    server.handle_chat_completions(
-        json.dumps(chat_complete_prompt),
-        lambda s: pprint.pprint(json.loads(s)),
-        lambda s: pprint.pprint(json.loads(s)),
-    )
+    result = server.handle_chat_completions(chat_complete_prompt)
+    assert type(result) is dict
+    pprint.pprint(result)
 
     chat_complete_prompt["stream"] = True
+    result = server.handle_chat_completions(chat_complete_prompt)
+    assert type(result) is dict
+    pprint.pprint(result)
 
-    server.handle_chat_completions(
-        json.dumps(chat_complete_prompt),
-        lambda s: pprint.pprint(json.loads(s)),
-        lambda s: pprint.pprint(json.loads(s)),
-    )
-
-    server.handle_metrics(
-        lambda s: pprint.pprint(json.loads(s)),
-        lambda s: print(s),
-    )
+    result = server.handle_metrics()
+    assert type(result) is str
+    print(result)
 
 
 def test_llama_server_multimodal(model_path):
@@ -122,11 +111,9 @@ def test_llama_server_multimodal(model_path):
         ],
     }
 
-    server.handle_chat_completions(
-        json.dumps(chat_complete_prompt),
-        lambda s: pprint.pprint(json.loads(s)),
-        lambda s: pprint.pprint(json.loads(s)),
-    )
+    result = server.handle_chat_completions(chat_complete_prompt)
+    assert type(result) is dict
+    pprint.pprint(result)
 
 
 def test_llama_server_embedding(model_path):
@@ -154,21 +141,9 @@ def test_llama_server_embedding(model_path):
         ],
     }
 
-    result = None
+    result = server.handle_embeddings(embedding_input)
 
-    def _check_ok(json_str):
-        nonlocal result
-        result = json.loads(json_str)
-        pprint.pprint(result)
-
-    server.handle_embeddings(
-        json.dumps(embedding_input),
-        lambda s: pprint.pprint(json.loads(s)),
-        _check_ok,
-    )
-
-    assert result is not None
-
+    assert type(result) is dict
     assert len(result["data"]) == 4
     for d in result["data"]:
         assert len(d["embedding"]) == 1024

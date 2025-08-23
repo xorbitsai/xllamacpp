@@ -4478,63 +4478,43 @@ Server::~Server() {
   LOG_INF("%s: main loop exited\n", __func__);
 }
 
-void Server::handle_metrics(Callback res_error, void *py_cb_error,
-                            Callback res_ok, void *py_cb_ok) {
-  handle_metrics_impl(
-      *_ctx_server,
-      [res_error, py_cb_error](const json &err) {
-        res_error(err.dump().c_str(), py_cb_error);
-      },
-      [res_ok, py_cb_ok](const std::string &ok) { res_ok(ok, py_cb_ok); });
+std::string Server::handle_metrics() {
+  std::string result;
+  auto cb_err = [&result](const json &err) { result = err.dump().c_str(); };
+  auto cb_ok = [&result](const std::string &ok) { result = ok; };
+  handle_metrics_impl(*_ctx_server, cb_err, cb_ok);
+  return result;
 }
 
-void Server::handle_completions(const std::string &prompt_json_str,
-                                Callback res_error, void *py_cb_error,
-                                Callback res_ok, void *py_cb_ok) {
+std::string Server::handle_completions(const std::string &prompt_json_str) {
   std::vector<raw_buffer> files; // dummy
   json data = oaicompat_completion_params_parse(json::parse(prompt_json_str));
-  handle_completions_impl(
-      *_ctx_server, SERVER_TASK_TYPE_COMPLETION, data, files,
-      [res_error, py_cb_error](const json &err) {
-        res_error(err.dump().c_str(), py_cb_error);
-      },
-      [res_ok, py_cb_ok](const json &ok) {
-        res_ok(ok.dump().c_str(), py_cb_ok);
-      },
-      OAICOMPAT_TYPE_COMPLETION);
+  std::string result;
+  auto cb = [&result](const json &data) { result = data.dump().c_str(); };
+  handle_completions_impl(*_ctx_server, SERVER_TASK_TYPE_COMPLETION, data,
+                          files, cb, cb, OAICOMPAT_TYPE_COMPLETION);
+  return result;
 }
 
-void Server::handle_chat_completions(const std::string &prompt_json_str,
-                                     Callback res_error, void *py_cb_error,
-                                     Callback res_ok, void *py_cb_ok) {
+std::string
+Server::handle_chat_completions(const std::string &prompt_json_str) {
   auto body = json::parse(prompt_json_str);
   std::vector<raw_buffer> files;
   json data =
       oaicompat_chat_params_parse(body, _ctx_server->oai_parser_opt, files);
-  handle_completions_impl(
-      *_ctx_server, SERVER_TASK_TYPE_COMPLETION, data, files,
-      [res_error, py_cb_error](const json &err) {
-        res_error(err.dump().c_str(), py_cb_error);
-      },
-      [res_ok, py_cb_ok](const json &ok) {
-        res_ok(ok.dump().c_str(), py_cb_ok);
-      },
-      OAICOMPAT_TYPE_CHAT);
+  std::string result;
+  auto cb = [&result](const json &data) { result = data.dump().c_str(); };
+  handle_completions_impl(*_ctx_server, SERVER_TASK_TYPE_COMPLETION, data,
+                          files, cb, cb, OAICOMPAT_TYPE_CHAT);
+  return result;
 }
 
-void Server::handle_embeddings(const std::string &input_json_str,
-                               Callback res_error, void *py_cb_error,
-                               Callback res_ok, void *py_cb_ok) {
+std::string Server::handle_embeddings(const std::string &input_json_str) {
   auto body = json::parse(input_json_str);
-  handle_embeddings_impl(
-      *_ctx_server, body,
-      [res_error, py_cb_error](const json &err) {
-        res_error(err.dump().c_str(), py_cb_error);
-      },
-      [res_ok, py_cb_ok](const json &ok) {
-        res_ok(ok.dump().c_str(), py_cb_ok);
-      },
-      OAICOMPAT_TYPE_EMBEDDING);
+  std::string result;
+  auto cb = [&result](const json &data) { result = data.dump().c_str(); };
+  handle_embeddings_impl(*_ctx_server, body, cb, cb, OAICOMPAT_TYPE_EMBEDDING);
+  return result;
 }
 
 } // namespace xllamacpp
