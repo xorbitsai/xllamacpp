@@ -1775,6 +1775,14 @@ cdef class CommonParams:
         self.p.chat_template = value
 
     @property
+    def use_jinja(self) -> bool:
+        return self.p.use_jinja
+
+    @use_jinja.setter
+    def use_jinja(self, value: bool):
+        self.p.use_jinja = value
+
+    @property
     def enable_chat_template(self) -> bool:
         """enable chat template"""
         return self.p.enable_chat_template

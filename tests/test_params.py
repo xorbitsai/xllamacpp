@@ -185,6 +185,9 @@ def test_common_params():
     assert params.public_path == ""
     assert params.api_prefix == ""
     assert params.chat_template == ""
+    assert params.use_jinja is False
+    params.use_jinja = True
+    assert params.use_jinja is True
     assert params.enable_chat_template is True
     assert (
         params.reasoning_format
