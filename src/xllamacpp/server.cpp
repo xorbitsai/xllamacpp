@@ -4603,7 +4603,7 @@ Server::~Server() {
 
 std::string Server::handle_metrics() {
   std::string result;
-  auto cb_err = [&result](const json &err) { result = std::move(err.dump()); };
+  auto cb_err = [&result](const json &err) { result = err.dump(); };
   auto cb_ok = [&result](const std::string &ok) { result = ok; };
   handle_metrics_impl(*_ctx_server, cb_err, cb_ok);
   return result;
@@ -4612,7 +4612,7 @@ std::string Server::handle_metrics() {
 std::string Server::handle_embeddings(const std::string &input_json_str) {
   auto body = json::parse(input_json_str);
   std::string result;
-  auto cb = [&result](const json &data) { result = std::move(data.dump()); };
+  auto cb = [&result](const json &data) { result = data.dump(); };
   handle_embeddings_impl(*_ctx_server, body, cb, cb, OAICOMPAT_TYPE_EMBEDDING);
   return result;
 }

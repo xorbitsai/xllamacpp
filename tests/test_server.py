@@ -43,6 +43,8 @@ def test_llama_server(model_path):
         lambda v: pprint.pprint(v),
     )
     v = server.handle_completions(complete_prompt)
+    assert isinstance(v, dict)
+    assert "code" not in v
     pprint.pprint(v)
 
     complete_prompt["stream"] = True
@@ -68,6 +70,9 @@ def test_llama_server(model_path):
         lambda v: pprint.pprint(v),
     )
     v = server.handle_chat_completions(chat_complete_prompt)
+    assert isinstance(v, dict)
+    assert "code" not in v
+    pprint.pprint(v)
 
     chat_complete_prompt["stream"] = True
 
