@@ -3,6 +3,7 @@ import os
 import sys
 import requests
 import base64
+import pytest
 
 print(sys.path)
 import xllamacpp as xlc
@@ -37,14 +38,22 @@ def test_llama_server(model_path):
         "prompt": "Write the fibonacci function in c++.",
     }
 
-    result = server.handle_completions(complete_prompt)
-    assert type(result) is dict
-    pprint.pprint(result)
+    server.handle_completions(
+        complete_prompt,
+        lambda v: pprint.pprint(v),
+    )
+    v = server.handle_completions(complete_prompt)
+    pprint.pprint(v)
 
     complete_prompt["stream"] = True
-    result = server.handle_completions(complete_prompt)
-    assert type(result) is dict
-    pprint.pprint(result)
+
+    with pytest.raises(ValueError, match="requires a callback for streaming"):
+        server.handle_completions(complete_prompt)
+
+    server.handle_completions(
+        complete_prompt,
+        lambda v: pprint.pprint(v),
+    )
 
     chat_complete_prompt = {
         "max_tokens": 128,
@@ -54,15 +63,21 @@ def test_llama_server(model_path):
         ],
     }
 
-    result = server.handle_chat_completions(chat_complete_prompt)
-    assert type(result) is dict
-    pprint.pprint(result)
+    server.handle_chat_completions(
+        chat_complete_prompt,
+        lambda v: pprint.pprint(v),
+    )
+    v = server.handle_chat_completions(chat_complete_prompt)
 
     chat_complete_prompt["stream"] = True
-    result = server.handle_chat_completions(chat_complete_prompt)
-    assert type(result) is dict
-    pprint.pprint(result)
 
+    with pytest.raises(ValueError, match="requires a callback for streaming"):
+        server.handle_chat_completions(chat_complete_prompt)
+
+    server.handle_chat_completions(
+        chat_complete_prompt,
+        lambda v: pprint.pprint(v),
+    )
     result = server.handle_metrics()
     assert type(result) is str
     print(result)
@@ -111,9 +126,10 @@ def test_llama_server_multimodal(model_path):
         ],
     }
 
-    result = server.handle_chat_completions(chat_complete_prompt)
-    assert type(result) is dict
-    pprint.pprint(result)
+    server.handle_chat_completions(
+        chat_complete_prompt,
+        lambda v: pprint.pprint(v),
+    )
 
 
 def test_llama_server_embedding(model_path):
