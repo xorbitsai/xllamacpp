@@ -4603,41 +4603,48 @@ Server::~Server() {
 
 std::string Server::handle_metrics() {
   std::string result;
-  auto cb_err = [&result](const json &err) { result = err.dump().c_str(); };
+  auto cb_err = [&result](const json &err) { result = err.dump(); };
   auto cb_ok = [&result](const std::string &ok) { result = ok; };
   handle_metrics_impl(*_ctx_server, cb_err, cb_ok);
-  return result;
-}
-
-std::string Server::handle_completions(const std::string &prompt_json_str) {
-  std::vector<raw_buffer> files; // dummy
-  json data = oaicompat_completion_params_parse(json::parse(prompt_json_str));
-  std::string result;
-  auto cb = [&result](const json &data) { result = data.dump().c_str(); };
-  handle_completions_impl(*_ctx_server, SERVER_TASK_TYPE_COMPLETION, data,
-                          files, cb, cb, OAICOMPAT_TYPE_COMPLETION);
-  return result;
-}
-
-std::string
-Server::handle_chat_completions(const std::string &prompt_json_str) {
-  auto body = json::parse(prompt_json_str);
-  std::vector<raw_buffer> files;
-  json data =
-      oaicompat_chat_params_parse(body, _ctx_server->oai_parser_opt, files);
-  std::string result;
-  auto cb = [&result](const json &data) { result = data.dump().c_str(); };
-  handle_completions_impl(*_ctx_server, SERVER_TASK_TYPE_COMPLETION, data,
-                          files, cb, cb, OAICOMPAT_TYPE_CHAT);
   return result;
 }
 
 std::string Server::handle_embeddings(const std::string &input_json_str) {
   auto body = json::parse(input_json_str);
   std::string result;
-  auto cb = [&result](const json &data) { result = data.dump().c_str(); };
+  auto cb = [&result](const json &data) { result = data.dump(); };
   handle_embeddings_impl(*_ctx_server, body, cb, cb, OAICOMPAT_TYPE_EMBEDDING);
   return result;
+}
+
+void Server::handle_completions(const std::string &prompt_json_str,
+                                Callback res_error, void *py_cb_error,
+                                Callback res_ok, void *py_cb_ok) {
+  std::vector<raw_buffer> files; // dummy
+  json data = oaicompat_completion_params_parse(json::parse(prompt_json_str));
+  handle_completions_impl(
+      *_ctx_server, SERVER_TASK_TYPE_COMPLETION, data, files,
+      [res_error, py_cb_error](const json &err) {
+        res_error(err.dump(), py_cb_error);
+      },
+      [res_ok, py_cb_ok](const json &ok) { res_ok(ok.dump(), py_cb_ok); },
+      OAICOMPAT_TYPE_COMPLETION);
+}
+
+void Server::handle_chat_completions(const std::string &prompt_json_str,
+                                     Callback res_error, void *py_cb_error,
+                                     Callback res_ok, void *py_cb_ok) {
+  auto body = json::parse(prompt_json_str);
+  std::vector<raw_buffer> files;
+  json data =
+      oaicompat_chat_params_parse(body, _ctx_server->oai_parser_opt, files);
+  handle_completions_impl(
+      *_ctx_server, SERVER_TASK_TYPE_COMPLETION, data, files,
+      [res_error, py_cb_error](const json &err) {
+        res_error(err.dump(), py_cb_error);
+      },
+      [res_ok, py_cb_ok](const json &ok) { res_ok(ok.dump(), py_cb_ok); },
+      OAICOMPAT_TYPE_CHAT);
 }
 
 // Helper function to parse tensor buffer override strings

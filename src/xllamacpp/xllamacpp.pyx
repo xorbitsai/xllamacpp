@@ -2138,6 +2138,23 @@ def get_device_info():
     return c_get_device_info()
 
 
+cdef void callback_wrapper(string &&data, void *py_cb) noexcept nogil:
+    with gil:
+        try:
+            parsed = json.loads(data)
+        except Exception as e:
+            parsed = {
+                "code": 500,
+                "type": "server_error",
+                "message": str(e),
+            }
+        (<object>py_cb)(parsed)
+
+
+cdef void no_callback_wrapper(string &&data, void *target) noexcept nogil:
+    (<string*>target).swap(data)
+
+
 cdef class Server:
     cdef shared_ptr[CServer] svr
 
@@ -2150,23 +2167,54 @@ cdef class Server:
             result = self.svr.get().handle_metrics()
         return result
 
-    def handle_completions(self, dict prompt_dict):
-        cdef string result
-        cdef string prompt_json_string = json.dumps(prompt_dict)
-        with nogil:
-            result = self.svr.get().handle_completions(prompt_json_string)
-        return json.loads(<bytes>result)
-
-    def handle_chat_completions(self, dict prompt_dict):
-        cdef string result
-        cdef string prompt_json_string = json.dumps(prompt_dict)
-        with nogil:
-            result = self.svr.get().handle_chat_completions(prompt_json_string)
-        return json.loads(<bytes>result)
-
     def handle_embeddings(self, dict prompt_dict):
         cdef string result
         cdef string prompt_json_string = json.dumps(prompt_dict)
         with nogil:
             result = self.svr.get().handle_embeddings(prompt_json_string)
         return json.loads(<bytes>result)
+
+    def handle_completions(self, dict prompt_dict, callback=None):
+        cdef string prompt_json_string = json.dumps(prompt_dict)
+        cdef string result
+        if callback is None:
+            if prompt_dict.get("stream"):
+                raise ValueError("Server.handle_completions requires a callback for streaming.")
+            with nogil:
+                self.svr.get().handle_completions(
+                    prompt_json_string, no_callback_wrapper, <void*>&result, no_callback_wrapper, <void*>&result)
+            try:
+                return json.loads(result)
+            except Exception as e:
+                return {
+                    "code": 500,
+                    "type": "server_error",
+                    "message": str(e),
+                }
+        else:
+            with nogil:
+                self.svr.get().handle_completions(
+                    prompt_json_string, callback_wrapper, <void*>callback, callback_wrapper, <void*>callback)
+
+    def handle_chat_completions(self, dict prompt_dict, callback=None):
+        cdef string prompt_json_string = json.dumps(prompt_dict)
+        cdef string result
+        if callback is None:
+            if prompt_dict.get("stream"):
+                raise ValueError("Server.handle_chat_completions requires a callback for streaming.")
+            with nogil:
+                self.svr.get().handle_chat_completions(
+                    prompt_json_string, no_callback_wrapper, <void*>&result, no_callback_wrapper, <void*>&result)
+            try:
+                return json.loads(result)
+            except Exception as e:
+                return {
+                    "code": 500,
+                    "type": "server_error",
+                    "message": str(e),
+                }
+        else:
+            with nogil:
+                self.svr.get().handle_chat_completions(
+                    prompt_json_string, callback_wrapper, <void*>callback, callback_wrapper, <void*>callback)
+
