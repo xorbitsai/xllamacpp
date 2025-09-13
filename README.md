@@ -40,7 +40,7 @@ As the intent is to provide a very thin wrapping layer and play to the strengths
 
 ## Usage
 
-Here is a simple example of how to use `xllamacpp` to get embeddings for a list of texts. For this example, you'll need an embedding model like [Qwen3-Embedding-0.6B-Q8_0.gguf](https://huggingface.co/roy-free/Qwen3-Embedding-0.6B-GGUF/resolve/main/Qwen3-Embedding-0.6B-Q8_0.gguf).
+Here is a simple example of how to use `xllamacpp` to get embeddings for a list of texts. For this example, you'll need an embedding model like [Qwen3-Embedding-0.6B-Q8_0.gguf](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF/resolve/main/Qwen3-Embedding-0.6B-Q8_0.gguf).
 
 ```python
 import xllamacpp as xlc
