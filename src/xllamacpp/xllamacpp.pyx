@@ -1064,6 +1064,15 @@ cdef class CommonParams:
         self.p.attention_type = value
 
     @property
+    def flash_attn_type(self) -> llama_flash_attn_type:
+        """whether to use Flash Attention."""
+        return self.p.flash_attn_type
+
+    @flash_attn_type.setter
+    def flash_attn_type(self, llama_flash_attn_type value):
+        self.p.flash_attn_type = value
+
+    @property
     def sampling(self) -> CommonParamsSampling:
         """common params sampling."""
         return CommonParamsSampling.from_ptr(&self.p.sampling, self)
@@ -1459,15 +1468,6 @@ cdef class CommonParams:
     @cont_batching.setter
     def cont_batching(self, value: bool):
         self.p.cont_batching = value
-
-    @property
-    def flash_attn(self) -> bool:
-        """flash attention"""
-        return self.p.flash_attn
-
-    @flash_attn.setter
-    def flash_attn(self, value: bool):
-        self.p.flash_attn = value
 
     @property
     def no_perf(self) -> bool:
