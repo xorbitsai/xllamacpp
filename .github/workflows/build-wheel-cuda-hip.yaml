@@ -214,10 +214,7 @@ jobs:
           echo "Attempting to install CUDA ${{ matrix.cuda }}..."
           
           # Install using the cuda meta-package from the official channel
-          conda install -y nvidia/label/cuda-${{ matrix.cuda }}::cuda \
-            nvidia/label/cuda-${{ matrix.cuda }}::cuda-toolkit \
-            nvidia/label/cuda-${{ matrix.cuda }}::cuda-nvcc \
-            cudnn
+          mamba install -y 'cuda' -c nvidia/label/cuda-${{ matrix.cuda }}
           echo "Successfully installed CUDA ${{ matrix.cuda }}"
           
           # Verify CONDA_PREFIX is set
