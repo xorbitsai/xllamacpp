@@ -38,6 +38,55 @@ As the intent is to provide a very thin wrapping layer and play to the strengths
 
 - Minimize non-wrapper python code.
 
+## Usage
+
+Here is a simple example of how to use `xllamacpp` to get embeddings for a list of texts. For this example, you'll need an embedding model like [Qwen3-Embedding-0.6B-Q8_0.gguf](https://huggingface.co/roy-free/Qwen3-Embedding-0.6B-GGUF/resolve/main/Qwen3-Embedding-0.6B-Q8_0.gguf).
+
+```python
+import xllamacpp as xlc
+
+params = xlc.CommonParams()
+
+params.model.path = "Qwen3-Embedding-0.6B-Q8_0.gguf"
+params.embedding = True
+params.pooling_type = xlc.llama_pooling_type.LLAMA_POOLING_TYPE_LAST
+
+server = xlc.Server(params)
+
+embedding_input = {
+    "input": [
+        "I believe the meaning of life is",
+        "This is a test",
+    ],
+    "model": "My Qwen3 Model",
+}
+
+result = server.handle_embeddings(embedding_input)
+
+print(result)
+
+```
+
+Output:
+
+```python
+{'data': [{'embedding': [-0.006413215305656195,
+                         -0.05906733125448227,
+                         ...
+                         -0.05887744203209877],
+           'index': 0,
+           'object': 'embedding'},
+          {'embedding': [0.041170503944158554,
+                         -0.004472420550882816,
+                         ...
+                         0.008314250037074089],
+           'index': 1,
+           'object': 'embedding'}],
+ 'model': 'My Qwen3 Model',
+ 'object': 'list',
+ 'usage': {'prompt_tokens': 11, 'total_tokens': 11}}
+```
+
 ## Prerequisites for Prebuilt Wheels
 
 Before pip installing `xllamacpp`, please ensure your system meets the following requirements based on your build type:
