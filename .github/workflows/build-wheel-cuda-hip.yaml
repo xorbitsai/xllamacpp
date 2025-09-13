@@ -213,10 +213,9 @@ jobs:
           # Try different CUDA package names and channels
           echo "Attempting to install CUDA ${{ matrix.cuda }}..."
           
-          # First try with cuda-toolkit
-          conda install -y -c nvidia/label/cuda-${{ matrix.cuda }} \
-             cuda-toolkit cudnn cuda-nvcc
-          echo "Successfully installed CUDA ${{ matrix.cuda }} using cuda-toolkit package"
+          # Install using the cuda meta-package from the official channel
+          conda install -y nvidia/label/cuda-${{ matrix.cuda }}::cuda
+          echo "Successfully installed CUDA ${{ matrix.cuda }}"
           
           # Verify CONDA_PREFIX is set
           if [ -z "$CONDA_PREFIX" ]; then
