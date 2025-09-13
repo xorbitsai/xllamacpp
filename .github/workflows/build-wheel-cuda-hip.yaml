@@ -213,10 +213,9 @@ jobs:
           # Try different CUDA package names and channels
           echo "Attempting to install CUDA ${{ matrix.cuda }}..."
           
-          # First try with cuda-toolkit
-          conda install -y -c nvidia/label/cuda-${{ matrix.cuda }} \
-             cuda-toolkit cudnn cuda-nvcc
-          echo "Successfully installed CUDA ${{ matrix.cuda }} using cuda-toolkit package"
+          # Install using the cuda meta-package from the official channel
+          mamba install -y 'cuda' -c nvidia/label/cuda-${{ matrix.cuda }}
+          echo "Successfully installed CUDA ${{ matrix.cuda }}"
           
           # Verify CONDA_PREFIX is set
           if [ -z "$CONDA_PREFIX" ]; then
@@ -251,6 +250,12 @@ jobs:
           echo "CUDA_TOOLKIT_ROOT_DIR=$CUDA_TOOLKIT_ROOT_DIR" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
           echo "PATH=$PATH" >> $GITHUB_ENV
+
+      - name: Verify CUDA Version
+        run: |
+          source $CONDA/etc/profile.d/conda.sh
+          conda activate llamacpp
+          nvcc --version | grep "release $(echo ${{ matrix.cuda }} | cut -d. -f1,2)"
 
       - name: Build Wheel
         run: |
