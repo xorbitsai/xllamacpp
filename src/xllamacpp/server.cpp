@@ -4842,6 +4842,10 @@ std::vector<ggml_backend_dev_props> get_device_info() {
 
     ggml_backend_dev_props prop;
     ggml_backend_dev_get_props(devs[i], &prop);
+    // Avoid crash when converting the prop struct to Python dict by Cython.
+    if (prop.device_id == nullptr) {
+      prop.device_id = "";
+    }
 
     result.push_back(prop);
   }
