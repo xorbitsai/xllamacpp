@@ -4822,9 +4822,13 @@ std::vector<ggml_backend_dev_props> get_device_info() {
     ggml_backend_t backend = ggml_backend_dev_init(devs[i], NULL);
     GGML_ASSERT(backend != NULL);
 
-    if (ggml_backend_is_cpu(backend)) {
-      ggml_backend_cpu_set_n_threads(backend,
-                                     std::thread::hardware_concurrency() / 2);
+    auto *reg = ggml_backend_dev_backend_reg(devs[i]);
+    auto ggml_backend_set_n_threads_fn =
+        (ggml_backend_set_n_threads_t)ggml_backend_reg_get_proc_address(
+            reg, "ggml_backend_set_n_threads");
+    if (ggml_backend_set_n_threads_fn) {
+      ggml_backend_set_n_threads_fn(backend,
+                                    std::thread::hardware_concurrency() / 2);
     }
 
     backends.push_back(backend);
