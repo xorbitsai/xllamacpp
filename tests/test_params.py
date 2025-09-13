@@ -41,10 +41,11 @@ def test_enum_values():
     assert xlc.ggml_sched_priority.GGML_SCHED_PRIO_REALTIME == 3
     assert xlc.ggml_numa_strategy.GGML_NUMA_STRATEGY_COUNT == 5
     assert xlc.ggml_type.GGML_TYPE_COUNT == 40
-    assert xlc.ggml_backend_dev_type.GGML_BACKEND_DEVICE_TYPE_ACCEL == 2
+    assert xlc.ggml_backend_dev_type.GGML_BACKEND_DEVICE_TYPE_ACCEL == 3
     assert xlc.llama_rope_scaling_type.LLAMA_ROPE_SCALING_TYPE_MAX_VALUE == 3
     assert xlc.llama_pooling_type.LLAMA_POOLING_TYPE_RANK == 4
     assert xlc.llama_attention_type.LLAMA_ATTENTION_TYPE_NON_CAUSAL == 1
+    assert xlc.llama_flash_attn_type.LLAMA_FLASH_ATTN_TYPE_ENABLED == 1
     assert xlc.llama_split_mode.LLAMA_SPLIT_MODE_ROW == 2
     assert xlc.llama_model_kv_override_type.LLAMA_KV_OVERRIDE_TYPE_STR == 3
     assert xlc.dimre_method.DIMRE_METHOD_MEAN == 1
@@ -104,6 +105,9 @@ def test_common_params():
         params.attention_type
         == xlc.llama_attention_type.LLAMA_ATTENTION_TYPE_UNSPECIFIED
     )
+    assert (
+        params.flash_attn_type == xlc.llama_flash_attn_type.LLAMA_FLASH_ATTN_TYPE_AUTO
+    )
 
     # common_sampler_params sparams
 
@@ -145,7 +149,6 @@ def test_common_params():
     assert params.multiline_input is False
     assert params.simple_io is False
     assert params.cont_batching is True
-    assert params.flash_attn is False
     assert params.no_perf is False
     assert params.ctx_shift is False
     assert params.swa_full is False
@@ -203,7 +206,7 @@ def test_common_params():
     assert params.default_template_kwargs == {"abc": "def"}
 
     assert params.webui is True
-    assert params.endpoint_slots is False
+    assert params.endpoint_slots is True
     assert params.endpoint_props is False
     assert params.endpoint_metrics is False
 
