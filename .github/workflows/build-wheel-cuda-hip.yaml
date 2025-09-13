@@ -252,6 +252,12 @@ jobs:
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
           echo "PATH=$PATH" >> $GITHUB_ENV
 
+      - name: Verify CUDA Version
+        run: |
+          source $CONDA/etc/profile.d/conda.sh
+          conda activate llamacpp
+          nvcc --version | grep "release $(echo ${{ matrix.cuda }} | cut -d. -f1,2)"
+
       - name: Build Wheel
         run: |
           # Echo glibc version
