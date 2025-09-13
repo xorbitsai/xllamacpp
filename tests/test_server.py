@@ -49,8 +49,13 @@ def test_llama_server(model_path):
     assert "code" not in v
     pprint.pprint(v)
 
+    # If the prompt is a str or bytes, a callback is required.
+    with pytest.raises(ValueError, match="non dict prompt"):
+        server.handle_chat_completions(orjson.dumps(complete_prompt))
+
     complete_prompt["stream"] = True
 
+    # If the prompt is streaming, a callback is required.
     with pytest.raises(ValueError, match="requires a callback for streaming"):
         server.handle_completions(complete_prompt)
 
@@ -58,6 +63,37 @@ def test_llama_server(model_path):
         complete_prompt,
         lambda v: pprint.pprint(v),
     )
+
+    # Test handle_completions with a str or bytes prompt
+    ok = False
+
+    def _cb_str(v):
+        nonlocal ok
+        assert type(v) is str
+        json.loads(v)
+        ok = True
+
+    complete_prompt_str = json.dumps(complete_prompt)
+    server.handle_completions(
+        complete_prompt_str,
+        _cb_str,
+    )
+    assert ok
+
+    ok = False
+
+    def _cb_bytes(v):
+        nonlocal ok
+        assert type(v) is bytes
+        orjson.loads(v)
+        ok = True
+
+    complete_prompt_bytes = orjson.dumps(complete_prompt)
+    server.handle_completions(
+        complete_prompt_bytes,
+        _cb_bytes,
+    )
+    assert ok
 
     chat_complete_prompt = {
         "max_tokens": 128,
@@ -76,8 +112,13 @@ def test_llama_server(model_path):
     assert "code" not in v
     pprint.pprint(v)
 
+    # If the prompt is a str or bytes, a callback is required.
+    with pytest.raises(ValueError, match="non dict prompt"):
+        server.handle_chat_completions(json.dumps(chat_complete_prompt))
+
     chat_complete_prompt["stream"] = True
 
+    # If the prompt is streaming, a callback is required.
     with pytest.raises(ValueError, match="requires a callback for streaming"):
         server.handle_chat_completions(chat_complete_prompt)
 
@@ -85,10 +126,8 @@ def test_llama_server(model_path):
         chat_complete_prompt,
         lambda v: pprint.pprint(v),
     )
-    result = server.handle_metrics()
-    assert type(result) is str
-    assert "llamacpp:prompt_seconds_total" in result
 
+    # Test handle_chat_completions with a str or bytes prompt
     ok = False
 
     def _cb_str(v):
@@ -118,6 +157,11 @@ def test_llama_server(model_path):
         _cb_bytes,
     )
     assert ok
+
+    # Test handle_metrics()
+    result = server.handle_metrics()
+    assert type(result) is str
+    assert "llamacpp:prompt_seconds_total" in result
 
 
 def test_llama_server_multimodal(model_path):
