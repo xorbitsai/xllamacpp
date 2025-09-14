@@ -4,6 +4,8 @@ import sys
 import requests
 import base64
 import pytest
+import json
+import orjson
 
 print(sys.path)
 import xllamacpp as xlc
@@ -47,8 +49,13 @@ def test_llama_server(model_path):
     assert "code" not in v
     pprint.pprint(v)
 
+    # If the prompt is a str or bytes, a callback is required.
+    with pytest.raises(ValueError, match="non dict prompt"):
+        server.handle_chat_completions(orjson.dumps(complete_prompt))
+
     complete_prompt["stream"] = True
 
+    # If the prompt is streaming, a callback is required.
     with pytest.raises(ValueError, match="requires a callback for streaming"):
         server.handle_completions(complete_prompt)
 
@@ -56,6 +63,37 @@ def test_llama_server(model_path):
         complete_prompt,
         lambda v: pprint.pprint(v),
     )
+
+    # Test handle_completions with a str or bytes prompt
+    ok = False
+
+    def _cb_str(v):
+        nonlocal ok
+        assert type(v) is str
+        json.loads(v)
+        ok = True
+
+    complete_prompt_str = json.dumps(complete_prompt)
+    server.handle_completions(
+        complete_prompt_str,
+        _cb_str,
+    )
+    assert ok
+
+    ok = False
+
+    def _cb_bytes(v):
+        nonlocal ok
+        assert type(v) is bytes
+        orjson.loads(v)
+        ok = True
+
+    complete_prompt_bytes = orjson.dumps(complete_prompt)
+    server.handle_completions(
+        complete_prompt_bytes,
+        _cb_bytes,
+    )
+    assert ok
 
     chat_complete_prompt = {
         "max_tokens": 128,
@@ -74,8 +112,13 @@ def test_llama_server(model_path):
     assert "code" not in v
     pprint.pprint(v)
 
+    # If the prompt is a str or bytes, a callback is required.
+    with pytest.raises(ValueError, match="non dict prompt"):
+        server.handle_chat_completions(json.dumps(chat_complete_prompt))
+
     chat_complete_prompt["stream"] = True
 
+    # If the prompt is streaming, a callback is required.
     with pytest.raises(ValueError, match="requires a callback for streaming"):
         server.handle_chat_completions(chat_complete_prompt)
 
@@ -83,9 +126,42 @@ def test_llama_server(model_path):
         chat_complete_prompt,
         lambda v: pprint.pprint(v),
     )
+
+    # Test handle_chat_completions with a str or bytes prompt
+    ok = False
+
+    def _cb_str(v):
+        nonlocal ok
+        assert type(v) is str
+        json.loads(v)
+        ok = True
+
+    chat_complete_prompt_str = json.dumps(chat_complete_prompt)
+    server.handle_chat_completions(
+        chat_complete_prompt_str,
+        _cb_str,
+    )
+    assert ok
+
+    ok = False
+
+    def _cb_bytes(v):
+        nonlocal ok
+        assert type(v) is bytes
+        orjson.loads(v)
+        ok = True
+
+    chat_complete_prompt_bytes = orjson.dumps(chat_complete_prompt)
+    server.handle_chat_completions(
+        chat_complete_prompt_bytes,
+        _cb_bytes,
+    )
+    assert ok
+
+    # Test handle_metrics()
     result = server.handle_metrics()
     assert type(result) is str
-    print(result)
+    assert "llamacpp:prompt_seconds_total" in result
 
 
 def test_llama_server_multimodal(model_path):
@@ -163,6 +239,28 @@ def test_llama_server_embedding(model_path):
     }
 
     result = server.handle_embeddings(embedding_input)
+
+    assert type(result) is dict
+    assert len(result["data"]) == 4
+    for d in result["data"]:
+        assert len(d["embedding"]) == 1024
+
+    embedding_input_str = json.dumps(embedding_input)
+    assert type(embedding_input_str) is str
+    result_str = server.handle_embeddings(embedding_input_str)
+    assert type(result_str) is str
+    result = json.loads(result_str)
+
+    assert type(result) is dict
+    assert len(result["data"]) == 4
+    for d in result["data"]:
+        assert len(d["embedding"]) == 1024
+
+    embedding_input_bytes = orjson.dumps(embedding_input)
+    assert type(embedding_input_bytes) is bytes
+    result_bytes = server.handle_embeddings(embedding_input_bytes)
+    assert type(result_bytes) is bytes
+    result = orjson.loads(result_str)
 
     assert type(result) is dict
     assert len(result["data"]) == 4

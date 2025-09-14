@@ -115,6 +115,8 @@ cdef extern from "ggml-backend.h":
         GGML_BACKEND_DEVICE_TYPE_CPU
         # GPU device using dedicated memory
         GGML_BACKEND_DEVICE_TYPE_GPU
+        # integrated GPU device using host memory
+        GGML_BACKEND_DEVICE_TYPE_IGPU
         # accelerator devices intended to be used together with the CPU backend (e.g. BLAS or AMX)
         GGML_BACKEND_DEVICE_TYPE_ACCEL
 
@@ -131,11 +133,21 @@ cdef extern from "ggml-backend.h":
 
     # all the device properties
     ctypedef struct ggml_backend_dev_props:
+        # device name
         const char * name
+        # device description
         const char * description
+        # device free memory in bytes
         size_t memory_free
+        # device total memory in bytes
         size_t memory_total
+        # device type
         ggml_backend_dev_type type
+        # device id
+        #   for PCI devices, this should be the PCI bus id formatted as "domain:bus:device.function" (e.g. "0000:01:00.0")
+        #   if the id is unknown, this should be NULL
+        const char * device_id
+        # device capabilities
         ggml_backend_dev_caps caps
 
     ctypedef bint (*ggml_backend_sched_eval_callback)(ggml_tensor * t, bint ask, void * user_data)
@@ -172,6 +184,11 @@ cdef extern from "llama.h":
         LLAMA_ATTENTION_TYPE_UNSPECIFIED
         LLAMA_ATTENTION_TYPE_CAUSAL
         LLAMA_ATTENTION_TYPE_NON_CAUSAL
+
+    cpdef enum llama_flash_attn_type:
+        LLAMA_FLASH_ATTN_TYPE_AUTO
+        LLAMA_FLASH_ATTN_TYPE_DISABLED
+        LLAMA_FLASH_ATTN_TYPE_ENABLED
 
     cpdef enum llama_split_mode:
         LLAMA_SPLIT_MODE_NONE   # single GPU
@@ -408,6 +425,7 @@ cdef extern from "common.h":
         llama_rope_scaling_type rope_scaling_type
         llama_pooling_type      pooling_type       # pooling type for embeddings
         llama_attention_type    attention_type     # attention type for embeddings
+        llama_flash_attn_type   flash_attn_type    # whether to use Flash Attention
 
         common_params_sampling sampling
         common_params_speculative speculative
@@ -469,7 +487,6 @@ cdef extern from "common.h":
         bint multiline_input        # reverse the usage of `\`
         bint simple_io              # improves compatibility with subprocesses and limited consoles
         bint cont_batching          # insert new sequences for decoding on-the-fly
-        bint flash_attn             # flash attention
         bint no_perf                # disable performance metric
         bint ctx_shift              # context shift on inifinite text generation
         bint swa_full               # use full-size SWA cache (https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)

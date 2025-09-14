@@ -13,6 +13,8 @@ from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.memory cimport shared_ptr, make_shared
 from cython.operator cimport dereference as deref
+from cpython.unicode cimport PyUnicode_FromStringAndSize
+from cpython.bytes cimport PyBytes_FromStringAndSize
 
 cimport xllamacpp
 import orjson as json
@@ -1062,6 +1064,15 @@ cdef class CommonParams:
         self.p.attention_type = value
 
     @property
+    def flash_attn_type(self) -> llama_flash_attn_type:
+        """whether to use Flash Attention."""
+        return self.p.flash_attn_type
+
+    @flash_attn_type.setter
+    def flash_attn_type(self, llama_flash_attn_type value):
+        self.p.flash_attn_type = value
+
+    @property
     def sampling(self) -> CommonParamsSampling:
         """common params sampling."""
         return CommonParamsSampling.from_ptr(&self.p.sampling, self)
@@ -1457,15 +1468,6 @@ cdef class CommonParams:
     @cont_batching.setter
     def cont_batching(self, value: bool):
         self.p.cont_batching = value
-
-    @property
-    def flash_attn(self) -> bool:
-        """flash attention"""
-        return self.p.flash_attn
-
-    @flash_attn.setter
-    def flash_attn(self, value: bool):
-        self.p.flash_attn = value
 
     @property
     def no_perf(self) -> bool:
@@ -2138,7 +2140,7 @@ def get_device_info():
     return c_get_device_info()
 
 
-cdef void callback_wrapper(string &&data, void *py_cb) noexcept nogil:
+cdef void callback_wrapper_dict(string &&data, void *py_cb) noexcept nogil:
     with gil:
         try:
             parsed = json.loads(data)
@@ -2151,8 +2153,24 @@ cdef void callback_wrapper(string &&data, void *py_cb) noexcept nogil:
         (<object>py_cb)(parsed)
 
 
+cdef void callback_wrapper_str(string &&data, void *py_cb) noexcept nogil:
+    with gil:
+        (<object>py_cb)(PyUnicode_FromStringAndSize(data.c_str(), data.size()))
+
+
+cdef void callback_wrapper_bytes(string &&data, void *py_cb) noexcept nogil:
+    with gil:
+        (<object>py_cb)(PyBytes_FromStringAndSize(data.c_str(), data.size()))
+
+
 cdef void no_callback_wrapper(string &&data, void *target) noexcept nogil:
     (<string*>target).swap(data)
+
+
+ctypedef fused json_dict_or_str:
+    dict
+    str
+    bytes
 
 
 cdef class Server:
@@ -2167,12 +2185,19 @@ cdef class Server:
             result = self.svr.get().handle_metrics()
         return result
 
-    def handle_embeddings(self, dict prompt_dict):
+    def handle_embeddings(self, json_dict_or_str prompt):
         cdef string result
-        cdef string prompt_json_string = json.dumps(prompt_dict)
-        with nogil:
-            result = self.svr.get().handle_embeddings(prompt_json_string)
-        return json.loads(<bytes>result)
+        cdef string prompt_json_string
+        if json_dict_or_str is dict:
+            prompt_json_string = json.dumps(prompt)
+            with nogil:
+                result = self.svr.get().handle_embeddings(prompt_json_string)
+            return json.loads(<bytes>result)
+        else:
+            prompt_json_string = prompt
+            with nogil:
+                result = self.svr.get().handle_embeddings(prompt_json_string)
+            return <json_dict_or_str>result
     
     def handle_rerank(self, dict prompt_dict):
         cdef string result
@@ -2181,47 +2206,84 @@ cdef class Server:
             result = self.svr.get().handle_rerank(prompt_json_string)
         return json.loads(<bytes>result)
 
-    def handle_completions(self, dict prompt_dict, callback=None):
-        cdef string prompt_json_string = json.dumps(prompt_dict)
+    def handle_completions(self, json_dict_or_str prompt, callback=None):
+        cdef string prompt_json_string
         cdef string result
+        cdef object require_callback
+        if json_dict_or_str is dict:
+            prompt_json_string = json.dumps(prompt)
+            require_callback = prompt.get("stream")
+        else:
+            prompt_json_string = prompt
+            require_callback = True
         if callback is None:
-            if prompt_dict.get("stream"):
-                raise ValueError("Server.handle_completions requires a callback for streaming.")
+            if require_callback:
+                raise ValueError("Server.handle_completions requires a callback for streaming or a non dict prompt.")
             with nogil:
                 self.svr.get().handle_completions(
                     prompt_json_string, no_callback_wrapper, <void*>&result, no_callback_wrapper, <void*>&result)
-            try:
-                return json.loads(result)
-            except Exception as e:
-                return {
-                    "code": 500,
-                    "type": "server_error",
-                    "message": str(e),
-                }
+            if json_dict_or_str is dict:
+                try:
+                    return json.loads(result)
+                except Exception as e:
+                    return {
+                        "code": 500,
+                        "type": "server_error",
+                        "message": str(e),
+                    }
+            else:
+                return <json_dict_or_str>result
         else:
-            with nogil:
-                self.svr.get().handle_completions(
-                    prompt_json_string, callback_wrapper, <void*>callback, callback_wrapper, <void*>callback)
+            if json_dict_or_str is dict:
+                with nogil:
+                    self.svr.get().handle_completions(
+                        prompt_json_string, callback_wrapper_dict, <void*>callback, callback_wrapper_dict, <void*>callback)
+            elif json_dict_or_str is str:
+                with nogil:
+                    self.svr.get().handle_completions(
+                        prompt_json_string, callback_wrapper_str, <void*>callback, callback_wrapper_str, <void*>callback)
+            else:
+                with nogil:
+                    self.svr.get().handle_completions(
+                        prompt_json_string, callback_wrapper_bytes, <void*>callback, callback_wrapper_bytes, <void*>callback)
 
-    def handle_chat_completions(self, dict prompt_dict, callback=None):
-        cdef string prompt_json_string = json.dumps(prompt_dict)
+    def handle_chat_completions(self, json_dict_or_str prompt, callback=None):
+        cdef string prompt_json_string
         cdef string result
+        cdef object require_callback
+        if json_dict_or_str is dict:
+            prompt_json_string = json.dumps(prompt)
+            require_callback = prompt.get("stream")
+        else:
+            prompt_json_string = prompt
+            require_callback = True
         if callback is None:
-            if prompt_dict.get("stream"):
-                raise ValueError("Server.handle_chat_completions requires a callback for streaming.")
+            if require_callback:
+                raise ValueError("Server.handle_chat_completions requires a callback for streaming or a non dict prompt.")
             with nogil:
                 self.svr.get().handle_chat_completions(
                     prompt_json_string, no_callback_wrapper, <void*>&result, no_callback_wrapper, <void*>&result)
-            try:
-                return json.loads(result)
-            except Exception as e:
-                return {
-                    "code": 500,
-                    "type": "server_error",
-                    "message": str(e),
-                }
+            if json_dict_or_str is dict:
+                try:
+                    return json.loads(result)
+                except Exception as e:
+                    return {
+                        "code": 500,
+                        "type": "server_error",
+                        "message": str(e),
+                    }
+            else:
+                return <json_dict_or_str>result
         else:
-            with nogil:
-                self.svr.get().handle_chat_completions(
-                    prompt_json_string, callback_wrapper, <void*>callback, callback_wrapper, <void*>callback)
-
+            if json_dict_or_str is dict:
+                with nogil:
+                    self.svr.get().handle_chat_completions(
+                        prompt_json_string, callback_wrapper_dict, <void*>callback, callback_wrapper_dict, <void*>callback)
+            elif json_dict_or_str is str:
+                with nogil:
+                    self.svr.get().handle_chat_completions(
+                        prompt_json_string, callback_wrapper_str, <void*>callback, callback_wrapper_str, <void*>callback)
+            else:
+                with nogil:
+                    self.svr.get().handle_chat_completions(
+                        prompt_json_string, callback_wrapper_bytes, <void*>callback, callback_wrapper_bytes, <void*>callback)
