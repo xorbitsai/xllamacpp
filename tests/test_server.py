@@ -271,7 +271,7 @@ def test_llama_server_embedding(model_path):
 def test_llama_server_rerank(model_path):
     params = xlc.CommonParams()
 
-    params.model.path = os.path.join(model_path, "bge-reranker-v2-m3-Q8_0.gguf")
+    params.model.path = os.path.join(model_path, "bge-reranker-v2-m3-Q2_K.gguf")
     params.embedding = True
     params.n_predict = -1
     params.n_ctx = 512
