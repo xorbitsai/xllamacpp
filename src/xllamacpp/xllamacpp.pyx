@@ -2199,12 +2199,19 @@ cdef class Server:
                 result = self.svr.get().handle_embeddings(prompt_json_string)
             return <json_dict_or_str>result
     
-    def handle_rerank(self, dict prompt_dict):
+    def handle_rerank(self, json_dict_or_str prompt):
         cdef string result
-        cdef string prompt_json_string = json.dumps(prompt_dict)
-        with nogil:
-            result = self.svr.get().handle_rerank(prompt_json_string)
-        return json.loads(<bytes>result)
+        cdef string prompt_json_string
+        if json_dict_or_str is dict:
+            prompt_json_string = json.dumps(prompt)
+            with nogil:
+                result = self.svr.get().handle_rerank(prompt_json_string)
+            return json.loads(<bytes>result)
+        else:
+            prompt_json_string = prompt
+            with nogil:
+                result = self.svr.get().handle_rerank(prompt_json_string)
+            return <json_dict_or_str>result
 
     def handle_completions(self, json_dict_or_str prompt, callback=None):
         cdef string prompt_json_string

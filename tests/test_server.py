@@ -267,6 +267,7 @@ def test_llama_server_embedding(model_path):
     for d in result["data"]:
         assert len(d["embedding"]) == 1024
 
+
 def test_llama_server_rerank(model_path):
     params = xlc.CommonParams()
 
@@ -285,14 +286,30 @@ def test_llama_server_rerank(model_path):
 
     rerank_input = {
         "query": "What is the capital of France?",
-        "documents":[
+        "documents": [
             "Paris is the capital of France.",
             "The Eiffel Tower is in Paris.",
-            "Germany is located in Europe."
+            "Germany is located in Europe.",
         ],
     }
 
     result = server.handle_rerank(rerank_input)
+
+    assert type(result) is dict
+    assert len(result["results"]) == 3
+
+    rerank_input_str = json.dumps(rerank_input)
+    result_str = server.handle_rerank(rerank_input_str)
+    assert type(result_str) is str
+    result = json.loads(result_str)
+
+    assert type(result) is dict
+    assert len(result["results"]) == 3
+
+    rerank_input_bytes = orjson.dumps(rerank_input)
+    result_bytes = server.handle_rerank(rerank_input_bytes)
+    assert type(result_bytes) is bytes
+    result = orjson.loads(result_bytes)
 
     assert type(result) is dict
     assert len(result["results"]) == 3
