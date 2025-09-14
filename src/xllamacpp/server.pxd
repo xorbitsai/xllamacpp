@@ -18,6 +18,8 @@ cdef extern from "server.h" namespace "xllamacpp" nogil:
 
         std_string handle_embeddings(const std_string &input_json_str) except +
 
+        std_string handle_rerank(const std_string &input_json_str) except +
+
         void handle_completions(const std_string &prompt_json_str,
                 Callback res_error,
                 void *py_cb_error,

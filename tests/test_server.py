@@ -266,3 +266,51 @@ def test_llama_server_embedding(model_path):
     assert len(result["data"]) == 4
     for d in result["data"]:
         assert len(d["embedding"]) == 1024
+
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="Rerank test skipped on macOS")
+def test_llama_server_rerank(model_path):
+    params = xlc.CommonParams()
+
+    params.model.path = os.path.join(model_path, "bge-reranker-v2-m3-Q2_K.gguf")
+    params.embedding = True
+    params.n_predict = -1
+    params.n_ctx = 512
+    params.n_batch = 128
+    params.n_ubatch = 128
+    params.sampling.seed = 42
+    params.cpuparams.n_threads = 2
+    params.cpuparams_batch.n_threads = 2
+    params.pooling_type = xlc.llama_pooling_type.LLAMA_POOLING_TYPE_RANK
+
+    server = xlc.Server(params)
+
+    rerank_input = {
+        "query": "What is the capital of France?",
+        "documents": [
+            "Paris is the capital of France.",
+            "The Eiffel Tower is in Paris.",
+            "Germany is located in Europe.",
+        ],
+    }
+
+    result = server.handle_rerank(rerank_input)
+
+    assert type(result) is dict
+    assert len(result["results"]) == 3
+
+    rerank_input_str = json.dumps(rerank_input)
+    result_str = server.handle_rerank(rerank_input_str)
+    assert type(result_str) is str
+    result = json.loads(result_str)
+
+    assert type(result) is dict
+    assert len(result["results"]) == 3
+
+    rerank_input_bytes = orjson.dumps(rerank_input)
+    result_bytes = server.handle_rerank(rerank_input_bytes)
+    assert type(result_bytes) is bytes
+    result = orjson.loads(result_bytes)
+
+    assert type(result) is dict
+    assert len(result["results"]) == 3
