@@ -89,6 +89,5 @@ jobs:
 
       - name: Test with pytest
         run: |
-            pytest -s -v -k "not test_llama_server_rerank" --timeout=1500 -W ignore::PendingDeprecationWarning tests
-            pytest -s -v -k "test_llama_server_rerank" --timeout=1500 -W ignore::PendingDeprecationWarning tests
+            pytest --timeout=1500 -W ignore::PendingDeprecationWarning tests
         working-directory: .
