@@ -168,3 +168,33 @@ def test_llama_server_embedding(model_path):
     assert len(result["data"]) == 4
     for d in result["data"]:
         assert len(d["embedding"]) == 1024
+
+def test_llama_server_rerank(model_path):
+    params = xlc.CommonParams()
+
+    params.model.path = os.path.join(model_path, "bge-reranker-v2-m3-Q8_0.gguf")
+    params.embedding = True
+    params.n_predict = -1
+    params.n_ctx = 512
+    params.n_batch = 128
+    params.n_ubatch = 128
+    params.sampling.seed = 42
+    params.cpuparams.n_threads = 2
+    params.cpuparams_batch.n_threads = 2
+    params.pooling_type = xlc.llama_pooling_type.LLAMA_POOLING_TYPE_RANK
+
+    server = xlc.Server(params)
+
+    rerank_input = {
+        "query": "What is the capital of France?",
+        "documents":[
+            "Paris is the capital of France.",
+            "The Eiffel Tower is in Paris.",
+            "Germany is located in Europe."
+        ],
+    }
+
+    result = server.handle_rerank(rerank_input)
+
+    assert type(result) is dict
+    assert len(result["results"]) == 3

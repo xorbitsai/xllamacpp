@@ -4518,6 +4518,94 @@ static void handle_embeddings_impl(server_context &ctx_server, const json &data,
   res_ok(root);
 };
 
+static void handle_rerank_impl(server_context &ctx_server, const json &data,
+                                   std::function<void(const json &)> res_error,
+                                   std::function<void(const json &)> res_ok,
+                                   oaicompat_type oaicompat) {
+  const json &body = data;
+  
+  if (!ctx_server.params_base.embedding || ctx_server.params_base.pooling_type != LLAMA_POOLING_TYPE_RANK) {
+      res_error(format_error_response("This server does not support reranking. Start it with `--reranking`", ERROR_TYPE_NOT_SUPPORTED));
+      return;
+  }
+
+  bool is_tei_format = body.contains("texts");
+
+  json query;
+  if (body.count("query") == 1) {
+      query = body.at("query");
+      if (!query.is_string()) {
+          res_error(format_error_response("\"query\" must be a string", ERROR_TYPE_INVALID_REQUEST));
+          return;
+      }
+  } else {
+      res_error(format_error_response("\"query\" must be provided", ERROR_TYPE_INVALID_REQUEST));
+      return;
+  }
+
+  std::vector<std::string> documents = json_value(body, "documents",
+                                       json_value(body, "texts", std::vector<std::string>()));
+  if (documents.empty()) {
+      res_error(format_error_response("\"documents\" must be a non-empty string array", ERROR_TYPE_INVALID_REQUEST));
+      return;
+  }
+
+  auto tokenized_queries = tokenize_input_prompts(ctx_server.vocab, ctx_server.mctx, query, /* add_special */ false, true);
+  if (tokenized_queries.size() != 1) {
+      res_error(format_error_response("\"query\" must contain only a single prompt", ERROR_TYPE_INVALID_REQUEST));
+  }
+
+  // create and queue the task
+  json responses = json::array();
+  bool error = false;
+  std::unordered_set<int> task_ids;
+  {
+      std::vector<server_task> tasks;
+      auto tokenized_docs = tokenize_input_prompts(ctx_server.vocab, ctx_server.mctx, documents, /* add_special */ false, true);
+      tasks.reserve(tokenized_docs.size());
+      for (size_t i = 0; i < tokenized_docs.size(); i++) {
+          auto tmp = format_rerank(ctx_server.vocab, tokenized_queries[0], tokenized_docs[i]);
+          server_task task   = server_task(SERVER_TASK_TYPE_RERANK);
+          task.id            = ctx_server.queue_tasks.get_new_id();
+          task.index         = i;
+          task.prompt_tokens = std::move(tmp);
+          tasks.push_back(std::move(task));
+      }
+
+      task_ids = server_task::get_list_id(tasks);
+      ctx_server.queue_results.add_waiting_tasks(tasks);
+      ctx_server.queue_tasks.post(std::move(tasks));
+  }
+
+  ctx_server.receive_multi_results(
+    task_ids,
+    [&](std::vector<server_task_result_ptr> & results){
+      for (auto & res : results) {
+          GGML_ASSERT(dynamic_cast<server_task_result_rerank*>(res.get()) != nullptr);
+          responses.push_back(res->to_json());
+      }
+    },
+    [&](const json & error_data){
+      res_error(error_data);
+      error = true;
+    },
+    [] { return false; }
+  );
+
+  if (error) {
+    return;
+  }
+
+  // write JSON response
+  json root = format_response_rerank(
+    body,
+    responses,
+    is_tei_format,
+    documents
+  );
+  res_ok(root);
+};
+
 static void ggml_log_callback_default(enum ggml_log_level level,
                                       const char *text, void *user_data) {
   (void)level;
@@ -4614,6 +4702,14 @@ std::string Server::handle_embeddings(const std::string &input_json_str) {
   std::string result;
   auto cb = [&result](const json &data) { result = data.dump(); };
   handle_embeddings_impl(*_ctx_server, body, cb, cb, OAICOMPAT_TYPE_EMBEDDING);
+  return result;
+}
+
+std::string Server::handle_rerank(const std::string &input_json_str) {
+  auto body = json::parse(input_json_str);
+  std::string result;
+  auto cb = [&result](const json &data) { result = data.dump(); };
+  handle_rerank_impl(*_ctx_server, body, cb, cb, OAICOMPAT_TYPE_NONE);
   return result;
 }
 

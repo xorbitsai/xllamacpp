@@ -2173,6 +2173,13 @@ cdef class Server:
         with nogil:
             result = self.svr.get().handle_embeddings(prompt_json_string)
         return json.loads(<bytes>result)
+    
+    def handle_rerank(self, dict prompt_dict):
+        cdef string result
+        cdef string prompt_json_string = json.dumps(prompt_dict)
+        with nogil:
+            result = self.svr.get().handle_rerank(prompt_json_string)
+        return json.loads(<bytes>result)
 
     def handle_completions(self, dict prompt_dict, callback=None):
         cdef string prompt_json_string = json.dumps(prompt_dict)
