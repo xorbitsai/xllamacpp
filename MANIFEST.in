@@ -1,5 +1,8 @@
-exclude src/xllamacpp/*.pxd
-exclude src/xllamacpp/*.pyx
-exclude src/xllamacpp/*.cpp
-exclude src/xllamacpp/*.h
-exclude src/xllamacpp/py.typed
+global-include *.pxd
+global-include *.pyx
+global-include *.pxi
+include scripts/setup.sh
+include scripts/copy_libs.py
+include requirements.txt
+include Makefile
+recursive-include thirdparty/llama.cpp *
