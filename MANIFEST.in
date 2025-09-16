@@ -1,3 +1,6 @@
+include *.pxd
+include *.pyx
+include *.pxi
 include scripts/setup.sh
 include scripts/copy_libs.py
 include requirements.txt
