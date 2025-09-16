@@ -1,6 +1,6 @@
-include *.pxd
-include *.pyx
-include *.pxi
+global-include *.pxd
+global-include *.pyx
+global-include *.pxi
 include scripts/setup.sh
 include scripts/copy_libs.py
 include requirements.txt
