@@ -3,4 +3,5 @@ exclude src/xllamacpp/*.pyx
 exclude src/xllamacpp/*.cpp
 exclude src/xllamacpp/*.h
 exclude src/xllamacpp/py.typed
+include requirements.txt
 recursive-include thirdparty/llama.cpp *
