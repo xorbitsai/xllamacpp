@@ -268,7 +268,6 @@ def test_llama_server_embedding(model_path):
         assert len(d["embedding"]) == 1024
 
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="Rerank test skipped on macOS")
 def test_llama_server_rerank(model_path):
     params = xlc.CommonParams()
 

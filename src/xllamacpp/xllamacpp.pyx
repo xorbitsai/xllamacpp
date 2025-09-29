@@ -546,6 +546,15 @@ cdef class CommonParamsModel:
     def hf_file(self, value: str):
         self.p.hf_file = value
 
+    @property
+    def docker_repo(self) -> str:
+        """Docker repo"""
+        return self.p.docker_repo
+
+    @docker_repo.setter
+    def docker_repo(self, value: str):
+        self.p.docker_repo = value
+
 
 cdef class CommonParamsSpeculative:
     cdef xllamacpp.common_params_speculative *p

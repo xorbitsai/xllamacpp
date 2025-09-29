@@ -336,6 +336,7 @@ cdef extern from "common.h":
         std_string url           # model url to download                                      // NOLINT
         std_string hf_repo       # HF repo                                                    // NOLINT
         std_string hf_file       # HF file                                                    // NOLINT
+        std_string docker_repo   # Docker repo                                                // NOLINT
 
 
     ctypedef struct common_params_speculative:

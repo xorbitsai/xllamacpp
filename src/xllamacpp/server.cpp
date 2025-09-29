@@ -115,6 +115,7 @@ static bool server_task_type_need_logits(server_task_type task_type) {
 
 struct slot_params {
   bool stream = true;
+  bool include_usage = false;
   bool cache_prompt =
       true; // remember the prompt to avoid reprocessing all prompt
   bool return_tokens = false;
@@ -325,6 +326,8 @@ struct server_task {
     params.timings_per_token = json_value(data, "timings_per_token", false);
 
     params.stream = json_value(data, "stream", false);
+    auto stream_opt = json_value(data, "stream_options", json::object());
+    params.include_usage = json_value(stream_opt, "include_usage", false);
     params.cache_prompt = json_value(data, "cache_prompt", true);
     params.return_tokens = json_value(data, "return_tokens", false);
     params.return_progress = json_value(data, "return_progress", false);
@@ -333,7 +336,7 @@ struct server_task {
     params.n_indent = json_value(data, "n_indent", defaults.n_indent);
     params.n_keep = json_value(data, "n_keep", defaults.n_keep);
     params.n_discard = json_value(data, "n_discard", defaults.n_discard);
-    // params.t_max_prompt_ms  = json_value(data, "t_max_prompt_ms",
+    // params.t_max_prompt_ms  = json_value(data,       "t_max_prompt_ms",
     // defaults.t_max_prompt_ms); // TODO: implement
     params.t_max_predict_ms =
         json_value(data, "t_max_predict_ms", defaults.t_max_predict_ms);
@@ -859,6 +862,7 @@ struct server_task_result_cmpl_final : server_task_result {
   llama_tokens tokens;
 
   bool stream;
+  bool include_usage;
   result_timings timings;
   std::string prompt;
 
@@ -1068,23 +1072,25 @@ struct server_task_result_cmpl_final : server_task_result {
         {"object", "chat.completion.chunk"},
     });
 
-    // OpenAI API spec for chat.completion.chunks specifies an empty `choices`
-    // array for the last chunk when including usage
-    // https://platform.openai.com/docs/api-reference/chat_streaming/streaming#chat_streaming/streaming-choices
-    deltas.push_back({
-        {"choices", json::array()},
-        {"created", t},
-        {"id", oaicompat_cmpl_id},
-        {"model", oaicompat_model},
-        {"system_fingerprint", build_info},
-        {"object", "chat.completion.chunk"},
-        {"usage",
-         json{
-             {"completion_tokens", n_decoded},
-             {"prompt_tokens", n_prompt_tokens},
-             {"total_tokens", n_decoded + n_prompt_tokens},
-         }},
-    });
+    if (include_usage) {
+      // OpenAI API spec for chat.completion.chunks specifies an empty `choices`
+      // array for the last chunk when including usage
+      // https://platform.openai.com/docs/api-reference/chat_streaming/streaming#chat_streaming/streaming-choices
+      deltas.push_back({
+          {"choices", json::array()},
+          {"created", t},
+          {"id", oaicompat_cmpl_id},
+          {"model", oaicompat_model},
+          {"system_fingerprint", build_info},
+          {"object", "chat.completion.chunk"},
+          {"usage",
+           json{
+               {"completion_tokens", n_decoded},
+               {"prompt_tokens", n_prompt_tokens},
+               {"total_tokens", n_decoded + n_prompt_tokens},
+           }},
+      });
+    }
 
     if (timings.prompt_n >= 0) {
       deltas.back().push_back({"timings", timings.to_json()});
@@ -2440,7 +2446,7 @@ struct server_context {
     // 1. It's not explicitly disabled (reasoning_budget == 0)
     // 2. The chat template supports it
     const bool enable_thinking =
-        params_base.reasoning_budget != 0 &&
+        params_base.use_jinja && params_base.reasoning_budget != 0 &&
         common_chat_templates_support_enable_thinking(chat_templates.get());
     SRV_INF("Enable thinking? %d\n", enable_thinking);
 
@@ -2504,10 +2510,10 @@ struct server_context {
       }
 
       if (ret != nullptr) {
-        SLT_DBG(
-            *ret,
-            "selected slot by lcs similarity, lcs_len = %d, similarity = %f\n",
-            lcs_len, similarity);
+        SLT_INF(*ret,
+                "selected slot by lcs similarity, lcs_len = %d, similarity = "
+                "%.3f (> %.3f thold)\n",
+                lcs_len, similarity, slot_prompt_similarity);
       }
     }
 
@@ -2529,7 +2535,7 @@ struct server_context {
       }
 
       if (ret != nullptr) {
-        SLT_DBG(*ret, "selected slot by lru, t_last = %" PRId64 "\n", t_last);
+        SLT_INF(*ret, "selected slot by LRU, t_last = %" PRId64 "\n", t_last);
       }
     }
 
@@ -2999,6 +3005,7 @@ struct server_context {
 
     res->verbose = slot.params.verbose;
     res->stream = slot.params.stream;
+    res->include_usage = slot.params.include_usage;
     res->oaicompat = slot.params.oaicompat;
     res->oaicompat_model = slot.params.oaicompat_model;
     res->oaicompat_cmpl_id = slot.params.oaicompat_cmpl_id;
@@ -4659,7 +4666,9 @@ static void handle_completions_impl(server_context &ctx_server,
           }
           return true;
         },
-        [&](const json &error_data) { res_error(error_data); },
+        [&](const json &error_data) {
+          res_error(json{{"error", error_data}});
+        },
         [] { return false; });
 
     ctx_server.queue_results.remove_waiting_task_ids(task_ids);
@@ -4829,27 +4838,16 @@ static void handle_rerank_impl(server_context &ctx_server, const json &data,
     return;
   }
 
-  auto tokenized_queries = tokenize_input_prompts(
-      ctx_server.vocab, ctx_server.mctx, query, /* add_special */ false, true);
-  if (tokenized_queries.size() != 1) {
-    res_error(
-        format_error_response("\"query\" must contain only a single prompt",
-                              ERROR_TYPE_INVALID_REQUEST));
-  }
-
   // create and queue the task
   json responses = json::array();
   bool error = false;
   std::unordered_set<int> task_ids;
   {
     std::vector<server_task> tasks;
-    auto tokenized_docs =
-        tokenize_input_prompts(ctx_server.vocab, ctx_server.mctx, documents,
-                               /* add_special */ false, true);
-    tasks.reserve(tokenized_docs.size());
-    for (size_t i = 0; i < tokenized_docs.size(); i++) {
-      auto tmp = format_rerank(ctx_server.vocab, tokenized_queries[0],
-                               tokenized_docs[i]);
+    tasks.reserve(documents.size());
+    for (size_t i = 0; i < documents.size(); i++) {
+      auto tmp = format_rerank(ctx_server.model, ctx_server.vocab,
+                               ctx_server.mctx, query, documents[i]);
       server_task task = server_task(SERVER_TASK_TYPE_RERANK);
       task.id = ctx_server.queue_tasks.get_new_id();
       task.index = i;
