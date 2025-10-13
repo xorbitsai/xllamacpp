@@ -23,6 +23,7 @@ cdef extern from "ggml.h":
 
 
     cpdef enum:
+        GGML_ROPE_TYPE_NORMAL
         GGML_ROPE_TYPE_NEOX
         GGML_ROPE_TYPE_MROPE
         GGML_ROPE_TYPE_VISION
@@ -503,6 +504,7 @@ cdef extern from "common.h":
         bint check_tensors          # validate tensor data
         bint no_op_offload          # globally disable offload host tensor operations to device
         bint no_extra_bufts         # disable extra buffer types (used for weight repacking)
+        bint no_host                # bypass host buffer allowing extra buffers to be used
         bint single_turn            # single turn chat conversation
 
         ggml_type cache_type_k      # KV cache data type for the K
@@ -533,7 +535,8 @@ cdef extern from "common.h":
         int32_t timeout_write       # http write timeout in seconds
         int32_t n_threads_http      # number of threads to process HTTP requests (TODO: support threadpool)
         int32_t n_cache_reuse       # min chunk size to reuse from the cache via KV shifting
-        int32_t n_swa_checkpoints   # max number of SWA checkpoints per slot
+        int32_t n_ctx_checkpoints   # max number of context checkpoints per slot
+        int32_t cache_ram_mib       # -1 = no limit, 0 - disable, 1 = 1 MiB, etc.
 
         std_string hostname
         std_string public_path

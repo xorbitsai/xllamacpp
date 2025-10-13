@@ -164,6 +164,7 @@ def test_common_params():
     assert params.check_tensors is False
     assert params.no_op_offload is False
     assert params.no_extra_bufts is False
+    assert params.no_host is False
 
     assert params.cache_type_k == xlc.ggml_type.GGML_TYPE_F16
     assert params.cache_type_v == xlc.ggml_type.GGML_TYPE_F16
@@ -183,7 +184,8 @@ def test_common_params():
     assert params.timeout_write == 600
     assert params.n_threads_http == -1
     assert params.n_cache_reuse == 0
-    assert params.n_swa_checkpoints == 3
+    assert params.n_ctx_checkpoints == 8
+    assert params.cache_ram_mib == 8192
 
     assert params.hostname == "127.0.0.1"
     assert params.public_path == ""
@@ -195,7 +197,7 @@ def test_common_params():
     assert params.enable_chat_template is True
     assert (
         params.reasoning_format
-        == xlc.common_reasoning_format.COMMON_REASONING_FORMAT_AUTO
+        == xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK
     )
     assert params.prefill_assistant is True
 

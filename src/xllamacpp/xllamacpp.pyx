@@ -1605,6 +1605,15 @@ cdef class CommonParams:
         self.p.no_extra_bufts = value
 
     @property
+    def no_host(self) -> bool:
+        """bypass host buffer allowing extra buffers to be used"""
+        return self.p.no_host
+
+    @no_host.setter
+    def no_host(self, value: bool):
+        self.p.no_host = value
+
+    @property
     def single_turn(self) -> bool:
         """single turn chat conversation"""
         return self.p.single_turn
@@ -1762,13 +1771,22 @@ cdef class CommonParams:
         self.p.n_cache_reuse = value
 
     @property
-    def n_swa_checkpoints(self) -> int:
-        """max number of SWA checkpoints per slot"""
-        return self.p.n_swa_checkpoints
+    def n_ctx_checkpoints(self) -> int:
+        """max number of context checkpoints per slot"""
+        return self.p.n_ctx_checkpoints
 
-    @n_swa_checkpoints.setter
-    def n_swa_checkpoints(self, value: int):
-        self.p.n_swa_checkpoints = value
+    @n_ctx_checkpoints.setter
+    def n_ctx_checkpoints(self, value: int):
+        self.p.n_ctx_checkpoints = value
+
+    @property
+    def cache_ram_mib(self) -> int:
+        """-1 = no limit, 0 - disable, 1 = 1 MiB, etc."""
+        return self.p.cache_ram_mib
+
+    @cache_ram_mib.setter
+    def cache_ram_mib(self, value: int):
+        self.p.cache_ram_mib = value
 
     @property
     def hostname(self) -> str:
