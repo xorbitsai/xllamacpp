@@ -305,7 +305,7 @@ jobs:
     runs-on: windows-2022
     strategy:
       matrix:
-        pyver: ["3.9", "3.10", "3.11", "3.12"]
+        pyver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         cuda: ["12.4.1", "12.8.1"]
     defaults:
       run:
