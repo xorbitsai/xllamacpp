@@ -1,17 +1,17 @@
 name: Build Wheels (CUDA & HIP)
 
-on:
-  push:
-    tags:
-      - '*'
-  workflow_dispatch:
-
 # on:
 #   push:
-#     branches:
+#     tags:
 #       - '*'
-#   pull_request:
-#     types: ['opened', 'reopened', 'synchronize']
+#   workflow_dispatch:
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    types: ['opened', 'reopened', 'synchronize']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -22,6 +22,7 @@ permissions:
 
 jobs:
   build_wheels_hip_linux:
+    if: false
     name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
     runs-on: ubuntu-22.04
     strategy:
@@ -161,7 +162,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        pyver: ["3.9", "3.10", "3.11", "3.12"]
+        pyver: ["3.11"]  # ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - name: Clone
         id: checkout
@@ -214,6 +215,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_wheels_cuda_linux:
+    if: false
     name: Build Wheel CUDA Linux ${{ matrix.platform }} ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: ${{ matrix.platform }}
     strategy:
@@ -358,6 +360,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_wheels_cuda_windows:
+    if: false
     name: Build Wheel CUDA Windows ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: windows-2022
     strategy:
