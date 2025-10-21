@@ -56,7 +56,6 @@ build_llamacpp() {
     cmake_args+=(
       "-DGGML_NATIVE=OFF"
       "-DGGML_VULKAN=ON"
-      "-DGGML_CPU_ALL_VARIANTS=ON"
     )
     targets+=("ggml-vulkan")
   elif [[ -n "${XLLAMACPP_BUILD_AARCH64}" ]]; then
