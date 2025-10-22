@@ -188,7 +188,13 @@ jobs:
       - name: System Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install vulkan-sdk
+          # Download and install Vulkan SDK
+          curl -L -o vulkansdk-macos.dmg https://sdk.lunarg.com/sdk/download/latest/mac/vulkan-sdk.dmg
+          hdiutil attach vulkansdk-macos.dmg
+          sudo /Volumes/vulkansdk-macos/InstallVulkan.app/Contents/MacOS/InstallVulkan --root "~/VulkanSDK" --accept-licenses --default-answer --confirm-command install
+          hdiutil detach /Volumes/vulkansdk-macos
+          # Set environment variable for subsequent steps
+          echo "VULKAN_SDK=~/VulkanSDK/$(ls ~/VulkanSDK)" >> $GITHUB_ENV
 
       - name: Setup Python environment
         run: |
