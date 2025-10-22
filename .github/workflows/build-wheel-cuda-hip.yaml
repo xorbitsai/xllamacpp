@@ -157,11 +157,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
-  build_wheels_vulkan_linux:
-    name: Build Wheel Vulkan Linux ${{ matrix.pyver }}
-    runs-on: ubuntu-22.04
+  build_wheels_vulkan:
+    name: Build Wheel Vulkan ${{ matrix.os }} ${{ matrix.pyver }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: ["ubuntu-22.04", "macos-12"]
         pyver: ["3.11"]  # ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - name: Clone
@@ -176,41 +177,64 @@ jobs:
         with:
           python-version: ${{ matrix.pyver }}
 
-      - name: System Dependencies
+      - name: System Dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
           sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
           sudo apt-get update -y
           sudo apt-get install -y build-essential git cmake libcurl4-openssl-dev patchelf vulkan-sdk mesa-vulkan-drivers
 
+      - name: System Dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install vulkan-sdk
+
       - name: Setup Python environment
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build wheel auditwheel
+          python -m pip install build wheel
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            python -m pip install auditwheel
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            python -m pip install delocate
+          fi
           python -m pip install -r requirements.txt
 
-      - name: Build with Vulkan support
+      - name: Build and Repair Wheel
         env:
           XLLAMACPP_BUILD_VULKAN: "1"
           VERSIONEER_CLOSEST_TAG_ONLY: "1"
           VERBOSE: "1"
         run: |
-            python --version
+          python --version
+          if [ "${{ runner.os }}" == "Linux" ]; then
             gcc -v
-            printenv
-            git config --global --add safe.directory "*"
-            make
-            python -m build --wheel
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            clang -v
+          fi
+          printenv
+          git config --global --add safe.directory "*"
+          make
+          python -m build --wheel
+
+          if [ "${{ runner.os }}" == "Linux" ]; then
             auditwheel show dist/*.whl
             auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
             rm dist/*-linux_x86_64.whl
-            ls -alh dist
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            delocate-wheel -w dist/delocated_wheels -v dist/*.whl
+            # Optional: remove original wheel if delocate creates a new one
+            # and you only want the delocated one.
+            # rm dist/*-macosx_*.whl
+          fi
+          ls -alh dist
 
       - uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         with:
           files: dist/*
-          tag_name: ${{ github.ref_name }}-vulkan
+          tag_name: ${{ github.ref_name }}-vulkan-${{ matrix.os }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
