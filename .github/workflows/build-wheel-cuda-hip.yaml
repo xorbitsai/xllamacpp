@@ -189,12 +189,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           # Download and install Vulkan SDK
-          curl -L -o vulkansdk-macos.dmg https://sdk.lunarg.com/sdk/download/1.3.280.0/mac/vulkansdk-macos-1.3.280.0.dmg
-          hdiutil attach vulkansdk-macos.dmg
-          sudo /Volumes/vulkansdk-macos/InstallVulkan.app/Contents/MacOS/InstallVulkan --root "~/VulkanSDK" --accept-licenses --default-answer --confirm-command install
-          hdiutil detach /Volumes/vulkansdk-macos
-          # Set environment variable for subsequent steps
-          echo "VULKAN_SDK=~/VulkanSDK/$(ls ~/VulkanSDK)" >> $GITHUB_ENV
+          brew install vulkan-headers glslang molten-vk shaderc
 
       - name: Setup Python environment
         run: |
