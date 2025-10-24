@@ -189,7 +189,8 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           # Download and install Vulkan SDK
-          brew install vulkan-headers glslang molten-vk shaderc
+          brew install cmake libomp vulkan-headers glslang molten-vk shaderc vulkan-loader vulkan-tools
+          vulkaninfo
 
       - name: Setup Python environment
         run: |
