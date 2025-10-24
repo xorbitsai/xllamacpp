@@ -1,17 +1,17 @@
 name: Python CI
 
-# on:
-#   push:
-#     tags:
-#       - '*'
-#   workflow_dispatch:
-
 on:
   push:
-    branches:
+    tags:
       - '*'
-  pull_request:
-    types: ['opened', 'reopened', 'synchronize']
+  workflow_dispatch:
+
+# on:
+#   push:
+#     branches:
+#       - '*'
+#   pull_request:
+#     types: ['opened', 'reopened', 'synchronize']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

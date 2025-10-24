@@ -13,6 +13,7 @@ from Cython.Build import cythonize
 
 BUILD_CUDA = os.getenv("XLLAMACPP_BUILD_CUDA")
 BUILD_HIP = os.getenv("XLLAMACPP_BUILD_HIP")
+BUILD_VULKAN = os.getenv("XLLAMACPP_BUILD_VULKAN")
 NAME = "xllamacpp"
 # NAME = "xllamacpp-cuda12x" if BUILD_CUDA else "xllamacpp"
 CWD = os.path.dirname(os.path.abspath(__file__))
@@ -90,6 +91,12 @@ else:
         )
         LIBRARY_DIRS.extend(["/opt/rocm/lib"])
         LIBRARIES.extend(["amdhip64", "hipblas", "rocblas"])
+    if BUILD_VULKAN:
+        EXTRA_OBJECTS.extend(
+            [
+                f"{LLAMACPP_LIBS_DIR}/libggml-vulkan.a",
+            ]
+        )
 
 if PLATFORM == "Darwin":
     EXTRA_LINK_ARGS.append("-Wl,-rpath," + LLAMACPP_LIBS_DIR)
