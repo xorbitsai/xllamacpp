@@ -97,6 +97,7 @@ else:
                 f"{LLAMACPP_LIBS_DIR}/libggml-vulkan.a",
             ]
         )
+        LIBRARIES.extend(["vulkan"])
 
 if PLATFORM == "Darwin":
     EXTRA_LINK_ARGS.append("-Wl,-rpath," + LLAMACPP_LIBS_DIR)
