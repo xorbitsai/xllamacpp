@@ -225,10 +225,8 @@ jobs:
             auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
             rm dist/*-linux_x86_64.whl
           elif [ "${{ runner.os }}" == "macOS" ]; then
-            delocate-wheel -w dist/delocated_wheels -v dist/*.whl
-            # Optional: remove original wheel if delocate creates a new one
-            # and you only want the delocated one.
-            # rm dist/*-macosx_*.whl
+            # overwrite inplace
+            delocate-wheel -v dist/*.whl
           fi
           ls -alh dist
 
