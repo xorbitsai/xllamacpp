@@ -22,7 +22,6 @@ permissions:
 
 jobs:
   build_wheels_hip_linux:
-    if: false
     name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
     runs-on: ubuntu-22.04
     strategy:
@@ -245,7 +244,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_wheels_cuda_linux:
-    if: false
     name: Build Wheel CUDA Linux ${{ matrix.platform }} ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: ${{ matrix.platform }}
     strategy:
@@ -390,7 +388,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_wheels_cuda_windows:
-    if: false
     name: Build Wheel CUDA Windows ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: windows-2022
     strategy:
