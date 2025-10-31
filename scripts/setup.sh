@@ -51,6 +51,28 @@ build_llamacpp() {
       "-DGGML_HIP=ON"
     )
     targets+=("ggml-hip")
+  elif [[ -n "${XLLAMACPP_BUILD_VULKAN}" ]]; then
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      cmake_args+=("-DCMAKE_BUILD_RPATH=@loader_path")
+      if [[ "$(uname -m)" == "x86_64" ]]; then
+        echo "Building for Intel with Vulkan"
+        cmake_args+=(
+          "-DGGML_METAL=OFF"
+          "-DGGML_VULKAN=ON"
+        )
+        targets+=("ggml-blas" "ggml-vulkan")
+      else
+        echo "Building for Apple Silicon with Vulkan is not supported"
+        exit 1
+      fi
+    else
+      echo "Building with Vulkan"
+      cmake_args+=(
+        "-DGGML_NATIVE=OFF"
+        "-DGGML_VULKAN=ON"
+      )
+      targets+=("ggml-vulkan")
+    fi
   elif [[ -n "${XLLAMACPP_BUILD_AARCH64}" ]]; then
     echo "Building for aarch64"
     cmake_args+=(
