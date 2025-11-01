@@ -6,7 +6,6 @@ import pytest
 import json
 import orjson
 
-print(sys.path)
 import xllamacpp as xlc
 
 
@@ -19,6 +18,7 @@ def test_get_device_info():
     info = xlc.get_device_info()
     assert len(info) > 0
     assert "CPU" in [i["name"] for i in info]
+    print(info)
 
 
 def test_llama_server(model_path):
@@ -26,11 +26,14 @@ def test_llama_server(model_path):
 
     params.model.path = os.path.join(model_path, "Llama-3.2-1B-Instruct-Q8_0.gguf")
     params.prompt = "When did the universe begin?"
+    params.warmup = False
     params.n_predict = 32
-    params.n_ctx = 512
-    params.cpuparams.n_threads = 4
+    params.n_ctx = 256
+    params.n_parallel = 1
+    params.cpuparams.n_threads = 2
     params.cpuparams_batch.n_threads = 2
     params.endpoint_metrics = True
+    params.cache_ram_mib = 0
 
     server = xlc.Server(params)
 
