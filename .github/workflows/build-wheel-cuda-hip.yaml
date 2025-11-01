@@ -301,8 +301,6 @@ jobs:
           echo "Attempting to install CUDA ${{ matrix.cuda }}..."
           
           # Install using the cuda meta-package from the official channel
-
-          # Install CUDA, respecting the pin. Other dependencies can come from conda-forge.
           mamba install -y -c conda-forge 'cuda==${{ matrix.cuda }}'
           echo "Successfully installed CUDA ${{ matrix.cuda }}"
           
