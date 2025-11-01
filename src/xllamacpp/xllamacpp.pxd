@@ -27,6 +27,7 @@ cdef extern from "ggml.h":
         GGML_ROPE_TYPE_NEOX
         GGML_ROPE_TYPE_MROPE
         GGML_ROPE_TYPE_VISION
+        GGML_ROPE_TYPE_IMROPE
 
 
     cpdef enum ggml_sched_priority:
