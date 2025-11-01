@@ -301,7 +301,7 @@ jobs:
           echo "Attempting to install CUDA ${{ matrix.cuda }}..."
           
           # Install using the cuda meta-package from the official channel
-          mamba install -y 'cuda' -c nvidia/label/cuda-${{ matrix.cuda }}
+          mamba install -y -c conda-forge 'cuda==${{ matrix.cuda }}'
           echo "Successfully installed CUDA ${{ matrix.cuda }}"
           
           # Verify CONDA_PREFIX is set
