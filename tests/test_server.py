@@ -1,7 +1,6 @@
 import pprint
 import os
 import sys
-import requests
 import base64
 import pytest
 import json
@@ -165,15 +164,9 @@ def test_llama_server(model_path):
 
 
 def test_llama_server_multimodal(model_path):
-    IMG_URL_0 = (
-        "https://huggingface.co/ggml-org/tinygemma3-GGUF/resolve/main/test/11_truck.png"
-    )
-
-    response = requests.get(IMG_URL_0)
-    response.raise_for_status()  # Raise an exception for bad status codes
-    IMG_BASE64_0 = "data:image/png;base64," + base64.b64encode(response.content).decode(
-        "utf-8"
-    )
+    with open(os.path.join(os.path.dirname(__file__), "data/11_truck.png"), "rb") as f:
+        content = f.read()
+    IMG_BASE64_0 = "data:image/png;base64," + base64.b64encode(content).decode("utf-8")
 
     params = xlc.CommonParams()
 

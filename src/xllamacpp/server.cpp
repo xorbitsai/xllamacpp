@@ -4800,7 +4800,9 @@ static void init(common_params &params, server_context &ctx_server,
   ctx_server.queue_results.terminate();
   llama_backend_free();
   // crash during llama_memory_breakdown_print if the model is rerank.
-  // llama_memory_breakdown_print(ctx_server.ctx);
+  if (params.pooling_type != LLAMA_POOLING_TYPE_RANK) {
+    llama_memory_breakdown_print(ctx_server.ctx);
+  }
 }
 
 // handle metrics requests
