@@ -304,10 +304,10 @@ jobs:
           
           # Install using the cuda meta-package from the official channel
           # Pin cuda to the nvidia channel to prevent installation from conda-forge
-          echo "cuda >* * nvidia/label/cuda-${{ matrix.cuda }}" > $CONDA_PREFIX/conda-meta/pinned
+          # echo "cuda >* * nvidia/label/cuda-${{ matrix.cuda }}" > $CONDA_PREFIX/conda-meta/pinned
 
           # Install CUDA, respecting the pin. Other dependencies can come from conda-forge.
-          mamba install -y -c nvidia/label/cuda-${{ matrix.cuda }} -c conda-forge 'cuda'
+          mamba install -y -c nvidia/label/cuda-${{ matrix.cuda }} -c conda-forge 'cuda==${{ matrix.cuda }}'
           echo "Successfully installed CUDA ${{ matrix.cuda }}"
           
           # Verify CONDA_PREFIX is set
