@@ -58,6 +58,9 @@ if PLATFORM == "Windows":
     if BUILD_CUDA:
         LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "\\Lib\\x64"])
         LIBRARIES.extend(["ggml-cuda", "cudart", "cublas", "cublasLt", "cuda"])
+    if BUILD_VULKAN:
+        LIBRARY_DIRS.extend([os.getenv("VULKAN_SDK", "") + "\\Lib"])
+        LIBRARIES.extend(["ggml-vulkan", "vulkan-1"])
 else:
     LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(

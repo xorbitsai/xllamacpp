@@ -161,8 +161,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["ubuntu-22.04", "macos-15-intel"]
+        os: ["ubuntu-22.04", "macos-15-intel", "windows-2022"]
         pyver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        vulkan: ["1.4.313.2"]
+    env:
+      VULKAN_VERSION: ${{ matrix.vulkan }}
     steps:
       - name: Clone
         id: checkout
@@ -184,6 +187,17 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y build-essential git cmake libcurl4-openssl-dev patchelf vulkan-sdk mesa-vulkan-drivers
 
+      - name: System Dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+           curl -L https://github.com/skeeto/w64devkit/releases/download/v1.22.0/w64devkit-1.22.0.zip --output w64devkit.zip
+           unzip -q w64devkit.zip -d .
+           echo "$(pwd)/w64devkit/bin" >> $GITHUB_PATH
+           curl.exe -o $env:RUNNER_TEMP/VulkanSDK-Installer.exe -L "https://sdk.lunarg.com/sdk/download/${env:VULKAN_VERSION}/windows/vulkansdk-windows-X64-${env:VULKAN_VERSION}.exe"
+           & "$env:RUNNER_TEMP\VulkanSDK-Installer.exe" --accept-licenses --default-answer --confirm-command install
+           Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\${env:VULKAN_VERSION}"
+           Add-Content $env:GITHUB_PATH "C:\VulkanSDK\${env:VULKAN_VERSION}\bin"
+
       - name: System Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -195,39 +209,51 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build wheel
-          if [ "${{ runner.os }}" == "Linux" ]; then
-            python -m pip install auditwheel
-          elif [ "${{ runner.os }}" == "macOS" ]; then
-            python -m pip install delocate
-          fi
           python -m pip install -r requirements.txt
 
-      - name: Build and Repair Wheel
+      - name: Install wheel repair tools (Linux)
+        if: runner.os == 'Linux'
+        run: python -m pip install auditwheel
+
+      - name: Install wheel repair tools (macOS)
+        if: runner.os == 'macOS'
+        run: python -m pip install delocate
+
+      - name: Install wheel repair tools (Windows)
+        if: runner.os == 'Windows'
+        run: python -m pip install delvewheel
+
+      - name: Build Wheel
         env:
           XLLAMACPP_BUILD_VULKAN: "1"
           VERSIONEER_CLOSEST_TAG_ONLY: "1"
           VERBOSE: "1"
         run: |
           python --version
-          if [ "${{ runner.os }}" == "Linux" ]; then
-            gcc -v
-          elif [ "${{ runner.os }}" == "macOS" ]; then
-            clang -v
-          fi
           printenv
           git config --global --add safe.directory "*"
           make
           python -m build --wheel
 
-          if [ "${{ runner.os }}" == "Linux" ]; then
-            auditwheel show dist/*.whl
-            auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
-            rm dist/*-linux_x86_64.whl
-          elif [ "${{ runner.os }}" == "macOS" ]; then
-            # overwrite inplace
-            delocate-wheel -v dist/*.whl
-          fi
+      - name: Repair Wheel (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          auditwheel show dist/*.whl
+          auditwheel repair --plat manylinux_2_35_x86_64 dist/*.whl -w dist
+          rm dist/*-linux_x86_64.whl
           ls -alh dist
+
+      - name: Repair Wheel (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          delocate-wheel -v dist/*.whl
+          ls -alh dist
+
+      - name: Repair Wheel (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          python -m delvewheel repair dist/*.whl -w dist
+          dir dist
 
       # - uses: actions/upload-artifact@v4
       #   with:
