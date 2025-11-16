@@ -7,10 +7,11 @@ authors = [
     { name = "codingl2k1", email = "codingl2k1@outlook.com" }
 ]
 requires-python = ">3.8"
-dependencies = ["gguf", "orjson"]
+dependencies = []
 
 [project.optional-dependencies]
 test = ['pytest', 'pytest-cov']
+all = ['gguf', 'orjson']
 
 [build-system]
 requires = ["setuptools >= 61", "cython", "versioneer[toml]"]

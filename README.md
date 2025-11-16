@@ -104,6 +104,11 @@ Before pip installing `xllamacpp`, please ensure your system meets the following
   - Requires gcc 10 or later (ROCm libraries have this dependency)
   - Compatible AMD GPU with ROCm support (ROCm 6.3.4 or 6.4.1)
 
+- **Vulkan (Linux/Windows, Intel/AMD/NVIDIA where supported)**:
+  - Install the Vulkan SDK and GPU drivers with Vulkan support
+  - Linux users may need distro packages and the LunarG SDK
+  - macOS Intel is supported via Vulkan; Apple Silicon Vulkan is not supported in this project
+
 ## Install
 
 **Note on Performance and Compatibility**
@@ -122,25 +127,31 @@ pip install -U xllamacpp
 
   - CUDA 12.4
     ```sh
-    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu124 --extra-index-url https://pypi.org/simple
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu124
     ```
 
   - CUDA 12.8
     ```sh
-    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://pypi.org/simple
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128
     ```
 
 - From github pypi for `HIP` AMD GPU (use `--force-reinstall` to replace the installed CPU version):
 
   - ROCm 6.3.4
     ```sh
-    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4 --extra-index-url https://pypi.org/simple
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4
     ```
 
   - ROCm 6.4.1
     ```sh
-    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1 --extra-index-url https://pypi.org/simple
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1
     ```
+
+- From github pypi for `Vulkan` (use `--force-reinstall` to replace the installed CPU version):
+
+  ```sh
+  pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan
+  ```
 
 ## Build from Source
 
@@ -174,6 +185,13 @@ pip install -U xllamacpp
   
   Or you can try to build inside the [ROCm docker container](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/docker.html).
 
+- Vulkan
+
+  Install the Vulkan SDK and drivers for your platform.
+  - Linux: use your distro packages and/or the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home).
+  - Windows: install [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home) and vendor GPU drivers.
+  - macOS: Intel only; Apple Silicon is not supported for Vulkan in this project.
+
 ### Build `xllamacpp`
 
 1. A recent version of `python3` (testing on python 3.12)
@@ -193,7 +211,36 @@ pip install -U xllamacpp
  pip install -r requirements.txt
  ```
 
-4. Type `CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS" make` in the terminal to build xllamacpp with GGML_BLAS=ON.
+4. Select backend via environment and build. Examples:
+
+   - CPU (default):
+     ```sh
+     make
+     ```
+
+   - CUDA:
+     ```sh
+     export XLLAMACPP_BUILD_CUDA=1
+     make
+     ```
+
+   - HIP (AMD):
+     ```sh
+     export XLLAMACPP_BUILD_HIP=1
+     make
+     ```
+
+   - Vulkan:
+     ```sh
+     export XLLAMACPP_BUILD_VULKAN=1
+     make
+     ```
+
+   - Enable BLAS (optional):
+     ```sh
+     export CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"
+     make
+     ```
 
 ## Testing
 

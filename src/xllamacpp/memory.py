@@ -15,13 +15,27 @@
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
-from gguf import GGUFReader, GGUFValueType  # noqa: E402
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from gguf import GGUFReader, GGUFValueType  # type: ignore
+
+
+def _import_gguf():
+    try:
+        from gguf import GGUFReader, GGUFValueType  # type: ignore
+
+        return GGUFReader, GGUFValueType
+    except Exception as e:
+        raise RuntimeError(
+            "Optional dependency 'gguf' is required for xllamacpp.memory. Install it with `pip install gguf`."
+        ) from e
+
 
 logger = logging.getLogger(__name__)
 
 
-def get_file_host_endian(reader: GGUFReader) -> tuple[str, str]:
+def get_file_host_endian(reader: "GGUFReader") -> tuple[str, str]:
     file_endian = reader.endianess.name  # codespell:ignore
     if reader.byte_order == "S":
         host_endian = "BIG" if file_endian == "LITTLE" else "LITTLE"
@@ -30,7 +44,8 @@ def get_file_host_endian(reader: GGUFReader) -> tuple[str, str]:
     return host_endian, file_endian
 
 
-def dump_metadata_json(reader: GGUFReader, model_path: str) -> dict:
+def dump_metadata_json(reader: "GGUFReader", model_path: str) -> dict:
+    _, GGUFValueType = _import_gguf()
     host_endian, file_endian = get_file_host_endian(reader)
     metadata: dict[str, Any] = {}
     tensors: dict[str, Any] = {}
@@ -278,6 +293,7 @@ def graph_size(
 
 
 def projector_memory_requirements(projector: str):
+    GGUFReader, _ = _import_gguf()
     reader = GGUFReader(projector, "r")
     data = dump_metadata_json(reader, projector)
     return sum(t["n_bytes"] for t in data["tensors"].values())
@@ -300,6 +316,7 @@ def estimate_gpu_layers(
     if projector_weights > 0:
         # Multimodal models require at least 2048 context
         context_length = max(context_length, 2048)
+    GGUFReader, _ = _import_gguf()
     reader = GGUFReader(model_path, "r")
     data = dump_metadata_json(reader, model_path)
     metadata = data["metadata"]
