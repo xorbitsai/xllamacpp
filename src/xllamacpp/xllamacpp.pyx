@@ -17,7 +17,10 @@ from cpython.unicode cimport PyUnicode_FromStringAndSize
 from cpython.bytes cimport PyBytes_FromStringAndSize
 
 cimport xllamacpp
-import orjson as json
+try:
+    import orjson as json
+except Exception:
+    import json
 from server cimport CServer, c_get_device_info, c_get_system_info, c_parse_tensor_buffer_overrides, c_build_tensor_buffer_overrides
 
 
