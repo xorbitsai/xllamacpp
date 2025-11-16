@@ -54,6 +54,11 @@ cat << EOF > "$output_dir/xllamacpp/index.html"
     <h1>Links for xllamacpp</h1>
 EOF
 
+# Temporary aggregation directory for per-version links
+tmp_dir="$output_dir/.tmp_xllamacpp_links"
+rm -rf "$tmp_dir"
+mkdir -p "$tmp_dir"
+
 # Filter releases by pattern
 releases=$(grep -E "$pattern" "$current_dir/all_releases.txt")
 
@@ -83,7 +88,12 @@ for release in $releases; do
 
     # Get release version from release ie v0.1.0-cu121 -> v0.1.0
     release_version=$(echo "$release" | grep -oE "^[v]?[0-9]+\.[0-9]+\.[0-9]+")
-    echo "    <h2>$release_version</h2>" >> "$output_dir/xllamacpp/index.html"
+    # Track first-seen order of versions
+    if [ ! -f "$tmp_dir/.${release_version}.seen" ]; then
+        echo "$release_version" >> "$tmp_dir/order.txt"
+        : > "$tmp_dir/${release_version}.html"
+        touch "$tmp_dir/.${release_version}.seen"
+    fi
     
     wheel_urls=$(echo "$response" | jq -r '.assets[] | select(.name | endswith(".whl")) | .browser_download_url')
     if [ -z "$wheel_urls" ]; then
@@ -92,13 +102,23 @@ for release in $releases; do
     fi
 
     echo "$wheel_urls" | while read -r asset; do
-        echo "    <a href=\"$asset\">$asset</a>" >> "$output_dir/xllamacpp/index.html"
-        echo "    <br>" >> "$output_dir/xllamacpp/index.html"
+        echo "    <a href=\"$asset\">$asset</a>" >> "$tmp_dir/${release_version}.html"
+        echo "    <br>" >> "$tmp_dir/${release_version}.html"
     done
 done
 
+if [ -f "$tmp_dir/order.txt" ]; then
+    while IFS= read -r ver; do
+        echo "    <h2>$ver</h2>" >> "$output_dir/xllamacpp/index.html"
+        cat "$tmp_dir/${ver}.html" >> "$output_dir/xllamacpp/index.html"
+    done < "$tmp_dir/order.txt"
+fi
+
+# Close HTML and clean up
 echo "  </body>" >> "$output_dir/xllamacpp/index.html"
 echo "</html>" >> "$output_dir/xllamacpp/index.html"
 echo "" >> "$output_dir/xllamacpp/index.html"
+
+rm -rf "$tmp_dir"
 
 log_info "Index generation complete. Output directory: $output_dir"
