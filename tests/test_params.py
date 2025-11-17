@@ -173,6 +173,8 @@ def test_common_params():
     assert params.mmproj_use_gpu is True
     assert params.no_mmproj is False
     assert params.image == []
+    assert params.image_min_tokens == -1
+    assert params.image_max_tokens == -1
 
     assert params.embedding is False
     assert params.embd_normalize == 2
@@ -220,6 +222,7 @@ def test_common_params():
     assert params.slot_prompt_similarity == approx(0.1)
 
     assert params.is_pp_shared is False
+    assert params.is_tg_separate is False
 
     assert params.n_pp == []
     assert params.n_tg == []

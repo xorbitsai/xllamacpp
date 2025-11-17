@@ -1684,6 +1684,22 @@ cdef class CommonParams:
             self.p.image.push_back(i)
 
     @property
+    def image_min_tokens(self) -> int:
+        return self.p.image_min_tokens
+
+    @image_min_tokens.setter
+    def image_min_tokens(self, value: int):
+        self.p.image_min_tokens = value
+
+    @property
+    def image_max_tokens(self) -> int:
+        return self.p.image_max_tokens
+
+    @image_max_tokens.setter
+    def image_max_tokens(self, value: int):
+        self.p.image_max_tokens = value
+
+    @property
     def embedding(self) -> bool:
         """get only sentence embedding"""
         return self.p.embedding
@@ -1979,6 +1995,15 @@ cdef class CommonParams:
     @is_pp_shared.setter
     def is_pp_shared(self, value: bool):
         self.p.is_pp_shared = value
+
+    @property
+    def is_tg_separate(self) -> bool:
+        """batched-bench params"""
+        return self.p.is_tg_separate
+
+    @is_tg_separate.setter
+    def is_tg_separate(self, value: bool):
+        self.p.is_tg_separate = value
 
     @property
     def n_pp(self) -> list[int]:
