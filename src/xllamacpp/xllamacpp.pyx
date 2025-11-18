@@ -9,6 +9,7 @@
 xllamacpp: a thin cython wrapper of llama.cpp
 """
 from libc.stdint cimport int32_t, uint32_t, int8_t
+from libcpp cimport bool as c_bool
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.memory cimport shared_ptr, make_shared
@@ -2195,7 +2196,7 @@ def get_device_info():
     return c_get_device_info()
 
 
-cdef void callback_wrapper_dict(string &&data, void *py_cb) noexcept nogil:
+cdef c_bool callback_wrapper_dict(string &&data, void *py_cb) noexcept nogil:
     with gil:
         try:
             parsed = json.loads(data)
@@ -2205,21 +2206,23 @@ cdef void callback_wrapper_dict(string &&data, void *py_cb) noexcept nogil:
                 "type": "server_error",
                 "message": str(e),
             }
-        (<object>py_cb)(parsed)
+            return True
+        return (<object>py_cb)(parsed)
 
 
-cdef void callback_wrapper_str(string &&data, void *py_cb) noexcept nogil:
+cdef c_bool callback_wrapper_str(string &&data, void *py_cb) noexcept nogil:
     with gil:
-        (<object>py_cb)(PyUnicode_FromStringAndSize(data.c_str(), data.size()))
+        return (<object>py_cb)(PyUnicode_FromStringAndSize(data.c_str(), data.size()))
 
 
-cdef void callback_wrapper_bytes(string &&data, void *py_cb) noexcept nogil:
+cdef c_bool callback_wrapper_bytes(string &&data, void *py_cb) noexcept nogil:
     with gil:
-        (<object>py_cb)(PyBytes_FromStringAndSize(data.c_str(), data.size()))
+        return (<object>py_cb)(PyBytes_FromStringAndSize(data.c_str(), data.size()))
 
 
-cdef void no_callback_wrapper(string &&data, void *target) noexcept nogil:
+cdef c_bool no_callback_wrapper(string &&data, void *target) noexcept nogil:
     (<string*>target).swap(data)
+    return False
 
 
 ctypedef fused json_dict_or_str:

@@ -12,7 +12,7 @@ std::string get_system_info();
 
 std::vector<ggml_backend_dev_props> get_device_info();
 
-typedef void (*Callback)(std::string &&, void *py_cb);
+typedef bool (*Callback)(std::string &&, void *py_cb);
 
 class Server {
 public:

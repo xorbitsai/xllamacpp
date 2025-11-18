@@ -4990,8 +4990,8 @@ handle_metrics_impl(server_context &ctx_server,
 static void handle_completions_impl(server_context &ctx_server,
                                     server_task_type type, const json &data,
                                     const std::vector<raw_buffer> &files,
-                                    std::function<void(const json &)> res_err,
-                                    std::function<void(const json &)> res_ok,
+                                    std::function<bool(const json &)> res_err,
+                                    std::function<bool(const json &)> res_ok,
                                     oaicompat_type oaicompat) {
   GGML_ASSERT(type == SERVER_TASK_TYPE_COMPLETION ||
               type == SERVER_TASK_TYPE_INFILL);
@@ -5054,11 +5054,11 @@ static void handle_completions_impl(server_context &ctx_server,
 
   if (!stream) {
     // non-stream, wait for the results
-    auto all_results = rd->wait_for_all(is_connection_closed);
+    auto all_results = rd->wait_for_all([] { return false; });
     if (all_results.is_terminated) {
       return; // connection is closed
     } else if (all_results.error) {
-      res_err(res, all_results.error->to_json());
+      res_err(all_results.error->to_json());
       return;
     } else {
       json arr = json::array();
@@ -5076,7 +5076,7 @@ static void handle_completions_impl(server_context &ctx_server,
     // this is to match the OAI API behavior
     // ref:
     // https://github.com/ggml-org/llama.cpp/pull/16486#discussion_r2419657309
-    server_task_result_ptr first_result = rd->next(is_connection_closed);
+    server_task_result_ptr first_result = rd->next([] { return false; });
     if (first_result == nullptr) {
       return; // connection is closed
     } else if (first_result->is_error()) {
@@ -5091,63 +5091,45 @@ static void handle_completions_impl(server_context &ctx_server,
 
     // next responses are streamed
     json first_result_json = first_result->to_json();
-    const auto chunked_content_provider =
-        [first_result_json, rd,
-         oaicompat](size_t, httplib::DataSink &sink) mutable -> bool {
+    auto chunked_content_provider = [first_result_json, rd, res_err,
+                                     res_ok]() mutable -> bool {
       // flush the first result as it's not an error
       if (!first_result_json.empty()) {
-        if (!server_sent_event(sink, first_result_json)) {
-          sink.done();
-          return false; // sending failed, go to on_complete()
+        if (res_ok(first_result_json)) {
+          return false;
         }
         first_result_json.clear(); // mark as sent
       }
 
       // receive subsequent results
-      auto result = rd->next([&sink] { return !sink.is_writable(); });
+      auto result = rd->next([] { return false; });
       if (result == nullptr) {
-        sink.done();
         return false; // connection is closed, go to on_complete()
       }
 
       // send the results
       json res_json = result->to_json();
-      bool ok = false;
       if (result->is_error()) {
-        ok = server_sent_event(sink, json{{"error", result->to_json()}});
-        sink.done();
+        res_err(json{{"error", result->to_json()}});
         return false; // go to on_complete()
       } else {
         GGML_ASSERT(dynamic_cast<server_task_result_cmpl_partial *>(
                         result.get()) != nullptr ||
                     dynamic_cast<server_task_result_cmpl_final *>(
                         result.get()) != nullptr);
-        ok = server_sent_event(sink, res_json);
-      }
-
-      if (!ok) {
-        sink.done();
-        return false; // sending failed, go to on_complete()
-      }
-
-      // check if there is more data
-      if (!rd->has_next()) {
-        if (oaicompat != OAICOMPAT_TYPE_NONE) {
-          static const std::string ev_done = "data: [DONE]\n\n";
-          sink.write(ev_done.data(), ev_done.size());
+        if (res_ok(res_json)) {
+          return false;
         }
-        sink.done();
-        return false; // no more data, go to on_complete()
       }
 
       // has next data, continue
       return true;
     };
 
-    auto on_complete = [rd](bool) { rd->stop(); };
+    while (chunked_content_provider())
+      ;
 
-    res.set_chunked_content_provider("text/event-stream",
-                                     chunked_content_provider, on_complete);
+    rd->stop();
   }
 };
 
@@ -5241,7 +5223,7 @@ static void handle_embeddings_impl(server_context &ctx_server, const json &data,
   }
 
   // wait for the results
-  auto all_results = rd.wait_for_all(req.is_connection_closed);
+  auto all_results = rd.wait_for_all([] { return false; });
 
   // collect results
   if (all_results.is_terminated) {
@@ -5325,7 +5307,7 @@ static void handle_rerank_impl(server_context &ctx_server, const json &data,
   }
 
   // wait for the results
-  auto all_results = rd.wait_for_all(req.is_connection_closed);
+  auto all_results = rd.wait_for_all([] { return false; });
 
   // collect results
   if (all_results.is_terminated) {
@@ -5469,8 +5451,12 @@ void Server::handle_completions(const std::string &prompt_json_str,
   json data = oaicompat_completion_params_parse(json::parse(prompt_json_str));
   handle_completions_impl(
       *_ctx_server, SERVER_TASK_TYPE_COMPLETION, data, files,
-      [res_err, py_cb_err](const json &err) { res_err(err.dump(), py_cb_err); },
-      [res_ok, py_cb_ok](const json &ok) { res_ok(ok.dump(), py_cb_ok); },
+      [res_err, py_cb_err](const json &err) {
+        return res_err(err.dump(), py_cb_err);
+      },
+      [res_ok, py_cb_ok](const json &ok) {
+        return res_ok(ok.dump(), py_cb_ok);
+      },
       OAICOMPAT_TYPE_COMPLETION);
 }
 
@@ -5483,8 +5469,12 @@ void Server::handle_chat_completions(const std::string &prompt_json_str,
       oaicompat_chat_params_parse(body, _ctx_server->oai_parser_opt, files);
   handle_completions_impl(
       *_ctx_server, SERVER_TASK_TYPE_COMPLETION, data, files,
-      [res_err, py_cb_err](const json &err) { res_err(err.dump(), py_cb_err); },
-      [res_ok, py_cb_ok](const json &ok) { res_ok(ok.dump(), py_cb_ok); },
+      [res_err, py_cb_err](const json &err) {
+        return res_err(err.dump(), py_cb_err);
+      },
+      [res_ok, py_cb_ok](const json &ok) {
+        return res_ok(ok.dump(), py_cb_ok);
+      },
       OAICOMPAT_TYPE_CHAT);
 }
 

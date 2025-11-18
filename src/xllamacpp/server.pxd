@@ -1,6 +1,7 @@
 # distutils: language=c++
 
 from xllamacpp.xllamacpp cimport common_params, ggml_backend_dev_props, llama_model_tensor_buft_override
+from libcpp cimport bool as c_bool
 from libcpp.string cimport string as std_string
 from libcpp.vector cimport vector as std_vector
 
@@ -9,7 +10,7 @@ cdef extern from "server.h" namespace "xllamacpp" nogil:
 
     std_vector[ggml_backend_dev_props] c_get_device_info "xllamacpp::get_device_info" ()
 
-    ctypedef void (*Callback "xllamacpp::Callback")(std_string &&, void *py_cb)
+    ctypedef c_bool (*Callback "xllamacpp::Callback")(std_string &&, void *py_cb)
     cdef cppclass CServer "xllamacpp::Server":
 
         CServer(const common_params& params) except +
