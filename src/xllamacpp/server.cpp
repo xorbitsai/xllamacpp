@@ -5122,6 +5122,10 @@ static void handle_completions_impl(server_context &ctx_server,
         }
       }
 
+      if (!rd->has_next()) {
+        return false;
+      }
+
       // has next data, continue
       return true;
     };
