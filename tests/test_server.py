@@ -166,6 +166,81 @@ def test_llama_server(model_path):
     assert "llamacpp:prompt_seconds_total" in result
 
 
+def test_llama_server_stream_callback_stop(model_path):
+    params = xlc.CommonParams()
+
+    params.model.path = os.path.join(model_path, "Llama-3.2-1B-Instruct-Q8_0.gguf")
+    params.prompt = "When did the universe begin?"
+    params.warmup = False
+    params.n_predict = 64
+    params.n_ctx = 256
+    params.n_parallel = 1
+    params.cpuparams.n_threads = 2
+    params.cpuparams_batch.n_threads = 2
+
+    server = xlc.Server(params)
+
+    # Test handle_completions streaming stop via callback return value
+    complete_prompt = {
+        "max_tokens": 128,
+        "prompt": "Write a long story about the history of the universe.",
+        "stream": True,
+    }
+
+    all_chunks = 0
+
+    def _cb_all(v):
+        nonlocal all_chunks
+        all_chunks += 1
+
+    stop_chunks = 0
+
+    def _cb_stop(v):
+        nonlocal stop_chunks
+        stop_chunks += 1
+        return True
+
+    server.handle_completions(complete_prompt, _cb_all)
+    assert all_chunks >= 1
+
+    server.handle_completions(complete_prompt, _cb_stop)
+    assert stop_chunks == 1
+    assert all_chunks > stop_chunks
+
+    # Test handle_chat_completions streaming stop via callback return value
+    chat_complete_prompt = {
+        "max_tokens": 128,
+        "messages": [
+            {"role": "system", "content": "You are a coding assistant."},
+            {
+                "role": "user",
+                "content": "Tell me in detail about the history of programming languages.",
+            },
+        ],
+        "stream": True,
+    }
+
+    chat_all_chunks = 0
+
+    def _chat_cb_all(v):
+        nonlocal chat_all_chunks
+        chat_all_chunks += 1
+
+    chat_stop_chunks = 0
+
+    def _chat_cb_stop(v):
+        nonlocal chat_stop_chunks
+        chat_stop_chunks += 1
+        return True
+
+    server.handle_chat_completions(chat_complete_prompt, _chat_cb_all)
+    assert chat_all_chunks >= 1
+
+    server.handle_chat_completions(chat_complete_prompt, _chat_cb_stop)
+    assert chat_stop_chunks == 1
+    assert chat_all_chunks > chat_stop_chunks
+
+
 def test_llama_server_multimodal(model_path):
     with open(os.path.join(os.path.dirname(__file__), "data/11_truck.png"), "rb") as f:
         content = f.read()

@@ -2207,17 +2207,41 @@ cdef c_bool callback_wrapper_dict(string &&data, void *py_cb) noexcept nogil:
                 "message": str(e),
             }
             return True
-        return (<object>py_cb)(parsed)
+        try:
+            return (<object>py_cb)(parsed)
+        except Exception as e:
+            parsed = {
+                "code": 500,
+                "type": "server_error",
+                "message": str(e),
+            }
+            return True
 
 
 cdef c_bool callback_wrapper_str(string &&data, void *py_cb) noexcept nogil:
     with gil:
-        return (<object>py_cb)(PyUnicode_FromStringAndSize(data.c_str(), data.size()))
+        try:
+            return (<object>py_cb)(PyUnicode_FromStringAndSize(data.c_str(), data.size()))
+        except Exception as e:
+            parsed = {
+                "code": 500,
+                "type": "server_error",
+                "message": str(e),
+            }
+            return True
 
 
 cdef c_bool callback_wrapper_bytes(string &&data, void *py_cb) noexcept nogil:
     with gil:
-        return (<object>py_cb)(PyBytes_FromStringAndSize(data.c_str(), data.size()))
+        try:
+            return (<object>py_cb)(PyBytes_FromStringAndSize(data.c_str(), data.size()))
+        except Exception as e:
+            parsed = {
+                "code": 500,
+                "type": "server_error",
+                "message": str(e),
+            }
+            return True
 
 
 cdef c_bool no_callback_wrapper(string &&data, void *target) noexcept nogil:
