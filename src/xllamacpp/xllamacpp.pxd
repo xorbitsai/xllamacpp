@@ -519,6 +519,8 @@ cdef extern from "common.h":
         bint no_mmproj              # explicitly disable multimodal model
 
         std_vector[std_string] image # path to image file(s)
+        int32_t image_min_tokens
+        int32_t image_max_tokens
 
         # finetune
         # We do not need to export finetune fields to Python
@@ -570,6 +572,7 @@ cdef extern from "common.h":
 
         # batched-bench params
         bint is_pp_shared
+        bint is_tg_separate
 
         std_vector[int32_t] n_pp
         std_vector[int32_t] n_tg

@@ -9,6 +9,7 @@
 xllamacpp: a thin cython wrapper of llama.cpp
 """
 from libc.stdint cimport int32_t, uint32_t, int8_t
+from libcpp cimport bool as c_bool
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.memory cimport shared_ptr, make_shared
@@ -1684,6 +1685,22 @@ cdef class CommonParams:
             self.p.image.push_back(i)
 
     @property
+    def image_min_tokens(self) -> int:
+        return self.p.image_min_tokens
+
+    @image_min_tokens.setter
+    def image_min_tokens(self, value: int):
+        self.p.image_min_tokens = value
+
+    @property
+    def image_max_tokens(self) -> int:
+        return self.p.image_max_tokens
+
+    @image_max_tokens.setter
+    def image_max_tokens(self, value: int):
+        self.p.image_max_tokens = value
+
+    @property
     def embedding(self) -> bool:
         """get only sentence embedding"""
         return self.p.embedding
@@ -1981,6 +1998,15 @@ cdef class CommonParams:
         self.p.is_pp_shared = value
 
     @property
+    def is_tg_separate(self) -> bool:
+        """batched-bench params"""
+        return self.p.is_tg_separate
+
+    @is_tg_separate.setter
+    def is_tg_separate(self, value: bool):
+        self.p.is_tg_separate = value
+
+    @property
     def n_pp(self) -> list[int]:
         return self.p.n_pp
 
@@ -2170,7 +2196,7 @@ def get_device_info():
     return c_get_device_info()
 
 
-cdef void callback_wrapper_dict(string &&data, void *py_cb) noexcept nogil:
+cdef c_bool callback_wrapper_dict(string &&data, void *py_cb) noexcept nogil:
     with gil:
         try:
             parsed = json.loads(data)
@@ -2180,21 +2206,47 @@ cdef void callback_wrapper_dict(string &&data, void *py_cb) noexcept nogil:
                 "type": "server_error",
                 "message": str(e),
             }
-        (<object>py_cb)(parsed)
+            return True
+        try:
+            return (<object>py_cb)(parsed)
+        except Exception as e:
+            parsed = {
+                "code": 500,
+                "type": "server_error",
+                "message": str(e),
+            }
+            return True
 
 
-cdef void callback_wrapper_str(string &&data, void *py_cb) noexcept nogil:
+cdef c_bool callback_wrapper_str(string &&data, void *py_cb) noexcept nogil:
     with gil:
-        (<object>py_cb)(PyUnicode_FromStringAndSize(data.c_str(), data.size()))
+        try:
+            return (<object>py_cb)(PyUnicode_FromStringAndSize(data.c_str(), data.size()))
+        except Exception as e:
+            parsed = {
+                "code": 500,
+                "type": "server_error",
+                "message": str(e),
+            }
+            return True
 
 
-cdef void callback_wrapper_bytes(string &&data, void *py_cb) noexcept nogil:
+cdef c_bool callback_wrapper_bytes(string &&data, void *py_cb) noexcept nogil:
     with gil:
-        (<object>py_cb)(PyBytes_FromStringAndSize(data.c_str(), data.size()))
+        try:
+            return (<object>py_cb)(PyBytes_FromStringAndSize(data.c_str(), data.size()))
+        except Exception as e:
+            parsed = {
+                "code": 500,
+                "type": "server_error",
+                "message": str(e),
+            }
+            return True
 
 
-cdef void no_callback_wrapper(string &&data, void *target) noexcept nogil:
+cdef c_bool no_callback_wrapper(string &&data, void *target) noexcept nogil:
     (<string*>target).swap(data)
+    return False
 
 
 ctypedef fused json_dict_or_str:

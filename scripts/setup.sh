@@ -30,7 +30,7 @@ build_llamacpp() {
   fi
 
   # Build targets
-  local targets=("common" "llama" "ggml" "ggml-cpu" "mtmd")
+  local targets=("common" "llama" "ggml" "ggml-cpu" "mtmd" "cpp-httplib")
   
   if [[ -n "${XLLAMACPP_BUILD_CUDA}" ]]; then
     echo "Building for CUDA"
