@@ -314,3 +314,20 @@ def test_common_params():
     # assert params.batched_bench_output_jsonl is False
 
     # ... rest not yet implemented
+
+
+def test_json_schema_to_grammar():
+    schema = {
+        "type": "object",
+        "properties": {
+            "answer": {"type": "string"},
+            "score": {"type": "number"},
+        },
+        "required": ["answer"],
+    }
+    grammar = xlc.json_schema_to_grammar(schema)
+    assert isinstance(grammar, str)
+    assert grammar.strip()
+
+    with pytest.raises(ValueError):
+        xlc.json_schema_to_grammar("{not json}")

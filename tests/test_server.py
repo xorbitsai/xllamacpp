@@ -241,6 +241,57 @@ def test_llama_server_stream_callback_stop(model_path):
     assert chat_all_chunks > chat_stop_chunks
 
 
+def test_llama_server_chat_with_grammar(model_path):
+    schema = {
+        "type": "object",
+        "properties": {
+            "answer": {"type": "string"},
+            "score": {"type": "number"},
+        },
+        "required": ["answer"],
+    }
+    grammar = xlc.json_schema_to_grammar(schema)
+
+    params = xlc.CommonParams()
+
+    params.model.path = os.path.join(model_path, "Llama-3.2-1B-Instruct-Q8_0.gguf")
+    params.warmup = False
+    params.n_predict = 64
+    params.n_ctx = 256
+    params.cpuparams.n_threads = 2
+    params.cpuparams_batch.n_threads = 2
+    params.sampling.temp = 0
+    params.sampling.top_k = 1
+    params.sampling.grammar = grammar
+
+    server = xlc.Server(params)
+
+    chat_complete_prompt = {
+        "max_tokens": 64,
+        "messages": [
+            {
+                "role": "system",
+                "content": "Respond with a JSON object matching the provided schema.",
+            },
+            {
+                "role": "user",
+                "content": "Provide an answer string and an optional numeric score.",
+            },
+        ],
+    }
+
+    result = server.handle_chat_completions(chat_complete_prompt)
+
+    assert isinstance(result, dict)
+    content = result["choices"][0]["message"]["content"]
+    parsed = json.loads(content)
+
+    assert parsed["answer"]
+    assert isinstance(parsed["answer"], str)
+    if "score" in parsed:
+        assert isinstance(parsed["score"], (int, float))
+
+
 def test_llama_server_multimodal(model_path):
     with open(os.path.join(os.path.dirname(__file__), "data/11_truck.png"), "rb") as f:
         content = f.read()

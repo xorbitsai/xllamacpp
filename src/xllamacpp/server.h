@@ -1,8 +1,9 @@
-#include "common.h"
 #include <memory>
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "common.h"
 
 struct server_context;
 
@@ -13,6 +14,10 @@ std::string get_system_info();
 std::vector<ggml_backend_dev_props> get_device_info();
 
 typedef bool (*Callback)(std::string &&, void *py_cb);
+
+// Convert a JSON schema string into a llama.cpp grammar string for structured
+// outputs
+std::string json_schema_to_grammar_str(const std::string &schema_json_str);
 
 class Server {
 public:
@@ -35,8 +40,8 @@ public:
 
 private:
   common_params _params;
-  std::shared_ptr<server_context>
-      _ctx_server; // incomplete type of server_context
+  // Incomplete type of server_context
+  std::shared_ptr<server_context> _ctx_server;
   std::thread _loop_thread;
 };
 

@@ -10,6 +10,8 @@ cdef extern from "server.h" namespace "xllamacpp" nogil:
 
     std_vector[ggml_backend_dev_props] c_get_device_info "xllamacpp::get_device_info" ()
 
+    std_string c_json_schema_to_grammar_str "xllamacpp::json_schema_to_grammar_str" (const std_string & schema_json_str) except +
+
     ctypedef c_bool (*Callback "xllamacpp::Callback")(std_string &&, void *py_cb)
     cdef cppclass CServer "xllamacpp::Server":
 
