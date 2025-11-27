@@ -22,7 +22,14 @@ try:
     import orjson as json
 except Exception:
     import json
-from server cimport CServer, c_get_device_info, c_get_system_info, c_parse_tensor_buffer_overrides, c_build_tensor_buffer_overrides
+from server cimport (
+    CServer,
+    c_get_device_info,
+    c_get_system_info,
+    c_json_schema_to_grammar_str,
+    c_parse_tensor_buffer_overrides,
+    c_build_tensor_buffer_overrides,
+)
 
 
 # constants
@@ -40,6 +47,26 @@ BUILD_INFO = {
     'compiler': xllamacpp.LLAMA_COMPILER,
     'build_target': xllamacpp.LLAMA_BUILD_TARGET,
 }
+
+def json_schema_to_grammar(schema) -> str:
+    """
+    Convert a JSON schema (dict/list or JSON string) to a llama.cpp grammar string for constrained/structured generation.
+    """
+    cdef std_string schema_json
+    if isinstance(schema, (dict, list)):
+        schema_json = json.dumps(schema)
+    elif isinstance(schema, str):
+        schema_json = schema
+    elif isinstance(schema, (bytes, bytearray)):
+        schema_json = (<bytes>schema).decode()
+    else:
+        raise TypeError("schema must be dict, list, str, bytes, or bytearray")
+
+    try:
+        return c_json_schema_to_grammar_str(schema_json)
+    except Exception as e:
+        # surface llama.cpp json parsing errors as ValueError
+        raise ValueError(str(e))
 
 
 cdef class LlamaLogitBias:

@@ -5482,6 +5482,16 @@ void Server::handle_chat_completions(const std::string &prompt_json_str,
       OAICOMPAT_TYPE_CHAT);
 }
 
+std::string json_schema_to_grammar_str(const std::string &schema_json_str) {
+  try {
+    auto schema = json::parse(schema_json_str);
+    return json_schema_to_grammar(schema);
+  } catch (const std::exception &e) {
+    throw std::runtime_error(std::string("json_schema_to_grammar: ") +
+                             e.what());
+  }
+}
+
 // Helper function to parse tensor buffer override strings
 void parse_tensor_buffer_overrides(
     const std::string &value,

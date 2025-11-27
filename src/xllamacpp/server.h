@@ -14,6 +14,9 @@ std::vector<ggml_backend_dev_props> get_device_info();
 
 typedef bool (*Callback)(std::string &&, void *py_cb);
 
+// Convert a JSON schema string into a llama.cpp grammar string for structured outputs
+std::string json_schema_to_grammar_str(const std::string &schema_json_str);
+
 class Server {
 public:
   Server(const common_params &params);
