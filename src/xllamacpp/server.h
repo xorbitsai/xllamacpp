@@ -40,7 +40,8 @@ public:
 
 private:
   common_params _params;
-  std::shared_ptr<server_context> _ctx_server; // incomplete type of server_context
+  // Incomplete type of server_context
+  std::shared_ptr<server_context> _ctx_server;
   std::thread _loop_thread;
 };
 
