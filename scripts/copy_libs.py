@@ -36,13 +36,23 @@ def copy_library_files():
         return
 
     # Copy each file to destination
+    linked_count = 0
     for lib_file in lib_files:
         filename = os.path.basename(lib_file)
         dst_file = os.path.join(dst_dir, filename)
+
+        # Skip if destination file already exists
+        if os.path.exists(dst_file):
+            logging.info(f"Skipping {filename} - already exists at {dst_file}")
+            continue
+
         logging.info(f"Linking {lib_file} to {dst_file}")
         os.symlink(lib_file, dst_file)
+        linked_count += 1
 
-    logging.info(f"Successfully copied {len(lib_files)} library files to {dst_dir}")
+    logging.info(
+        f"Successfully linked {linked_count} library files to {dst_dir} ({len(lib_files) - linked_count} skipped)"
+    )
 
 
 def copy_source_files(target, source_paths):
@@ -57,6 +67,7 @@ def copy_source_files(target, source_paths):
 
     # Copy each file to destination
     copied_count = 0
+    skipped_count = 0
     for rel_path in source_paths:
         src_file = os.path.join(src_base, rel_path)
 
@@ -69,11 +80,19 @@ def copy_source_files(target, source_paths):
         filename = os.path.basename(rel_path)
         dst_file = os.path.join(dst_dir, filename)
 
+        # Skip if destination file already exists
+        if os.path.exists(dst_file):
+            logging.info(f"Skipping {filename} - already exists at {dst_file}")
+            skipped_count += 1
+            continue
+
         logging.info(f"Copying {src_file} to {dst_file}")
         shutil.copy2(src_file, dst_file)
         copied_count += 1
 
-    logging.info(f"Successfully copied {copied_count} source files to {dst_dir}")
+    logging.info(
+        f"Successfully copied {copied_count} source files to {dst_dir} ({skipped_count} skipped)"
+    )
 
 
 def main():
