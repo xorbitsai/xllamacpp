@@ -72,6 +72,7 @@ else:
             f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
             f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
             f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
+            f"{LLAMACPP_LIBS_DIR}/libllguidance.a",
         ]
     )
     if BUILD_CUDA:
