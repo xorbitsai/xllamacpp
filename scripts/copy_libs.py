@@ -69,6 +69,11 @@ def copy_source_files(target, source_paths):
         filename = os.path.basename(rel_path)
         dst_file = os.path.join(dst_dir, filename)
 
+        # Remove an existing file
+        if os.path.exists(dst_file):
+            os.remove(dst_file)
+
+        # Copy the file
         logging.info(f"Copying {src_file} to {dst_file}")
         shutil.copy2(src_file, dst_file)
         copied_count += 1
