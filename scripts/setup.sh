@@ -22,6 +22,7 @@ build_llamacpp() {
     "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
     "-DCMAKE_INSTALL_LIBDIR=lib"
     "-DLLAMA_CURL=OFF"
+	"-DLLAMA_LLGUIDANCE=ON"
   )
 
   # Add any additional CMake arguments from environment
