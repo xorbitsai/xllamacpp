@@ -53,7 +53,7 @@ LIBRARIES = []
 
 if PLATFORM == "Windows":
     LIBRARIES.extend(
-        ["common", "llama", "ggml", "ggml-base", "ggml-cpu", "mtmd", "cpp-httplib", "llguidance", "Advapi32"]
+        ["common", "llama", "ggml", "ggml-base", "ggml-cpu", "mtmd", "cpp-httplib", "llguidance", "Advapi32", "userenv"]
     )
     if BUILD_CUDA:
         LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "\\Lib\\x64"])
