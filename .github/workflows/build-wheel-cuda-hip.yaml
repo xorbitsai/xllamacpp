@@ -82,11 +82,22 @@ jobs:
           docker exec rocm-container bash -c '
             df -ha
             apt-get update
-            apt-get install -y build-essential git cmake libcurl4-openssl-dev patchelf rocblas-dev hipblas-dev rocwmma-dev
+            apt-get install -y build-essential git cmake libcurl4-openssl-dev patchelf rocblas-dev hipblas-dev rocwmma-dev curl
             apt-get clean
             df -ha
             hipconfig --full
             ls -alh /opt/rocm/lib
+          '
+
+      - name: Install Rust
+        run: |
+          docker exec rocm-container bash -c '
+            curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            source $HOME/.cargo/env
+            rustc --version
+            cargo --version
+            # Add cargo to PATH permanently for this container
+            echo "export PATH=\$HOME/.cargo/bin:\$PATH" >> $HOME/.bashrc
           '
 
       - name: Setup Python environment
@@ -106,9 +117,10 @@ jobs:
           docker exec -e XLLAMACPP_BUILD_HIP=$XLLAMACPP_BUILD_HIP \
                      -e VERSIONEER_CLOSEST_TAG_ONLY=$VERSIONEER_CLOSEST_TAG_ONLY \
                      -e VERBOSE=$VERBOSE \
-                     rocm-container bash -c '
+                     rocm-container bash -l -c '
             python --version
             gcc -v
+            cargo --version
             printenv
             git config --global --add safe.directory "*"
             make
