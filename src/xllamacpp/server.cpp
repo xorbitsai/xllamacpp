@@ -360,20 +360,52 @@ static void ggml_log_callback_default(enum ggml_log_level level,
 
 std::function<bool()> not_stop = [] { return false; };
 
+static std::vector<std::string> parse_oai_sse(const std::string &sse) {
+  std::vector<std::string> out;
+
+  std::size_t start = 0;
+  while (start < sse.size()) {
+    std::size_t end = sse.find('\n', start);
+    if (end == std::string::npos) {
+      break;
+    }
+
+    // Empty line = event separator, skip
+    if (end > start) {
+      // Guaranteed format: "data: <json>"
+      out.emplace_back(sse.substr(start + 6, end - start - 6));
+    }
+
+    start = end + 1;
+  }
+
+  return out;
+}
+
 static void
 process_handler_response(server_http_res_ptr &response,
                          std::function<bool(std::string &&)> res_err,
                          std::function<bool(std::string &&)> res_ok) {
+  static const std::string sse_prefix("data: ");
   auto res = response->status == 200 ? res_ok : res_err;
   if (response->is_stream()) {
     std::string chunk;
 
-    bool has_next = response->next(chunk);
-    while (has_next) {
-      if (!chunk.empty()) {
-        if (res(std::move(chunk))) {
-          break;
+    while (true) {
+      const bool has_next = response->next(chunk);
+      if (!chunk.empty() && chunk.size() >= sse_prefix.size()) {
+        if (!has_next && chunk == "data: [DONE]\n\n") {
+          return;
         }
+        auto parsed = parse_oai_sse(chunk);
+        for (auto &&json_str : parsed) {
+          if (res(std::move(json_str))) {
+            return;
+          }
+        }
+      }
+      if (!has_next) {
+        return;
       }
     }
   } else {

@@ -586,6 +586,15 @@ cdef class CommonParamsModel:
     def docker_repo(self, value: str):
         self.p.docker_repo = value
 
+    @property
+    def name(self) -> str:
+        """Docker repo"""
+        return self.p.name
+
+    @name.setter
+    def name(self, value: str):
+        self.p.name = value
+
 
 cdef class CommonParamsSpeculative:
     cdef xllamacpp.common_params_speculative *p
@@ -2005,6 +2014,15 @@ cdef class CommonParams:
     @slot_save_path.setter
     def slot_save_path(self, value: str):
         self.p.slot_save_path = value
+
+    @property
+    def media_path(self) -> str:
+        """path to directory for loading media files"""
+        return self.p.media_path
+
+    @media_path.setter
+    def media_path(self, value: str):
+        self.p.media_path = value
 
     @property
     def slot_prompt_similarity(self) -> float:
