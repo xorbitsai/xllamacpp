@@ -6,6 +6,7 @@
 #include "common.h"
 
 struct server_context;
+struct server_routes;
 
 namespace xllamacpp {
 
@@ -42,6 +43,7 @@ private:
   common_params _params;
   // Incomplete type of server_context
   std::shared_ptr<server_context> _ctx_server;
+  std::shared_ptr<server_routes> _routes;
   std::thread _loop_thread;
 };
 
