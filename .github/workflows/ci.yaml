@@ -83,6 +83,7 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install pytest pytest-timeout requests gguf orjson
+          make clean
           make
           make download
         working-directory: .
