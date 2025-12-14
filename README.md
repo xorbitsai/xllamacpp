@@ -87,6 +87,35 @@ Output:
  'usage': {'prompt_tokens': 11, 'total_tokens': 11}}
 ```
 
+## OpenAI API Compatible
+
+The server provides OpenAI API compatible endpoints. For a complete list of available API endpoints, see the [llama.cpp server documentation](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints). You can use the OpenAI Python client:
+
+```python
+import xllamacpp as xlc
+from openai import OpenAI
+
+# Start server
+params = xlc.CommonParams()
+params.model.path = "Llama-3.2-1B-Instruct-Q8_0.gguf"
+server = xlc.Server(params)
+
+# Connect using OpenAI client
+client = OpenAI(
+    base_url=server.listening_address + "/v1",
+    api_key="not-required"  # No API key needed for local server
+)
+
+# Make chat completion request
+response = client.chat.completions.create(
+    model="local-model",
+    messages=[{"role": "user", "content": "What is the capital of France?"}],
+    max_tokens=10
+)
+
+print(response.choices[0].message.content)
+```
+
 ## Prerequisites for Prebuilt Wheels
 
 Before pip installing `xllamacpp`, please ensure your system meets the following requirements based on your build type:
