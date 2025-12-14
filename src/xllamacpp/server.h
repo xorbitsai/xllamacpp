@@ -25,6 +25,8 @@ public:
   Server(const common_params &params);
   ~Server();
 
+  std::string listening_address() const;
+
   std::string handle_metrics();
 
   std::string handle_embeddings(const std::string &input_json_str);
@@ -41,6 +43,7 @@ public:
 
 private:
   common_params _params;
+  std::string _listening_address;
   // Incomplete type of server_context
   std::shared_ptr<server_context> _ctx_server;
   std::shared_ptr<server_routes> _routes;

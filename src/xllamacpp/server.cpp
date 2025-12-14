@@ -73,7 +73,7 @@ ex_wrapper(server_http_context::handler_t func) {
 }
 
 static void init(common_params &params, server_context &ctx_server,
-                 std::promise<int> out) {
+                 std::string &listening_address, std::promise<int> out) {
   common_log_set_verbosity_thold(params.verbosity);
 
   // TODO: should we have a separate n_parallel parameter for the server?
@@ -331,6 +331,9 @@ static void init(common_params &params, server_context &ctx_server,
           params, std::atoi(router_port), params.model_alias, shutdown_handler);
     }
 
+    // write the listening_address
+    listening_address = ctx_http.listening_address;
+
     out.set_value(0);
 
     // this call blocks the main thread until queue_tasks.terminate() is called
@@ -343,7 +346,10 @@ static void init(common_params &params, server_context &ctx_server,
     if (monitor_thread.joinable()) {
       monitor_thread.join();
     }
-    llama_memory_breakdown_print(ctx_server.get_llama_context());
+    // crash during llama_memory_breakdown_print if the model is rerank.
+    if (params.pooling_type != LLAMA_POOLING_TYPE_RANK) {
+      llama_memory_breakdown_print(ctx_server.get_llama_context());
+    }
   }
 }
 
@@ -474,7 +480,7 @@ Server::Server(const common_params &params)
   std::promise<int> out;
   std::future<int> fut = out.get_future();
   _loop_thread = std::thread(init, std::ref(_params), std::ref(*_ctx_server),
-                             std::move(out));
+                             std::ref(_listening_address), std::move(out));
   if (fut.get() != 0) {
     if (_loop_thread.joinable()) {
       _loop_thread.join();
@@ -494,6 +500,8 @@ Server::~Server() {
   }
   LOG_INF("%s: main loop exited\n", __func__);
 }
+
+std::string Server::listening_address() const { return _listening_address; }
 
 std::string Server::handle_metrics() {
   server_http_req req{{}, {}, "", "", not_stop};

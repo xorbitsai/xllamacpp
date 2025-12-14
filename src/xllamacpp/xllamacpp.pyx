@@ -848,6 +848,9 @@ cdef class CommonParamsDiffusion:
 cdef class CommonParams:
     cdef xllamacpp.common_params p
 
+    def __cinit__(self):
+        self.p.port = 0
+
     @property
     def n_predict(self) -> int:
         """new tokens to predict."""
@@ -2305,6 +2308,10 @@ cdef class Server:
 
     def __cinit__(self, CommonParams common_params):
         self.svr = make_shared[CServer](common_params.p)
+
+    @property
+    def listening_address(self):
+        return self.svr.get().listening_address()
 
     def handle_metrics(self):
         cdef string result
