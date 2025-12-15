@@ -87,7 +87,7 @@ Output:
  'usage': {'prompt_tokens': 11, 'total_tokens': 11}}
 ```
 
-## OpenAI API Compatible
+## OpenAI API Compatible HTTP Server
 
 The server provides OpenAI API compatible endpoints. For a complete list of available API endpoints, see the [llama.cpp server documentation](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#api-endpoints). You can use the OpenAI Python client:
 
@@ -225,7 +225,15 @@ pip install -U xllamacpp
 
 1. A recent version of `python3` (testing on python 3.12)
 
-2. Git clone the latest version of `xllamacpp`:
+2. Install Rust toolchain (required for building):
+
+ ```sh
+ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+ ```
+
+ For more installation options, see the [rustup installation guide](https://rustup.rs/).
+
+3. Git clone the latest version of `xllamacpp`:
 
  ```sh
  git clone git@github.com:xorbitsai/xllamacpp.git
@@ -234,13 +242,13 @@ pip install -U xllamacpp
  git submodule update
  ```
 
-3. Install dependencies of `cython`, `setuptools`, and `pytest` for testing:
+4. Install dependencies of `cython`, `setuptools`, and `pytest` for testing:
 
  ```sh
  pip install -r requirements.txt
  ```
 
-4. Select backend via environment and build. Examples:
+5. Select backend via environment and build. Examples:
 
    - CPU (default):
      ```sh
