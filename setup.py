@@ -42,6 +42,9 @@ INCLUDE_DIRS = [
     os.path.join(
         CWD, "thirdparty/llama.cpp"
     ),  # For including 'common/base64.hpp' in server/utils.hpp
+    os.path.join(
+        CWD, "thirdparty/llama.cpp/build/tools/server"
+    ),  # For including index.html.gz.hpp and loading.html.hpp
     os.path.join(CWD, "thirdparty/llama.cpp/tools/server"),
     os.path.join(CWD, "thirdparty/llama.cpp/tools/mtmd"),
     os.path.join(CWD, "thirdparty/llama.cpp/vendor"),
@@ -53,7 +56,20 @@ LIBRARIES = []
 
 if PLATFORM == "Windows":
     LIBRARIES.extend(
-        ["common", "llama", "ggml", "ggml-base", "ggml-cpu", "mtmd", "cpp-httplib", "llguidance", "Advapi32", "userenv", "ntdll"]
+        [
+            "common",
+            "llama",
+            "ggml",
+            "ggml-base",
+            "ggml-cpu",
+            "mtmd",
+            "cpp-httplib",
+            "server-context",
+            "llguidance",
+            "Advapi32",
+            "userenv",
+            "ntdll",
+        ]
     )
     if BUILD_CUDA:
         LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "\\Lib\\x64"])
@@ -65,14 +81,15 @@ else:
     LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(
         [
+            f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
+            f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
+            f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
             f"{LLAMACPP_LIBS_DIR}/libcommon.a",
+            f"{LLAMACPP_LIBS_DIR}/libllguidance.a",
             f"{LLAMACPP_LIBS_DIR}/libllama.a",
             f"{LLAMACPP_LIBS_DIR}/libggml.a",
-            f"{LLAMACPP_LIBS_DIR}/libggml-base.a",
             f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
-            f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
-            f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
-            f"{LLAMACPP_LIBS_DIR}/libllguidance.a",
+            f"{LLAMACPP_LIBS_DIR}/libggml-base.a",
         ]
     )
     if BUILD_CUDA:
@@ -180,7 +197,12 @@ if not os.path.exists("MANIFEST.in"):
 extensions = [
     mk_extension(
         "xllamacpp.xllamacpp",
-        sources=["src/xllamacpp/xllamacpp.pyx", "src/xllamacpp/server.cpp"],
+        sources=[
+            "src/xllamacpp/xllamacpp.pyx",
+            "src/xllamacpp/server.cpp",
+            "thirdparty/llama.cpp/tools/server/server-models.cpp",
+            "thirdparty/llama.cpp/tools/server/server-http.cpp",
+        ],
     ),
 ]
 

@@ -7,6 +7,9 @@ import xllamacpp as xlc
 def test_common_params_sampling():
     with pytest.raises(Exception, match="construct"):
         xlc.CommonParamsSampling()
+    params = xlc.CommonParams()
+    assert params.sampling.timing_per_token is False
+    assert params.sampling.user_sampling_config == 0
     # assert params.seed == xlc.LLAMA_DEFAULT_SEED
     # assert params.n_prev == 64
     # assert params.n_probs == 0
@@ -52,6 +55,7 @@ def test_enum_values():
     assert xlc.common_conversation_mode.COMMON_CONVERSATION_MODE_AUTO == 2
     assert xlc.common_grammar_trigger_type.COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_FULL == 3
     assert xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK == 3
+    assert xlc.common_params_sampling_config.COMMON_PARAMS_SAMPLING_CONFIG_TEMP == 64
 
 
 def test_common_params():
@@ -116,6 +120,7 @@ def test_common_params():
     assert params.model.hf_repo == ""
     assert params.model.hf_file == ""
     assert params.model.docker_repo == ""
+    assert params.model.name == ""
     assert params.model_alias == ""
     assert params.hf_token == ""
     assert params.prompt == ""
@@ -127,7 +132,7 @@ def test_common_params():
     assert params.lookup_cache_dynamic == ""
     assert params.logits_file == ""
 
-    assert params.verbosity == 0
+    assert params.verbosity == 3
     assert params.control_vector_layer_start == -1
     assert params.control_vector_layer_end == -1
     assert params.ppl_stride == 0
@@ -151,6 +156,7 @@ def test_common_params():
     assert params.simple_io is False
     assert params.cont_batching is True
     assert params.no_perf is False
+    assert params.show_timings is True
     assert params.ctx_shift is False
     assert params.swa_full is False
     assert params.kv_unified is False
@@ -181,7 +187,7 @@ def test_common_params():
     assert params.embd_out == ""
     assert params.embd_sep == "\n"
 
-    assert params.port == 8080
+    assert params.port == 0
     assert params.timeout_read == 600
     assert params.timeout_write == 600
     assert params.n_threads_http == -1
@@ -193,9 +199,9 @@ def test_common_params():
     assert params.public_path == ""
     assert params.api_prefix == ""
     assert params.chat_template == ""
-    assert params.use_jinja is False
-    params.use_jinja = True
     assert params.use_jinja is True
+    params.use_jinja = False
+    assert params.use_jinja is False
     assert params.enable_chat_template is True
     assert (
         params.reasoning_format
@@ -218,6 +224,7 @@ def test_common_params():
     assert params.log_json is False
 
     assert params.slot_save_path == ""
+    assert params.media_path == ""
 
     assert params.slot_prompt_similarity == approx(0.1)
 

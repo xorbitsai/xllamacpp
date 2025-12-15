@@ -24,34 +24,36 @@ def copy_library_files():
         logging.info(f"Creating destination directory: {dst_dir}")
         os.makedirs(dst_dir, exist_ok=True)
 
-    # Find all .a and .lib files in source directory (including subdirectories)
+    # Recursively find all static library files
     lib_files = []
-    for ext in [".a", ".lib"]:
-        lib_files.extend(
-            glob.glob(os.path.join(src_dir, "**", f"*{ext}"), recursive=True)
-        )
+    for ext in (".a", ".lib"):
+        pattern = os.path.join(src_dir, "**", f"*{ext}")
+        lib_files.extend(glob.glob(pattern, recursive=True))
 
     if not lib_files:
         logging.warning(f"No .a or .lib files found in {src_dir}")
         return
 
-    # Copy each file to destination
     linked_count = 0
+    skipped_count = 0
+
     for lib_file in lib_files:
         filename = os.path.basename(lib_file)
         dst_file = os.path.join(dst_dir, filename)
 
-        # Skip if destination file already exists
+        # Skip if link or file already exists
         if os.path.exists(dst_file):
             logging.info(f"Skipping {filename} - already exists at {dst_file}")
+            skipped_count += 1
             continue
 
-        logging.info(f"Linking {lib_file} to {dst_file}")
+        logging.info(f"Linking {lib_file} -> {dst_file}")
         os.symlink(lib_file, dst_file)
         linked_count += 1
 
     logging.info(
-        f"Successfully linked {linked_count} library files to {dst_dir} ({len(lib_files) - linked_count} skipped)"
+        f"Successfully linked {linked_count} libraries to {dst_dir} "
+        f"({skipped_count} skipped)"
     )
 
 

@@ -1,6 +1,6 @@
 # distutils: language=c++
 
-from libc.stdint cimport int32_t, uint32_t, int64_t, int8_t
+from libc.stdint cimport int32_t, uint32_t, int64_t, int8_t, uint64_t
 from libcpp.string cimport string as std_string
 from libcpp.vector cimport vector as std_vector
 from libcpp.set cimport set as std_set
@@ -285,6 +285,20 @@ cdef extern from "common.h":
         bint at_start
         llama_token token
 
+    cpdef enum  common_params_sampling_config:
+        COMMON_PARAMS_SAMPLING_CONFIG_SAMPLERS
+        COMMON_PARAMS_SAMPLING_CONFIG_TOP_K
+        COMMON_PARAMS_SAMPLING_CONFIG_TOP_P
+        COMMON_PARAMS_SAMPLING_CONFIG_MIN_P
+        COMMON_PARAMS_SAMPLING_CONFIG_XTC_PROBABILITY
+        COMMON_PARAMS_SAMPLING_CONFIG_XTC_THRESHOLD
+        COMMON_PARAMS_SAMPLING_CONFIG_TEMP
+        COMMON_PARAMS_SAMPLING_CONFIG_PENALTY_LAST_N
+        COMMON_PARAMS_SAMPLING_CONFIG_PENALTY_REPEAT
+        COMMON_PARAMS_SAMPLING_CONFIG_MIROSTAT
+        COMMON_PARAMS_SAMPLING_CONFIG_MIROSTAT_TAU
+        COMMON_PARAMS_SAMPLING_CONFIG_MIROSTAT_ETA
+
     # sampler parameters
     ctypedef struct common_params_sampling:
         uint32_t seed  # the seed used to initialize llama_sampler
@@ -316,6 +330,7 @@ cdef extern from "common.h":
         bint    ignore_eos                 # ignore end-of-sentence
         bint    no_perf                    # disable performance metrics
         bint    timing_per_token
+        uint64_t user_sampling_config      # bitfield to track user-specified samplers
 
         std_vector[std_string] dry_sequence_breakers
 
@@ -339,7 +354,7 @@ cdef extern from "common.h":
         std_string hf_repo       # HF repo                                                    // NOLINT
         std_string hf_file       # HF file                                                    // NOLINT
         std_string docker_repo   # Docker repo                                                // NOLINT
-
+        std_string name          # in format <user>/<model>[:<tag>] (tag is optional)         // NOLINT
 
     ctypedef struct common_params_speculative:
         std_vector[ggml_backend_dev_t] devices # devices to use for offloading
@@ -491,6 +506,7 @@ cdef extern from "common.h":
         bint simple_io              # improves compatibility with subprocesses and limited consoles
         bint cont_batching          # insert new sequences for decoding on-the-fly
         bint no_perf                # disable performance metric
+        bint show_timings           # show timing information on CLI
         bint ctx_shift              # context shift on inifinite text generation
         bint swa_full               # use full-size SWA cache (https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)
         bint kv_unified             # enable unified KV cache
@@ -567,6 +583,7 @@ cdef extern from "common.h":
         bint log_json
 
         std_string slot_save_path
+        std_string media_path
 
         float slot_prompt_similarity
 

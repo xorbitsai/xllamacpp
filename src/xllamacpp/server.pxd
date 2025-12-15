@@ -17,6 +17,8 @@ cdef extern from "server.h" namespace "xllamacpp" nogil:
 
         CServer(const common_params& params) except +
 
+        std_string listening_address() except +
+
         std_string handle_metrics() except +
 
         std_string handle_embeddings(const std_string &input_json_str) except +

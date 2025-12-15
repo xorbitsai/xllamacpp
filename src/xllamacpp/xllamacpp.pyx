@@ -210,15 +210,6 @@ cdef class CommonParamsSampling:
     def xtc_threshold(self, float value):
         self.p.xtc_threshold = value
 
-    # @property
-    # def tfs_z(self) -> float:
-    #     """1.0 = disabled"""
-    #     return self.p.tfs_z
-
-    # @tfs_z.setter
-    # def tfs_z(self, float value):
-    #     self.p.tfs_z = value
-
     @property
     def typ_p(self) -> float:
         """typical_p, 1.0 = disabled"""
@@ -360,15 +351,6 @@ cdef class CommonParamsSampling:
     def mirostat_eta(self, float value):
         self.p.mirostat_eta = value
 
-    # @property
-    # def penalize_nl(self) -> bool:
-    #     """consider newlines as a repeatable token"""
-    #     return self.p.penalize_nl
-
-    # @penalize_nl.setter
-    # def penalize_nl(self, bint value):
-    #     self.p.penalize_nl = value
-
     @property
     def ignore_eos(self) -> bool:
         """ignore end-of-sentence"""
@@ -386,6 +368,22 @@ cdef class CommonParamsSampling:
     @no_perf.setter
     def no_perf(self, bint value):
         self.p.no_perf = value
+
+    @property
+    def timing_per_token(self) -> bool:
+        return self.p.timing_per_token
+
+    @timing_per_token.setter
+    def timing_per_token(self, bint value):
+        self.p.timing_per_token = value
+
+    @property
+    def user_sampling_config(self) -> int:
+        return self.p.user_sampling_config
+
+    @user_sampling_config.setter
+    def user_sampling_config(self, int value):
+        self.p.user_sampling_config = value
 
     @property
     def samplers(self) -> str:
@@ -585,6 +583,15 @@ cdef class CommonParamsModel:
     @docker_repo.setter
     def docker_repo(self, value: str):
         self.p.docker_repo = value
+
+    @property
+    def name(self) -> str:
+        """Docker repo"""
+        return self.p.name
+
+    @name.setter
+    def name(self, value: str):
+        self.p.name = value
 
 
 cdef class CommonParamsSpeculative:
@@ -838,6 +845,9 @@ cdef class CommonParamsDiffusion:
 
 cdef class CommonParams:
     cdef xllamacpp.common_params p
+
+    def __cinit__(self):
+        self.p.port = 0
 
     @property
     def n_predict(self) -> int:
@@ -1519,6 +1529,15 @@ cdef class CommonParams:
         self.p.no_perf = value
 
     @property
+    def show_timings(self) -> bool:
+        """show timing information on CLI"""
+        return self.p.show_timings
+
+    @show_timings.setter
+    def show_timings(self, value: bool):
+        self.p.show_timings = value
+
+    @property
     def ctx_shift(self) -> bool:
         """context shift on inifinite text generation"""
         return self.p.ctx_shift
@@ -2007,6 +2026,15 @@ cdef class CommonParams:
         self.p.slot_save_path = value
 
     @property
+    def media_path(self) -> str:
+        """path to directory for loading media files"""
+        return self.p.media_path
+
+    @media_path.setter
+    def media_path(self, value: str):
+        self.p.media_path = value
+
+    @property
     def slot_prompt_similarity(self) -> float:
         """slot prompt similarity."""
         return self.p.slot_prompt_similarity
@@ -2287,6 +2315,10 @@ cdef class Server:
 
     def __cinit__(self, CommonParams common_params):
         self.svr = make_shared[CServer](common_params.p)
+
+    @property
+    def listening_address(self):
+        return self.svr.get().listening_address()
 
     def handle_metrics(self):
         cdef string result
