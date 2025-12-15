@@ -81,8 +81,6 @@ else:
     LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(
         [
-            f"{LLAMACPP_LIBS_DIR}/libcommon.a",
-            f"{LLAMACPP_LIBS_DIR}/libllama.a",
             f"{LLAMACPP_LIBS_DIR}/libggml.a",
             f"{LLAMACPP_LIBS_DIR}/libggml-base.a",
             f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
@@ -90,6 +88,8 @@ else:
             f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
             f"{LLAMACPP_LIBS_DIR}/libllguidance.a",
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
+            f"{LLAMACPP_LIBS_DIR}/libllama.a",
+            f"{LLAMACPP_LIBS_DIR}/libcommon.a",
         ]
     )
     if BUILD_CUDA:
