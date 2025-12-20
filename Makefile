@@ -1,6 +1,6 @@
 # set path so `llama-cli` etc.. be in path
 export PATH := $(PWD)/bin:$(PATH)
-export MACOSX_DEPLOYMENT_TARGET := 11
+export MACOSX_DEPLOYMENT_TARGET := 12
 
 # models
 MODEL := bge-reranker-v2-m3-Q2_K.gguf
