@@ -32,6 +32,8 @@ if PLATFORM == "Windows":
     EXTRA_COMPILE_ARGS = ["/std:c++17"]
 else:
     EXTRA_COMPILE_ARGS = ["-std=c++17"]
+    if PLATFORM == "Darwin":
+        EXTRA_COMPILE_ARGS.append("-mmacosx-version-min=12.0")
 EXTRA_LINK_ARGS = []
 EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
