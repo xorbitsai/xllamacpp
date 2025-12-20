@@ -33,7 +33,7 @@ if PLATFORM == "Windows":
 else:
     EXTRA_COMPILE_ARGS = ["-std=c++17"]
     if PLATFORM == "Darwin":
-        EXTRA_COMPILE_ARGS.append("-mmacosx-version-min=12.0")
+        os.environ.setdefault("MACOSX_DEPLOYMENT_TARGET", "12.0")
 EXTRA_LINK_ARGS = []
 EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
