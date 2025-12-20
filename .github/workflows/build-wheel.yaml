@@ -22,11 +22,6 @@ jobs:
           - os: ubuntu-latest
             arch: auto
             platform-id: manylinux_x86_64
-            python: 39
-            requires-python: ">=3.9,<3.10"
-          - os: ubuntu-latest
-            arch: auto
-            platform-id: manylinux_x86_64
             python: 310
             requires-python: ">=3.10,<3.11"
           - os: ubuntu-latest
@@ -46,11 +41,6 @@ jobs:
             requires-python: ">=3.13,<3.14"
 
           # Linux aarch64
-          - os: ubuntu-22.04-arm
-            arch: aarch64
-            platform-id: manylinux_aarch64
-            python: 39
-            requires-python: ">=3.9,<3.10"
           - os: ubuntu-22.04-arm
             arch: aarch64
             platform-id: manylinux_aarch64
@@ -76,11 +66,6 @@ jobs:
           - os: macos-15-intel
             arch: x86_64
             platform-id: macosx_x86_64
-            python: 39
-            requires-python: ">=3.9,<3.10"
-          - os: macos-15-intel
-            arch: x86_64
-            platform-id: macosx_x86_64
             python: 310
             requires-python: ">=3.10,<3.11"
           - os: macos-15-intel
@@ -103,11 +88,6 @@ jobs:
           - os: macos-14
             arch: arm64
             platform-id: macosx_arm64
-            python: 39
-            requires-python: ">=3.9,<3.10"
-          - os: macos-14
-            arch: arm64
-            platform-id: macosx_arm64
             python: 310
             requires-python: ">=3.10,<3.11"
           - os: macos-14
@@ -127,11 +107,6 @@ jobs:
             requires-python: ">=3.13,<3.14"
 
           # Windows AMD64
-          - os: windows-2022
-            arch: AMD64
-            platform-id: win_amd64
-            python: 39
-            requires-python: ">=3.9,<3.10"
           - os: windows-2022
             arch: AMD64
             platform-id: win_amd64
