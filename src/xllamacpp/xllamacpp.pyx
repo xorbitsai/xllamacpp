@@ -843,6 +843,54 @@ cdef class CommonParamsDiffusion:
         self.p.add_gumbel_noise = value
 
 
+cdef class CommonAdapterLoraInfo:
+    """Wrapper class for LoRA adapter information.
+    
+    Can be constructed directly with path and scale, or obtained from CommonParams.lora_adapters.
+    When constructed directly, modifications are local until assigned to CommonParams.lora_adapters.
+    When obtained from CommonParams.lora_adapters, modifications affect the underlying params directly.
+    """
+    cdef xllamacpp.common_adapter_lora_info *p
+    cdef xllamacpp.common_adapter_lora_info _owned_data
+    cdef object owner
+
+    @staticmethod
+    cdef CommonAdapterLoraInfo from_ptr(xllamacpp.common_adapter_lora_info *info, object owner):
+        cdef CommonAdapterLoraInfo wrapper = CommonAdapterLoraInfo.__new__(CommonAdapterLoraInfo)
+        wrapper.p = info
+        wrapper.owner = owner
+        return wrapper
+
+    def __init__(self, path: str = "", float scale = 1.0):
+        """Construct a new CommonAdapterLoraInfo with the given path and scale."""
+        self._owned_data.path = path
+        self._owned_data.scale = scale
+        self._owned_data.ptr = NULL
+        self.p = &self._owned_data
+        self.owner = None
+
+    @property
+    def path(self) -> str:
+        """LoRA adapter file path."""
+        return self.p.path
+
+    @path.setter
+    def path(self, value: str):
+        self.p.path = value
+
+    @property
+    def scale(self) -> float:
+        """LoRA adapter scale factor."""
+        return self.p.scale
+
+    @scale.setter
+    def scale(self, float value):
+        self.p.scale = value
+
+    def __repr__(self):
+        return f"CommonAdapterLoraInfo(path='{self.path}', scale={self.scale})"
+
+
 cdef class CommonParams:
     cdef xllamacpp.common_params p
 
@@ -1305,7 +1353,26 @@ cdef class CommonParams:
     def lora_init_without_apply(self, value: bool):
         self.p.lora_init_without_apply = value
 
-    # std::vector<llama_lora_adapter_info> lora_adapters; // lora adapter path with user defined scale
+    @property
+    def lora_adapters(self) -> list:
+        """Get the list of LoRA adapters as a list of CommonAdapterLoraInfo objects."""
+        result = []
+        for i in range(self.p.lora_adapters.size()):
+            result.append(CommonAdapterLoraInfo.from_ptr(&self.p.lora_adapters[i], self))
+        return result
+
+    @lora_adapters.setter
+    def lora_adapters(self, value: list):
+        """Set the list of LoRA adapters from a list of CommonAdapterLoraInfo objects."""
+        cdef CommonAdapterLoraInfo item
+        cdef size_t i
+        self.p.lora_adapters.clear()
+        for item in value:
+            self.p.lora_adapters.push_back(item.p[0])
+        # Rebind each input CommonAdapterLoraInfo to point to the vector element with self as owner
+        for i, item in enumerate(value):
+            item.p = &self.p.lora_adapters[i]
+            item.owner = self
 
     # std::vector<llama_control_vector_load_info> control_vectors; // control vector with user defined scale
 
