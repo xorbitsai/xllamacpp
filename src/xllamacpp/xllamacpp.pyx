@@ -861,13 +861,15 @@ cdef class CommonAdapterLoraInfo:
         wrapper.owner = owner
         return wrapper
 
+    def __cinit__(self):
+        self.p = &self._owned_data
+        self.owner = None
+
     def __init__(self, path: str = "", float scale = 1.0):
         """Construct a new CommonAdapterLoraInfo with the given path and scale."""
         self._owned_data.path = path
         self._owned_data.scale = scale
         self._owned_data.ptr = NULL
-        self.p = &self._owned_data
-        self.owner = None
 
     @property
     def path(self) -> str:
