@@ -855,10 +855,11 @@ cdef class CommonAdapterLoraInfo:
     cdef object owner
 
     @staticmethod
-    cdef CommonAdapterLoraInfo from_ptr(xllamacpp.common_adapter_lora_info *info, object owner):
+    cdef CommonAdapterLoraInfo from_ptr(xllamacpp.common_adapter_lora_info *info, CommonParams owner):
         cdef CommonAdapterLoraInfo wrapper = CommonAdapterLoraInfo.__new__(CommonAdapterLoraInfo)
         wrapper.p = info
         wrapper.owner = owner
+        owner.lora_adapter_wrappers.append(wrapper)
         return wrapper
 
     def __cinit__(self):
@@ -870,6 +871,14 @@ cdef class CommonAdapterLoraInfo:
         self._owned_data.path = path
         self._owned_data.scale = scale
         self._owned_data.ptr = NULL
+
+    cdef void deref(self):
+        """Copy data from pointed object to owned_data and make independent."""
+        self._owned_data.path = self.p.path
+        self._owned_data.scale = self.p.scale
+        self._owned_data.ptr = self.p.ptr
+        self.p = &self._owned_data
+        self.owner = None
 
     @property
     def path(self) -> str:
@@ -895,9 +904,11 @@ cdef class CommonAdapterLoraInfo:
 
 cdef class CommonParams:
     cdef xllamacpp.common_params p
+    cdef list lora_adapter_wrappers
 
     def __cinit__(self):
         self.p.port = 0
+        self.lora_adapter_wrappers = []
 
     @property
     def n_predict(self) -> int:
@@ -1358,6 +1369,8 @@ cdef class CommonParams:
     @property
     def lora_adapters(self) -> list:
         """Get the list of LoRA adapters as a list of CommonAdapterLoraInfo objects."""
+        if self.lora_adapter_wrappers:
+            return list(self.lora_adapter_wrappers)
         result = []
         for i in range(self.p.lora_adapters.size()):
             result.append(CommonAdapterLoraInfo.from_ptr(&self.p.lora_adapters[i], self))
@@ -1368,6 +1381,10 @@ cdef class CommonParams:
         """Set the list of LoRA adapters from a list of CommonAdapterLoraInfo objects."""
         cdef CommonAdapterLoraInfo item
         cdef size_t i
+        # Make existing wrappers independent by copying their data before clearing
+        for wrapper in self.lora_adapter_wrappers:
+            wrapper.deref()
+        self.lora_adapter_wrappers.clear()
         self.p.lora_adapters.clear()
         for item in value:
             self.p.lora_adapters.push_back(item.p[0])
@@ -1375,6 +1392,7 @@ cdef class CommonParams:
         for i, item in enumerate(value):
             item.p = &self.p.lora_adapters[i]
             item.owner = self
+        self.lora_adapter_wrappers = value
 
     # std::vector<llama_control_vector_load_info> control_vectors; // control vector with user defined scale
 
