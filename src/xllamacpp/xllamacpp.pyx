@@ -874,9 +874,7 @@ cdef class CommonAdapterLoraInfo:
 
     cdef void deref(self):
         """Copy data from pointed object to owned_data and make independent."""
-        self._owned_data.path = self.p.path
-        self._owned_data.scale = self.p.scale
-        self._owned_data.ptr = self.p.ptr
+        self._owned_data = deref(self.p)
         self.p = &self._owned_data
         self.owner = None
 
@@ -1382,8 +1380,8 @@ cdef class CommonParams:
         cdef CommonAdapterLoraInfo item
         cdef size_t i
         # Make existing wrappers independent by copying their data before clearing
-        for wrapper in self.lora_adapter_wrappers:
-            wrapper.deref()
+        for item in self.lora_adapter_wrappers:
+            item.deref()
         self.lora_adapter_wrappers.clear()
         self.p.lora_adapters.clear()
         for item in value:
