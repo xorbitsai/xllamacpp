@@ -22,7 +22,7 @@ build_llamacpp() {
     "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
     "-DCMAKE_INSTALL_LIBDIR=lib"
     "-DLLAMA_CURL=OFF"
-	"-DLLAMA_LLGUIDANCE=ON"
+    "-DLLAMA_LLGUIDANCE=ON"
   )
 
   # Add any additional CMake arguments from environment
@@ -39,7 +39,7 @@ build_llamacpp() {
       "-DGGML_NATIVE=OFF"
       "-DGGML_CUDA=ON"
       "-DGGML_CUDA_FORCE_MMQ=ON"
-	  "-DCMAKE_CUDA_ARCHITECTURES=all"
+      "-DCMAKE_CUDA_ARCHITECTURES=all"
     )
     targets+=("ggml-cuda")
   elif [[ -n "${XLLAMACPP_BUILD_HIP}" ]]; then

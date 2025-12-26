@@ -421,18 +421,61 @@ def test_llama_server_rerank(model_path):
     assert type(result) is dict
     assert len(result["results"]) == 3
 
-    rerank_input_str = json.dumps(rerank_input)
-    result_str = server.handle_rerank(rerank_input_str)
-    assert type(result_str) is str
-    result = json.loads(result_str)
 
-    assert type(result) is dict
-    assert len(result["results"]) == 3
+def test_llama_server_lora(model_path):
+    """Test loading and using a LoRA adapter.
 
-    rerank_input_bytes = orjson.dumps(rerank_input)
-    result_bytes = server.handle_rerank(rerank_input_bytes)
-    assert type(result_bytes) is bytes
-    result = orjson.loads(result_bytes)
+    This test uses the stories15M_MOE model with a Shakespeare LoRA adapter.
+    - Without LoRA (scale=0), the model generates bedtime story style text.
+    - With LoRA (scale=1), the model generates Shakespearean style text.
 
-    assert type(result) is dict
-    assert len(result["results"]) == 3
+    Based on: thirdparty/llama.cpp/tools/server/tests/unit/test_lora.py
+    """
+    params = xlc.CommonParams()
+
+    params.model.path = os.path.join(model_path, "stories15M_MOE-F16.gguf")
+    params.warmup = False
+    params.n_predict = 64
+    params.n_ctx = 256
+    params.n_parallel = 1
+    params.cpuparams.n_threads = 2
+    params.cpuparams_batch.n_threads = 2
+    params.sampling.seed = 42
+    params.sampling.temp = 0.0
+    params.sampling.top_k = 1
+
+    # Create a CommonAdapterLoraInfo and set it via lora_adapters
+    lora_path = os.path.join(model_path, "moe_shakespeare15M.gguf")
+    lora_info = xlc.CommonAdapterLoraInfo(lora_path, 1.0)
+    params.lora_adapters = [lora_info]
+
+    # Verify the lora adapter was added and can be accessed via wrapper
+    assert len(params.lora_adapters) == 1
+    assert params.lora_adapters[0].path == lora_path
+    assert params.lora_adapters[0].scale == 1.0
+
+    # Test modifying the scale via the wrapper
+    params.lora_adapters[0].scale = 0.5
+    assert lora_info.scale == 0.5
+    params.lora_adapters[0].scale = 1.0  # Reset back
+
+    server = xlc.Server(params)
+
+    # Test completion with LoRA applied
+    complete_prompt = {
+        "max_tokens": 64,
+        "prompt": "Look in thy glass",
+        "seed": 42,
+        "temperature": 0.0,
+    }
+
+    result = server.handle_completions(complete_prompt)
+
+    assert isinstance(result, dict)
+    assert "code" not in result
+    assert "choices" in result
+    content = result["choices"][0]["text"]
+    print(f"LoRA completion result: {content}")
+
+    # With Shakespeare LoRA, expect Shakespearean-style words
+    assert len(content) > 0

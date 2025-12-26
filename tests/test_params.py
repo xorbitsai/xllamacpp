@@ -338,3 +338,52 @@ def test_json_schema_to_grammar():
 
     with pytest.raises(ValueError):
         xlc.json_schema_to_grammar("{not json}")
+
+
+def test_lora_adapters():
+    """Test CommonAdapterLoraInfo and CommonParams.lora_adapters property."""
+    params = xlc.CommonParams()
+
+    # Initially empty
+    assert params.lora_adapters == []
+
+    # Create and set adapters
+    adapter1 = xlc.CommonAdapterLoraInfo("/path/lora1.gguf", 1.0)
+    adapter2 = xlc.CommonAdapterLoraInfo("/path/lora2.gguf", 0.5)
+    params.lora_adapters = [adapter1, adapter2]
+
+    # Verify basic properties
+    adapters = params.lora_adapters
+    assert len(adapters) == 2
+    assert adapters[0].path == "/path/lora1.gguf"
+    assert adapters[0].scale == 1.0
+    assert adapters[1].path == "/path/lora2.gguf"
+    assert adapters[1].scale == approx(0.5)
+    assert "lora1.gguf" in repr(adapters[0])
+
+    # Test modifications affect underlying data
+    adapter1.scale = 0.75
+    assert params.lora_adapters[0].scale == approx(0.75)
+
+    # Test default constructor
+    default_adapter = xlc.CommonAdapterLoraInfo()
+    assert default_adapter.path == ""
+    assert default_adapter.scale == 1.0
+
+    # Test dangling pointer safety - old wrappers become independent after reassignment
+    old_adapters = params.lora_adapters
+    params.lora_adapters = [xlc.CommonAdapterLoraInfo("/new.gguf", 2.0)]
+    old_adapters[0].path = "/modified.gguf"  # Should not crash
+    assert params.lora_adapters[0].path == "/new.gguf"  # Unchanged
+
+    # Test set old wrappers
+    params2 = xlc.CommonParams()
+    old_adapters[0].path = "/other.gguf"
+    old_adapters[0].scale = 3.0
+    params2.lora_adapters = old_adapters
+    assert params.lora_adapters[0].path == "/new.gguf"
+    assert params2.lora_adapters[0].path == "/other.gguf"
+
+    # Clear adapters
+    params.lora_adapters = []
+    assert params.lora_adapters == []
