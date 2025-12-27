@@ -2017,6 +2017,15 @@ cdef class CommonParams:
         self.p.prefill_assistant = value
 
     @property
+    def sleep_idle_seconds(self) -> int:
+        """if >0, server will sleep after this many seconds of idle time"""
+        return self.p.sleep_idle_seconds
+
+    @sleep_idle_seconds.setter
+    def sleep_idle_seconds(self, value: int):
+        self.p.sleep_idle_seconds = value
+
+    @property
     def api_keys(self) -> list[str]:
         """list of api keys"""
         result = []
@@ -2064,6 +2073,15 @@ cdef class CommonParams:
     @webui.setter
     def webui(self, value: bool):
         self.p.webui = value
+
+    @property
+    def webui_config_json(self) -> str:
+        """webui config json"""
+        return self.p.webui_config_json
+
+    @webui_config_json.setter
+    def webui_config_json(self, value: str):
+        self.p.webui_config_json = value
 
     @property
     def endpoint_slots(self) -> bool:
@@ -2313,6 +2331,33 @@ cdef class CommonParams:
     @n_pca_iterations.setter
     def n_pca_iterations(self, value: int):
         self.p.n_pca_iterations = value
+
+    @property
+    def fit_params(self) -> bool:
+        """whether to fit unset model/context parameters to free device memory"""
+        return self.p.fit_params
+
+    @fit_params.setter
+    def fit_params(self, value: bool):
+        self.p.fit_params = value
+
+    @property
+    def fit_params_target(self) -> int:
+        """margin per device in bytes for fitting parameters to free memory"""
+        return self.p.fit_params_target
+
+    @fit_params_target.setter
+    def fit_params_target(self, value: int):
+        self.p.fit_params_target = value
+
+    @property
+    def fit_params_min_ctx(self) -> int:
+        """minimum context size to set when trying to reduce memory use"""
+        return self.p.fit_params_min_ctx
+
+    @fit_params_min_ctx.setter
+    def fit_params_min_ctx(self, value: int):
+        self.p.fit_params_min_ctx = value
 
     # // cvector-generator params
     # dimre_method cvector_dimre_method = DIMRE_METHOD_PCA;

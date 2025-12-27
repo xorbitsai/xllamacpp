@@ -61,7 +61,7 @@ def test_enum_values():
 def test_common_params():
     params = xlc.CommonParams()
     assert params.n_predict == -1
-    assert params.n_ctx == 4096
+    assert params.n_ctx == 0
     assert params.n_batch == 2048
     assert params.n_ubatch == 512
     assert params.n_keep == 0
@@ -254,6 +254,27 @@ def test_common_params():
 
     assert params.n_pca_batch == 100
     assert params.n_pca_iterations == 1000
+
+    # Test new fit_params fields
+    assert params.fit_params is True
+    params.fit_params = False
+    assert params.fit_params is False
+    assert params.fit_params_target == 1024**3
+    params.fit_params_target = 1024
+    assert params.fit_params_target == 1024
+    assert params.fit_params_min_ctx == 4096
+    params.fit_params_min_ctx = 512
+    assert params.fit_params_min_ctx == 512
+
+    # Test new sleep_idle_seconds field
+    assert params.sleep_idle_seconds == -1
+    params.sleep_idle_seconds = 30
+    assert params.sleep_idle_seconds == 30
+
+    # Test new webui_config_json field
+    assert params.webui_config_json == ""
+    params.webui_config_json = '{"theme": "dark"}'
+    assert params.webui_config_json == '{"theme": "dark"}'
 
     sp = params.sampling.samplers
     assert sp

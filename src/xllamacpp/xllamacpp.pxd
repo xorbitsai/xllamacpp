@@ -430,6 +430,10 @@ cdef extern from "common.h":
         int32_t n_gpu_layers_draft # number of layers to store in VRAM for the draft model (-1 - use default)
         int32_t main_gpu           # the GPU that is used for scratch and small tensors
         float   tensor_split[128]  # how split tensors should be distributed across GPUs
+        bint    fit_params         # whether to fit unset model/context parameters to free device memory
+        size_t  fit_params_target  # margin per device in bytes for fitting parameters to free memory
+        int32_t fit_params_min_ctx # minimum context size to set when trying to reduce memory use
+
         llama_split_mode        split_mode         # how to split the model across GPUs
 
         cpu_params cpuparams
@@ -567,6 +571,7 @@ cdef extern from "common.h":
         common_reasoning_format reasoning_format
         int32_t reasoning_budget
         bint prefill_assistant      # if true, any trailing assistant message will be prefilled into the response
+        int32_t sleep_idle_seconds  # if >0, server will sleep after this many seconds of idle time
 
         std_vector[std_string] api_keys
 
@@ -575,7 +580,10 @@ cdef extern from "common.h":
 
         std_map[std_string, std_string] default_template_kwargs
 
+        # webui configs
         bint webui
+        std_string webui_config_json
+
         bint endpoint_slots
         bint endpoint_props
         bint endpoint_metrics
