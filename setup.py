@@ -225,4 +225,9 @@ setup(
         },
     ),
     package_dir={"": "src"},
+    options={
+        "bdist_wheel": {
+            "py_limited_api": "cp310",
+        }
+    },
 )
