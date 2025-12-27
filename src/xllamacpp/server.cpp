@@ -496,7 +496,7 @@ Server::Server(const common_params &params)
     throw std::runtime_error(
         "Failed to init server, please check the input params.");
   }
-  
+
   _routes = std::make_shared<server_routes>(_params, *_ctx_server);
   _routes->update_meta(*_ctx_server);
 }
