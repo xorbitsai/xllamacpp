@@ -421,6 +421,22 @@ def test_llama_server_rerank(model_path):
     assert type(result) is dict
     assert len(result["results"]) == 3
 
+    rerank_input_str = json.dumps(rerank_input)
+    result_str = server.handle_rerank(rerank_input_str)
+    assert type(result_str) is str
+    result = json.loads(result_str)
+
+    assert type(result) is dict
+    assert len(result["results"]) == 3
+
+    rerank_input_bytes = orjson.dumps(rerank_input)
+    result_bytes = server.handle_rerank(rerank_input_bytes)
+    assert type(result_bytes) is bytes
+    result = orjson.loads(result_bytes)
+
+    assert type(result) is dict
+    assert len(result["results"]) == 3
+
 
 def test_llama_server_lora(model_path):
     """Test loading and using a LoRA adapter.

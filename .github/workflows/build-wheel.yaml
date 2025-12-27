@@ -12,121 +12,36 @@ concurrency:
 
 jobs:
   build_wheels:
-    name: Build wheels on ${{ matrix.os }} for Python ${{ matrix.python }} ${{ matrix.arch }}
+    name: Build wheels on ${{ matrix.os }} ${{ matrix.arch }} (abi3)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Linux x86_64
+          # Linux x86_64 - single abi3 wheel for all Python 3.10+
           - os: ubuntu-latest
             arch: auto
             platform-id: manylinux_x86_64
-            python: 310
-            requires-python: ">=3.10,<3.11"
-          - os: ubuntu-latest
-            arch: auto
-            platform-id: manylinux_x86_64
-            python: 311
-            requires-python: ">=3.11,<3.12"
-          - os: ubuntu-latest
-            arch: auto
-            platform-id: manylinux_x86_64
-            python: 312
-            requires-python: ">=3.12,<3.13"
-          - os: ubuntu-latest
-            arch: auto
-            platform-id: manylinux_x86_64
-            python: 313
-            requires-python: ">=3.13,<3.14"
 
-          # Linux aarch64
+          # Linux aarch64 - single abi3 wheel for all Python 3.10+
           - os: ubuntu-22.04-arm
             arch: aarch64
             platform-id: manylinux_aarch64
-            python: 310
-            requires-python: ">=3.10,<3.11"
-          - os: ubuntu-22.04-arm
-            arch: aarch64
-            platform-id: manylinux_aarch64
-            python: 311
-            requires-python: ">=3.11,<3.12"
-          - os: ubuntu-22.04-arm
-            arch: aarch64
-            platform-id: manylinux_aarch64
-            python: 312
-            requires-python: ">=3.12,<3.13"
-          - os: ubuntu-22.04-arm
-            arch: aarch64
-            platform-id: manylinux_aarch64
-            python: 313
-            requires-python: ">=3.13,<3.14"
 
-          # macOS x86_64
+          # macOS x86_64 - single abi3 wheel for all Python 3.10+
           - os: macos-15-intel
             arch: x86_64
             platform-id: macosx_x86_64
-            python: 310
-            requires-python: ">=3.10,<3.11"
-          - os: macos-15-intel
-            arch: x86_64
-            platform-id: macosx_x86_64
-            python: 311
-            requires-python: ">=3.11,<3.12"
-          - os: macos-15-intel
-            arch: x86_64
-            platform-id: macosx_x86_64
-            python: 312
-            requires-python: ">=3.12,<3.13"
-          - os: macos-15-intel
-            arch: x86_64
-            platform-id: macosx_x86_64
-            python: 313
-            requires-python: ">=3.13,<3.14"
 
-          # macOS arm64
+          # macOS arm64 - single abi3 wheel for all Python 3.10+
           - os: macos-14
             arch: arm64
             platform-id: macosx_arm64
-            python: 310
-            requires-python: ">=3.10,<3.11"
-          - os: macos-14
-            arch: arm64
-            platform-id: macosx_arm64
-            python: 311
-            requires-python: ">=3.11,<3.12"
-          - os: macos-14
-            arch: arm64
-            platform-id: macosx_arm64
-            python: 312
-            requires-python: ">=3.12,<3.13"
-          - os: macos-14
-            arch: arm64
-            platform-id: macosx_arm64
-            python: 313
-            requires-python: ">=3.13,<3.14"
 
-          # Windows AMD64
+          # Windows AMD64 - single abi3 wheel for all Python 3.10+
           - os: windows-2022
             arch: AMD64
             platform-id: win_amd64
-            python: 310
-            requires-python: ">=3.10,<3.11"
-          - os: windows-2022
-            arch: AMD64
-            platform-id: win_amd64
-            python: 311
-            requires-python: ">=3.11,<3.12"
-          - os: windows-2022
-            arch: AMD64
-            platform-id: win_amd64
-            python: 312
-            requires-python: ">=3.12,<3.13"
-          - os: windows-2022
-            arch: AMD64
-            platform-id: win_amd64
-            python: 313
-            requires-python: ">=3.13,<3.14"
 
     steps:
       - uses: actions/checkout@v4
@@ -146,7 +61,8 @@ jobs:
           VERSIONEER_CLOSEST_TAG_ONLY: 1
           CIBW_SKIP: pp* *i686
           CIBW_ARCHS: ${{ matrix.arch }}
-          CIBW_PROJECT_REQUIRES_PYTHON: ${{ matrix.requires-python }}
+          # Build only cp310 for abi3 wheel (compatible with all Python 3.10+)
+          CIBW_BUILD: cp310-*
           CIBW_TEST_REQUIRES: pytest requests pytest-asyncio pytest-timeout
           CIBW_BEFORE_ALL_LINUX: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source $HOME/.cargo/env
           CIBW_BEFORE_BUILD: pip install -r requirements.txt && make
@@ -159,7 +75,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheel-${{ matrix.python }}-${{ matrix.platform-id }}
+          name: wheel-abi3-${{ matrix.platform-id }}
           path: wheelhouse/*.whl
 
   build_sdist:
