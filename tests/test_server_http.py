@@ -27,6 +27,7 @@ class TestServerHTTP:
         params.cpuparams.n_threads = 2
         params.cpuparams_batch.n_threads = 2
         params.endpoint_metrics = True
+        params.sleep_idle_seconds = 1  # Set sleep time to 1 second for testing
 
         # Create server instance - this automatically starts the HTTP server
         server = xlc.Server(params)
