@@ -27,7 +27,10 @@ PLATFORM = platform.system()
 
 LLAMACPP_LIBS_DIR = os.path.join(CWD, "src/llama.cpp/lib")
 
-DEFINE_MACROS = []
+# ABI3+ (Limited API) support for Python 3.10+
+PY_LIMITED_API_VERSION = 0x030A0000  # Python 3.10
+
+DEFINE_MACROS = [("Py_LIMITED_API", PY_LIMITED_API_VERSION)]
 if PLATFORM == "Windows":
     EXTRA_COMPILE_ARGS = ["/std:c++17"]
 else:
@@ -160,7 +163,7 @@ def mk_extension(name, sources, define_macros=None):
     return Extension(
         name=name,
         sources=sources,
-        define_macros=define_macros if define_macros else [],
+        define_macros=DEFINE_MACROS + (define_macros if define_macros else []),
         include_dirs=INCLUDE_DIRS,
         libraries=LIBRARIES,
         library_dirs=LIBRARY_DIRS,
@@ -168,6 +171,7 @@ def mk_extension(name, sources, define_macros=None):
         extra_compile_args=EXTRA_COMPILE_ARGS,
         extra_link_args=EXTRA_LINK_ARGS,
         language="c++",
+        py_limited_api=True,
     )
 
 
@@ -178,7 +182,7 @@ common = {
     "name": NAME,
     "version": VERSION,
     "description": "A cython wrapper of the llama.cpp inference engine.",
-    "python_requires": ">=3.9",
+    "python_requires": ">=3.10",
     "cmdclass": versioneer.get_cmdclass(),
     "license": "MIT",
     # "include_package_data": True,
@@ -217,6 +221,7 @@ setup(
             "embedsignature": False,  # default: False
             "emit_code_comments": False,  # default: True
             "warn.unused": True,  # default: False
+            "binding": True,  # Required for ABI3+
         },
     ),
     package_dir={"": "src"},

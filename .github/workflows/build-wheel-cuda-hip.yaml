@@ -22,11 +22,12 @@ permissions:
 
 jobs:
   build_wheels_hip_linux:
-    name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
+    name: Build Wheel HIP Linux (abi3) ${{matrix.hip}}
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        pyver: ["3.10", "3.11", "3.12", "3.13"]
+        # Build only with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
+        pyver: ["3.10"]
         hip: ["6.3.4", "6.4.1"]
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -169,12 +170,13 @@ jobs:
 
 
   build_wheels_vulkan:
-    name: Build Wheel Vulkan ${{ matrix.os }} ${{ matrix.pyver }}
+    name: Build Wheel Vulkan ${{ matrix.os }} (abi3)
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: ["ubuntu-22.04", "macos-15-intel", "windows-2022"]
-        pyver: ["3.10", "3.11", "3.12", "3.13"]
+        # Build only with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
+        pyver: ["3.10"]
         vulkan: ["1.4.313.2"]
     env:
       VULKAN_VERSION: ${{ matrix.vulkan }}
@@ -282,12 +284,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_wheels_cuda_linux:
-    name: Build Wheel CUDA Linux ${{ matrix.platform }} ${{ matrix.pyver }} ${{ matrix.cuda }}
+    name: Build Wheel CUDA Linux ${{ matrix.platform }} (abi3) ${{ matrix.cuda }}
     runs-on: ${{ matrix.platform }}
     strategy:
       matrix:
         platform: ["ubuntu-22.04", "ubuntu-22.04-arm"]
-        pyver: ["3.10", "3.11", "3.12", "3.13"]
+        # Build only with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
+        pyver: ["3.10"]
         cuda: ["12.4.1", "12.8.1"]
     env:
       CUDAVER: ${{ matrix.cuda }}
@@ -437,11 +440,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_wheels_cuda_windows:
-    name: Build Wheel CUDA Windows ${{ matrix.pyver }} ${{ matrix.cuda }}
+    name: Build Wheel CUDA Windows (abi3) ${{ matrix.cuda }}
     runs-on: windows-2022
     strategy:
       matrix:
-        pyver: ["3.10", "3.11", "3.12", "3.13"]
+        # Build only with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
+        pyver: ["3.10"]
         cuda: ["12.4.1", "12.8.1"]
     defaults:
       run:
