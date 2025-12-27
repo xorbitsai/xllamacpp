@@ -27,7 +27,6 @@ class TestServerHTTP:
         params.cpuparams.n_threads = 2
         params.cpuparams_batch.n_threads = 2
         params.endpoint_metrics = True
-        params.sleep_idle_seconds = 1  # Set sleep time to 1 second for testing
 
         # Create server instance - this automatically starts the HTTP server
         server = xlc.Server(params)
@@ -259,14 +258,14 @@ class TestServerHTTP:
 
     def test_server_sleep(self, server_url):
         """Test server sleep functionality with sleep_idle_seconds parameter.
-        
+
         This test verifies that:
         1. Server goes to sleep after idle time
         2. Health and props endpoints remain responsive during sleep
         3. Server reports is_sleeping=True when asleep
         4. Generation request wakes up the server
         5. Server reports is_sleeping=False when awake
-        
+
         Based on: thirdparty/llama.cpp/tools/server/tests/unit/test_sleep.py
         """
         # Wait a bit so that server can go to sleep
@@ -275,16 +274,19 @@ class TestServerHTTP:
         # Make sure these endpoints are still responsive after sleep
         response = requests.get(f"{server_url}/health")
         assert response.status_code == 200
-        
+
         response = requests.get(f"{server_url}/props")
         assert response.status_code == 200
         assert response.json()["is_sleeping"] == True
 
         # Make a generation request to wake up the server
-        response = requests.post(f"{server_url}/completion", json={
-            "n_predict": 1,
-            "prompt": "Hello",
-        })
+        response = requests.post(
+            f"{server_url}/completion",
+            json={
+                "n_predict": 1,
+                "prompt": "Hello",
+            },
+        )
         assert response.status_code == 200
 
         # It should no longer be sleeping
@@ -294,7 +296,7 @@ class TestServerHTTP:
 
     def test_server_sleep_python_api_wake(self, server_url):
         """Test that Python API methods can wake up the server from sleep.
-        
+
         This test verifies that:
         1. Server goes to sleep after idle time
         2. Python API methods (handle_completions) can wake up the server
@@ -310,10 +312,13 @@ class TestServerHTTP:
 
         # Now use the same server instance (via HTTP) to wake it up
         # Make a completion request via HTTP to wake up the server
-        response = requests.post(f"{server_url}/completion", json={
-            "n_predict": 1,
-            "prompt": "Hello",
-        })
+        response = requests.post(
+            f"{server_url}/completion",
+            json={
+                "n_predict": 1,
+                "prompt": "Hello",
+            },
+        )
         assert response.status_code == 200
 
         # Verify server is now awake
@@ -330,10 +335,13 @@ class TestServerHTTP:
         assert response.json()["is_sleeping"] == True
 
         # Now test that we can also wake it up via chat completion
-        response = requests.post(f"{server_url}/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hi"}],
-            "max_tokens": 1,
-        })
+        response = requests.post(
+            f"{server_url}/chat/completions",
+            json={
+                "messages": [{"role": "user", "content": "Hi"}],
+                "max_tokens": 1,
+            },
+        )
         assert response.status_code == 200
 
         # Verify server is awake again
