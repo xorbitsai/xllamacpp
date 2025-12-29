@@ -36,12 +36,12 @@ build_llamacpp() {
   if [[ -n "${XLLAMACPP_BUILD_CUDA}" ]]; then
     echo "Building for CUDA"
 
-	# Get CUDA architectures from nvcc if CUDA_ARCHITECTURES not set
+    # Get CUDA architectures from nvcc if CUDA_ARCHITECTURES not set
     local cuda_archs="${CUDA_ARCHITECTURES:-}"
     if [[ -z "${cuda_archs}" ]]; then
       echo "=== Detecting supported GPU architectures ==="
       nvcc --list-gpu-arch
-      cuda_archs=$(nvcc --list-gpu-arch | grep -E '^sm_[0-9]+$' | sed 's/sm_//' | awk '$1 >= 70' | tr '\n' ';' | sed 's/;$//')
+      cuda_archs=$(nvcc --list-gpu-arch | grep -E '^(sm|compute)_[0-9]+$' | sed -E 's/(sm|compute)_//' | sort -u | awk '$1 >= 75' | tr '\n' ';' | sed 's/;$//')
     fi
     echo "Using CUDA architectures: ${cuda_archs}"
 
