@@ -35,11 +35,22 @@ build_llamacpp() {
   
   if [[ -n "${XLLAMACPP_BUILD_CUDA}" ]]; then
     echo "Building for CUDA"
+
+    # Get CUDA architectures from nvcc if CUDA_ARCHITECTURES not set
+    local cuda_archs="${CUDA_ARCHITECTURES:-}"
+    if [[ -z "${cuda_archs}" ]]; then
+      echo "=== Detecting supported GPU architectures ==="
+      nvcc --list-gpu-arch
+      # Filter for compute capability >= 75, replace 120 with 120a for Blackwell optimizations
+      cuda_archs=$(nvcc --list-gpu-arch | grep -E '^(sm|compute)_[0-9]+$' | sed -E 's/(sm|compute)_//' | sort -u | awk '$1 >= 75' | tr '\n' ';' | sed 's/;$//' | sed 's/\b120\b/120a/g')
+    fi
+    echo "Using CUDA architectures: ${cuda_archs}"
+
     cmake_args+=(
       "-DGGML_NATIVE=OFF"
       "-DGGML_CUDA=ON"
       "-DGGML_CUDA_FORCE_MMQ=ON"
-      "-DCMAKE_CUDA_ARCHITECTURES=all"
+	  "-DCMAKE_CUDA_ARCHITECTURES=${cuda_archs}"
     )
     targets+=("ggml-cuda")
   elif [[ -n "${XLLAMACPP_BUILD_HIP}" ]]; then
