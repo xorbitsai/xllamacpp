@@ -291,7 +291,7 @@ jobs:
         platform: ["ubuntu-22.04", "ubuntu-22.04-arm"]
         # Build only with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
         pyver: ["3.10"]
-        cuda: ["12.4.1", "12.9"]
+        cuda: ["12.4.1", "13.1"]
     env:
       CUDAVER: ${{ matrix.cuda }}
 
@@ -446,7 +446,7 @@ jobs:
       matrix:
         # Build only with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
         pyver: ["3.10"]
-        cuda: ["12.4.1", "12.9"]
+        cuda: ["12.4.1", "13.1"]
     defaults:
       run:
         shell: bash
