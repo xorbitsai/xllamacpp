@@ -41,7 +41,8 @@ build_llamacpp() {
     if [[ -z "${cuda_archs}" ]]; then
       echo "=== Detecting supported GPU architectures ==="
       nvcc --list-gpu-arch
-      cuda_archs=$(nvcc --list-gpu-arch | grep -E '^(sm|compute)_[0-9]+$' | sed -E 's/(sm|compute)_//' | sort -u | awk '$1 >= 75' | tr '\n' ';' | sed 's/;$//')
+      # Filter for compute capability >= 75, replace 120 with 120a for Blackwell optimizations
+      cuda_archs=$(nvcc --list-gpu-arch | grep -E '^(sm|compute)_[0-9]+$' | sed -E 's/(sm|compute)_//' | sort -u | awk '$1 >= 75' | tr '\n' ';' | sed 's/;$//' | sed 's/\b120\b/120a/g')
     fi
     echo "Using CUDA architectures: ${cuda_archs}"
 
