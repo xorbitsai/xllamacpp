@@ -133,7 +133,7 @@ static void init(common_params &params, server_context &ctx_server,
   if (is_router_server) {
     // setup server instances manager
     try {
-      models_routes.emplace(params, 0, nullptr, nullptr);
+      models_routes.emplace(params, 0, nullptr);
     } catch (const std::exception &e) {
       LOG_ERR("%s: failed to initialize router models: %s\n", __func__,
               e.what());

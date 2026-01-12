@@ -344,8 +344,7 @@ cdef extern from "common.h":
         std_vector[llama_logit_bias] logit_bias      # logit biases to apply
         std_vector[llama_logit_bias] logit_bias_eog  # pre-calculated logit biases for EOG tokens
 
-        # print the parameters into a string
-        # std_string print() const
+        bint backend_sampling
 
 
     ctypedef struct common_params_model:
@@ -431,8 +430,10 @@ cdef extern from "common.h":
         int32_t main_gpu           # the GPU that is used for scratch and small tensors
         float   tensor_split[128]  # how split tensors should be distributed across GPUs
         bint    fit_params         # whether to fit unset model/context parameters to free device memory
-        size_t  fit_params_target  # margin per device in bytes for fitting parameters to free memory
         int32_t fit_params_min_ctx # minimum context size to set when trying to reduce memory use
+
+        # margin per device in bytes for fitting parameters to free memory:
+        std_vector[size_t] fit_params_target
 
         llama_split_mode        split_mode         # how to split the model across GPUs
 
@@ -465,6 +466,11 @@ cdef extern from "common.h":
         std_string lookup_cache_static  # path of static ngram cache file for lookup decoding
         std_string lookup_cache_dynamic # path of dynamic ngram cache file for lookup decoding
         std_string logits_file          # file for saving *all* logits
+
+        # llama-debug specific options
+        std_string logits_output_dir         # directory for saving logits output files
+        bint        save_logits              # whether to save logits to files
+        std_vector[std_string] tensor_filter # filter tensor names for debug output (regex)
 
         std_vector[std_string] in_files     # all input files
         std_vector[std_string] antiprompt   # strings upon which more user input is prompted (a.k.a. reverse prompts)
@@ -517,6 +523,7 @@ cdef extern from "common.h":
 
         bint input_prefix_bos       # prefix BOS to user inputs, preceding input_prefix
         bint use_mmap               # use mmap for faster loads
+        bint use_direct_io          # read from disk without buffering for faster model loading
         bint use_mlock              # use mlock to keep model in memory
         bint verbose_prompt         # print prompt tokens before generation
         bint display_prompt         # print prompt before generation

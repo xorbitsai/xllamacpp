@@ -402,6 +402,15 @@ cdef class CommonParamsSampling:
         self.p.samplers = xllamacpp.common_sampler_types_from_names(split_values, True)
 
     @property
+    def backend_sampling(self) -> bool:
+        """enable backend sampling"""
+        return self.p.backend_sampling
+
+    @backend_sampling.setter
+    def backend_sampling(self, value: bool):
+        self.p.backend_sampling = value
+
+    @property
     def grammar(self) -> str:
         """optional BNF-like grammar to constrain sampling"""
         return self.p.grammar
@@ -1316,6 +1325,38 @@ cdef class CommonParams:
         self.p.logits_file = value
 
     @property
+    def logits_output_dir(self) -> str:
+        """directory for saving logits output files"""
+        return self.p.logits_output_dir
+
+    @logits_output_dir.setter
+    def logits_output_dir(self, value: str):
+        self.p.logits_output_dir = value
+
+    @property
+    def save_logits(self) -> bool:
+        """whether to save logits to files"""
+        return self.p.save_logits
+
+    @save_logits.setter
+    def save_logits(self, value: bool):
+        self.p.save_logits = value
+
+    @property
+    def tensor_filter(self) -> list[str]:
+        """filter tensor names for debug output (regex)"""
+        result = []
+        for i in range(self.p.tensor_filter.size()):
+            result.append(self.p.tensor_filter[i])
+        return result
+
+    @tensor_filter.setter
+    def tensor_filter(self, values: list[str]):
+        self.p.tensor_filter.clear()
+        for i in values:
+            self.p.tensor_filter.push_back(i)
+
+    @property
     def in_files(self) -> list[str]:
         """all input files."""
         result = []
@@ -1666,6 +1707,15 @@ cdef class CommonParams:
     @use_mmap.setter
     def use_mmap(self, value: bool):
         self.p.use_mmap = value
+
+    @property
+    def use_direct_io(self) -> bool:
+        """read from disk without buffering for faster model loading"""
+        return self.p.use_direct_io
+
+    @use_direct_io.setter
+    def use_direct_io(self, value: bool):
+        self.p.use_direct_io = value
 
     @property
     def use_mlock(self) -> bool:
@@ -2342,12 +2392,12 @@ cdef class CommonParams:
         self.p.fit_params = value
 
     @property
-    def fit_params_target(self) -> int:
+    def fit_params_target(self) -> list[int]:
         """margin per device in bytes for fitting parameters to free memory"""
         return self.p.fit_params_target
 
     @fit_params_target.setter
-    def fit_params_target(self, value: int):
+    def fit_params_target(self, value: list[int]):
         self.p.fit_params_target = value
 
     @property

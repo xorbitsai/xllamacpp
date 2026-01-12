@@ -10,6 +10,9 @@ def test_common_params_sampling():
     params = xlc.CommonParams()
     assert params.sampling.timing_per_token is False
     assert params.sampling.user_sampling_config == 0
+    assert params.sampling.backend_sampling is False
+    params.sampling.backend_sampling = True
+    assert params.sampling.backend_sampling is True
     # assert params.seed == xlc.LLAMA_DEFAULT_SEED
     # assert params.n_prev == 64
     # assert params.n_probs == 0
@@ -132,6 +135,19 @@ def test_common_params():
     assert params.lookup_cache_dynamic == ""
     assert params.logits_file == ""
 
+    # Test new debug properties
+    assert params.logits_output_dir == "data"
+    params.logits_output_dir = "/tmp/logits"
+    assert params.logits_output_dir == "/tmp/logits"
+
+    assert params.save_logits is False
+    params.save_logits = True
+    assert params.save_logits is True
+
+    assert params.tensor_filter == []
+    params.tensor_filter = ["tensor1", "tensor2"]
+    assert params.tensor_filter == ["tensor1", "tensor2"]
+
     assert params.verbosity == 3
     assert params.control_vector_layer_start == -1
     assert params.control_vector_layer_end == -1
@@ -162,6 +178,9 @@ def test_common_params():
     assert params.kv_unified is False
     assert params.input_prefix_bos is False
     assert params.use_mmap is True
+    assert params.use_direct_io is True
+    params.use_direct_io = False
+    assert params.use_direct_io is False
     assert params.use_mlock is False
     assert params.verbose_prompt is False
     assert params.display_prompt is True
@@ -259,9 +278,12 @@ def test_common_params():
     assert params.fit_params is True
     params.fit_params = False
     assert params.fit_params is False
-    assert params.fit_params_target == 1024**3
-    params.fit_params_target = 1024
-    assert params.fit_params_target == 1024
+    for x in params.fit_params_target:
+        assert x == 1024 * 1024 * 1024
+    params.fit_params_target = [1024]
+    assert params.fit_params_target == [1024]
+    params.fit_params_target = [1024, 2048, 4096]
+    assert params.fit_params_target == [1024, 2048, 4096]
     assert params.fit_params_min_ctx == 4096
     params.fit_params_min_ctx = 512
     assert params.fit_params_min_ctx == 512
