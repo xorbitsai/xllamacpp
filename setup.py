@@ -76,6 +76,7 @@ if PLATFORM == "Windows":
             "ntdll",
         ]
     )
+    # Note: Windows builds typically use LLAMA_BUILD_BORINGSSL=ON which statically links OpenSSL
     if BUILD_CUDA:
         LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "\\Lib\\x64"])
         LIBRARIES.extend(["ggml-cuda", "cudart", "cublas", "cublasLt", "cuda"])
@@ -83,7 +84,7 @@ if PLATFORM == "Windows":
         LIBRARY_DIRS.extend([os.getenv("VULKAN_SDK", "") + "\\Lib"])
         LIBRARIES.extend(["ggml-vulkan", "vulkan-1"])
 else:
-    LIBRARIES.extend(["pthread"])
+    LIBRARIES.extend(["pthread", "ssl", "crypto"])
     EXTRA_OBJECTS.extend(
         [
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
