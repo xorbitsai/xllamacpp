@@ -71,12 +71,15 @@ if PLATFORM == "Windows":
             "cpp-httplib",
             "server-context",
             "llguidance",
+            "ssl",
+            "crypto",
             "Advapi32",
             "userenv",
             "ntdll",
         ]
     )
-    # Note: Windows builds typically use LLAMA_BUILD_BORINGSSL=ON which statically links OpenSSL
+    # Note: Windows builds use LLAMA_BUILD_BORINGSSL=ON which statically links OpenSSL
+    # Add BoringSSL static libraries for proper symbol resolution
     if BUILD_CUDA:
         LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "\\Lib\\x64"])
         LIBRARIES.extend(["ggml-cuda", "cudart", "cublas", "cublasLt", "cuda"])

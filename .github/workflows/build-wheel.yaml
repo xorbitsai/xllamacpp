@@ -69,7 +69,7 @@ jobs:
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
           CIBW_ENVIRONMENT_MACOS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
-          CIBW_ENVIRONMENT_WINDOWS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
+          CIBW_ENVIRONMENT_WINDOWS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }} LLAMA_BUILD_BORINGSSL=ON"
         with:
           package-dir: ./
 
