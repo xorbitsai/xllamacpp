@@ -323,6 +323,8 @@ cdef extern from "common.h":
         float   dry_base                   # 0.0 = disabled; multiplier * base ^ (length of sequence before token - allowed length)
         int32_t dry_allowed_length         # tokens extending repetitions beyond this receive penalty
         int32_t dry_penalty_last_n         # how many tokens to scan for repetitions (0 = disable penalty, -1 = context size)
+        float   adaptive_target            # select tokens near this probability (valid range 0.0 to 1.0; negative = disabled)
+        float   adaptive_decay             # EMA decay for adaptation; history ≈ 1/(1-decay) tokens (0.0 - 0.99)
         int32_t mirostat                   # 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
         float   top_n_sigma                # -1.0 = disabled
         float   mirostat_tau               # target entropy
@@ -565,6 +567,7 @@ cdef extern from "common.h":
         int32_t timeout_write       # http write timeout in seconds
         int32_t n_threads_http      # number of threads to process HTTP requests (TODO: support threadpool)
         int32_t n_cache_reuse       # min chunk size to reuse from the cache via KV shifting
+        bint    cache_prompt        # whether to enable prompt caching
         int32_t n_ctx_checkpoints   # max number of context checkpoints per slot
         int32_t cache_ram_mib       # -1 = no limit, 0 - disable, 1 = 1 MiB, etc.
 
