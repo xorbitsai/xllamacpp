@@ -87,7 +87,10 @@ if PLATFORM == "Windows":
         LIBRARY_DIRS.extend([os.getenv("VULKAN_SDK", "") + "\\Lib"])
         LIBRARIES.extend(["ggml-vulkan", "vulkan-1"])
 else:
-    LIBRARIES.extend(["pthread", "ssl", "crypto"])
+    # For macOS and Linux with BoringSSL enabled, ssl/crypto are statically linked
+    # Only add pthread for Linux
+    if PLATFORM != "Darwin":
+        LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(
         [
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
