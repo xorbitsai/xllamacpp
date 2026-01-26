@@ -25,10 +25,8 @@ build_llamacpp() {
     "-DLLAMA_LLGUIDANCE=ON"
   )
 
-  # Add BoringSSL for Windows and macOS (Linux uses system OpenSSL)
-  if [[ "$(uname -s)" == *"NT"* ]] || [[ "$(uname -s)" == "Darwin" ]]; then
-    cmake_args+=("-DLLAMA_BUILD_BORINGSSL=ON")
-  fi
+  # Add BoringSSL for all platforms (Windows, macOS, and Linux)
+  cmake_args+=("-DLLAMA_BUILD_BORINGSSL=ON")
 
   # Add any additional CMake arguments from environment
   if [ -n "${CMAKE_ARGS}" ]; then

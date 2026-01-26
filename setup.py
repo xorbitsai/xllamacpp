@@ -89,8 +89,7 @@ if PLATFORM == "Windows":
 else:
     # For macOS and Linux with BoringSSL enabled, ssl/crypto are statically linked
     # Only add pthread for Linux
-    if PLATFORM != "Darwin":
-        LIBRARIES.extend(["pthread"])
+    LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(
         [
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
