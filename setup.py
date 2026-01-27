@@ -31,6 +31,9 @@ LLAMACPP_LIBS_DIR = os.path.join(CWD, "src/llama.cpp/lib")
 PY_LIMITED_API_VERSION = 0x030A0000  # Python 3.10
 
 DEFINE_MACROS = [("Py_LIMITED_API", PY_LIMITED_API_VERSION)]
+# Define OPENSSL_IS_BORINGSSL to ensure httplib headers use the correct code path for BoringSSL
+# This is needed because llama.cpp is built with BoringSSL, and xllamacpp must match
+DEFINE_MACROS.append(("OPENSSL_IS_BORINGSSL", None))
 if PLATFORM == "Windows":
     EXTRA_COMPILE_ARGS = ["/std:c++17"]
 else:
