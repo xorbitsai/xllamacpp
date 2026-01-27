@@ -64,12 +64,12 @@ jobs:
           # Build only cp310 for abi3 wheel (compatible with all Python 3.10+)
           CIBW_BUILD: cp310-*
           CIBW_TEST_REQUIRES: pytest requests pytest-asyncio pytest-timeout
-          CIBW_BEFORE_ALL_LINUX: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source $HOME/.cargo/env
+          CIBW_BEFORE_ALL_LINUX: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source $HOME/.cargo/env && (yum install -y openssl-devel 2>/dev/null || apk add openssl-dev 2>/dev/null)
           CIBW_BEFORE_BUILD: pip install -r requirements.txt && make
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
           CIBW_ENVIRONMENT_MACOS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
-          CIBW_ENVIRONMENT_WINDOWS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }} LLAMA_BUILD_BORINGSSL=ON"
+          CIBW_ENVIRONMENT_WINDOWS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
         with:
           package-dir: ./
 

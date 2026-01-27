@@ -80,7 +80,6 @@ jobs:
       - name: Install dependencies
         env:
           OS: ${{ matrix.os }}
-          LLAMA_BUILD_BORINGSSL: ${{ matrix.os == 'windows-latest' && 'ON' || '' }}
         run: |
           pip install -r requirements.txt
           pip install pytest pytest-timeout requests gguf orjson
