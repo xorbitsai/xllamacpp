@@ -88,10 +88,18 @@ if PLATFORM == "Windows":
         LIBRARIES.extend(["ggml-vulkan", "vulkan-1"])
 else:
     LIBRARIES.extend(["pthread"])
+    if PLATFORM == "Darwin":
+        EXTRA_OBJECTS.extend(
+            [
+                f"{LLAMACPP_LIBS_DIR}/libssl.a",
+                f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
+            ]
+        )
+    else:
+        # Linux platform link with system ssl.
+        LIBRARIES.extend(["ssl", "crypto"])
     EXTRA_OBJECTS.extend(
         [
-            f"{LLAMACPP_LIBS_DIR}/libssl.a",
-            f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
             f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
             f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
