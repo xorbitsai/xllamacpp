@@ -27,6 +27,8 @@ build_llamacpp() {
 
   # Add BoringSSL for all platforms (Windows, macOS, and Linux)
   cmake_args+=("-DLLAMA_BUILD_BORINGSSL=ON")
+  # Ensure cpp-httplib uses BoringSSL, not system OpenSSL
+  cmake_args+=("-DLLAMA_OPENSSL=OFF")
 
   # Add any additional CMake arguments from environment
   if [ -n "${CMAKE_ARGS}" ]; then
