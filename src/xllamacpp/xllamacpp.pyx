@@ -121,10 +121,12 @@ cdef class CommonParamsSampling:
         return ( 
             "\trepeat_last_n = %d, repeat_penalty = %.3f, frequency_penalty = %.3f, presence_penalty = %.3f\n"
             "\tdry_multiplier = %.3f, dry_base = %.3f, dry_allowed_length = %d, dry_penalty_last_n = %d\n"
+            "\tadaptive_target = %.3f, adaptive_decay = %.3f\n"
             "\ttop_k = %d, top_p = %.3f, min_p = %.3f, xtc_probability = %.3f, xtc_threshold = %.3f, typical_p = %.3f, temp = %.3f\n"
             "\tmirostat = %d, mirostat_lr = %.3f, mirostat_ent = %.3f" % (
                 self.penalty_last_n, self.penalty_repeat, self.penalty_freq, self.penalty_present,
                 self.dry_multiplier, self.dry_base, self.dry_allowed_length, self.dry_penalty_last_n,
+                self.adaptive_target, self.adaptive_decay,
                 self.top_k, self.top_p, self.min_p, self.xtc_probability, self.xtc_threshold, self.typ_p, self.temp,
                 self.mirostat, self.mirostat_eta, self.mirostat_tau)
         )
@@ -323,6 +325,24 @@ cdef class CommonParamsSampling:
     @dry_penalty_last_n.setter
     def dry_penalty_last_n(self, int value):
         self.p.dry_penalty_last_n = value
+
+    @property
+    def adaptive_target(self) -> float:
+        """select tokens near this probability (valid range 0.0 to 1.0; negative = disabled)"""
+        return self.p.adaptive_target
+
+    @adaptive_target.setter
+    def adaptive_target(self, float value):
+        self.p.adaptive_target = value
+
+    @property
+    def adaptive_decay(self) -> float:
+        """EMA decay for adaptation; history ≈ 1/(1-decay) tokens (0.0 - 0.99)"""
+        return self.p.adaptive_decay
+
+    @adaptive_decay.setter
+    def adaptive_decay(self, float value):
+        self.p.adaptive_decay = value
 
     @property
     def mirostat(self) -> int:
@@ -1970,6 +1990,15 @@ cdef class CommonParams:
     @n_cache_reuse.setter
     def n_cache_reuse(self, value: int):
         self.p.n_cache_reuse = value
+
+    @property
+    def cache_prompt(self) -> bool:
+        """whether to enable prompt caching"""
+        return self.p.cache_prompt
+
+    @cache_prompt.setter
+    def cache_prompt(self, value: bool):
+        self.p.cache_prompt = value
 
     @property
     def n_ctx_checkpoints(self) -> int:

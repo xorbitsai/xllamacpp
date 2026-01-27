@@ -13,6 +13,16 @@ def test_common_params_sampling():
     assert params.sampling.backend_sampling is False
     params.sampling.backend_sampling = True
     assert params.sampling.backend_sampling is True
+
+    # Test new adaptive sampling fields
+    assert params.sampling.adaptive_target == -1.0
+    params.sampling.adaptive_target = 0.5
+    assert params.sampling.adaptive_target == approx(0.5)
+
+    assert params.sampling.adaptive_decay == approx(0.90)
+    params.sampling.adaptive_decay = 0.95
+    assert params.sampling.adaptive_decay == approx(0.95)
+
     # assert params.seed == xlc.LLAMA_DEFAULT_SEED
     # assert params.n_prev == 64
     # assert params.n_probs == 0
@@ -211,6 +221,9 @@ def test_common_params():
     assert params.timeout_write == 600
     assert params.n_threads_http == -1
     assert params.n_cache_reuse == 0
+    assert params.cache_prompt is True
+    params.cache_prompt = False
+    assert params.cache_prompt is False
     assert params.n_ctx_checkpoints == 8
     assert params.cache_ram_mib == 8192
 

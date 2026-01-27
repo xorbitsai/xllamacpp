@@ -71,11 +71,15 @@ if PLATFORM == "Windows":
             "cpp-httplib",
             "server-context",
             "llguidance",
+            "ssl",
+            "crypto",
             "Advapi32",
             "userenv",
             "ntdll",
         ]
     )
+    # Note: Windows builds use LLAMA_BUILD_BORINGSSL=ON which statically links OpenSSL
+    # Add BoringSSL static libraries for proper symbol resolution
     if BUILD_CUDA:
         LIBRARY_DIRS.extend([os.getenv("CUDA_PATH", "") + "\\Lib\\x64"])
         LIBRARIES.extend(["ggml-cuda", "cudart", "cublas", "cublasLt", "cuda"])
@@ -84,6 +88,16 @@ if PLATFORM == "Windows":
         LIBRARIES.extend(["ggml-vulkan", "vulkan-1"])
 else:
     LIBRARIES.extend(["pthread"])
+    if PLATFORM == "Darwin":
+        EXTRA_OBJECTS.extend(
+            [
+                f"{LLAMACPP_LIBS_DIR}/libssl.a",
+                f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
+            ]
+        )
+    else:
+        # Linux platform link with system ssl.
+        LIBRARIES.extend(["ssl", "crypto"])
     EXTRA_OBJECTS.extend(
         [
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
