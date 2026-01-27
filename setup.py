@@ -31,9 +31,6 @@ LLAMACPP_LIBS_DIR = os.path.join(CWD, "src/llama.cpp/lib")
 PY_LIMITED_API_VERSION = 0x030A0000  # Python 3.10
 
 DEFINE_MACROS = [("Py_LIMITED_API", PY_LIMITED_API_VERSION)]
-# Define OPENSSL_IS_BORINGSSL to ensure httplib headers use the correct code path for BoringSSL
-# This is needed because llama.cpp is built with BoringSSL, and xllamacpp must match
-DEFINE_MACROS.append(("OPENSSL_IS_BORINGSSL", None))
 if PLATFORM == "Windows":
     EXTRA_COMPILE_ARGS = ["/std:c++17"]
 else:
@@ -90,13 +87,7 @@ if PLATFORM == "Windows":
         LIBRARY_DIRS.extend([os.getenv("VULKAN_SDK", "") + "\\Lib"])
         LIBRARIES.extend(["ggml-vulkan", "vulkan-1"])
 else:
-    # For macOS and Linux with BoringSSL enabled, ssl/crypto are statically linked
-    # Only add pthread for Linux
-    if PLATFORM == "Linux":
-        # BoringSSL on Linux requires libdl for dynamic loading functions
-        LIBRARIES.extend(["pthread", "dl"])
-    else:
-        LIBRARIES.extend(["pthread"])
+    LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(
         [
             f"{LLAMACPP_LIBS_DIR}/libssl.a",
