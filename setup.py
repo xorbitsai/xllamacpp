@@ -92,6 +92,8 @@ else:
     LIBRARIES.extend(["pthread"])
     EXTRA_OBJECTS.extend(
         [
+            f"{LLAMACPP_LIBS_DIR}/libssl.a",
+            f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
             f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
             f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
