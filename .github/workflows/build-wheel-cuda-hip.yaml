@@ -83,7 +83,7 @@ jobs:
           docker exec rocm-container bash -c '
             df -ha
             apt-get update
-            apt-get install -y build-essential git cmake libcurl4-openssl-dev patchelf rocblas-dev hipblas-dev rocwmma-dev curl
+            apt-get install -y build-essential git cmake libcurl4-openssl-dev libssl-dev patchelf rocblas-dev hipblas-dev rocwmma-dev curl
             apt-get clean
             df -ha
             hipconfig --full
@@ -199,7 +199,7 @@ jobs:
           sudo wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
           sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
           sudo apt-get update -y
-          sudo apt-get install -y build-essential git cmake libcurl4-openssl-dev patchelf vulkan-sdk mesa-vulkan-drivers
+          sudo apt-get install -y build-essential git cmake libcurl4-openssl-dev libssl-dev patchelf vulkan-sdk mesa-vulkan-drivers
 
       - name: System Dependencies (Windows)
         if: runner.os == 'Windows'
@@ -339,7 +339,7 @@ jobs:
 
           # First install basic build tools
           sudo apt-get update
-          sudo apt-get install -y build-essential
+          sudo apt-get install -y build-essential libssl-dev
           
           # Initialize conda for shell
           source $CONDA/etc/profile.d/conda.sh
