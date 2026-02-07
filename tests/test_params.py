@@ -141,8 +141,8 @@ def test_common_params():
     assert params.path_prompt_cache == ""
     assert params.input_prefix == ""
     assert params.input_suffix == ""
-    assert params.lookup_cache_static == ""
-    assert params.lookup_cache_dynamic == ""
+    assert params.speculative.lookup_cache_static == ""
+    assert params.speculative.lookup_cache_dynamic == ""
     assert params.logits_file == ""
 
     # Test new debug properties
@@ -188,7 +188,7 @@ def test_common_params():
     assert params.kv_unified is False
     assert params.input_prefix_bos is False
     assert params.use_mmap is True
-    assert params.use_direct_io is True
+    assert params.use_direct_io is False
     params.use_direct_io = False
     assert params.use_direct_io is False
     assert params.use_mlock is False
@@ -322,6 +322,42 @@ def test_common_params():
     assert params.speculative.replacements == []
     params.speculative.replacements = [("a", "b")]
     assert params.speculative.replacements == [("a", "b")]
+
+    # Test new speculative type field
+    assert params.speculative.type == xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_NONE
+    params.speculative.type = xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT
+    assert params.speculative.type == xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT
+
+    # Test new ngram-based speculative decoding fields
+    assert params.speculative.ngram_size_n == 12
+    params.speculative.ngram_size_n = 8
+    assert params.speculative.ngram_size_n == 8
+
+    assert params.speculative.ngram_size_m == 48
+    params.speculative.ngram_size_m = 32
+    assert params.speculative.ngram_size_m == 32
+
+    assert params.speculative.ngram_check_rate == 1
+    params.speculative.ngram_check_rate = 2
+    assert params.speculative.ngram_check_rate == 2
+
+    assert params.speculative.ngram_min_hits == 1
+    params.speculative.ngram_min_hits = 3
+    assert params.speculative.ngram_min_hits == 3
+
+    # Test new p_split and p_min fields
+    assert params.speculative.p_split == approx(0.1)
+    params.speculative.p_split = 0.2
+    assert params.speculative.p_split == approx(0.2)
+
+    assert params.speculative.p_min == approx(0.75)
+    params.speculative.p_min = 0.8
+    assert params.speculative.p_min == approx(0.8)
+
+    # Test mparams_dft (draft model params)
+    assert params.speculative.mparams_dft.path == ""
+    assert params.speculative.mparams_dft.hf_repo == ""
+    assert params.speculative.mparams_dft.hf_file == ""
 
     assert params.cls_sep == "\t"
     assert params.offline is False

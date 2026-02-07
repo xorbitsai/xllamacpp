@@ -815,6 +815,12 @@ cdef class CommonParamsSpeculative:
         """main to speculative model replacements"""
         return self.p.replacements
 
+    @replacements.setter
+    def replacements(self, value: list):
+        self.p.replacements.clear()
+        for item in value:
+            self.p.replacements.push_back((item[0], item[1]))
+
     @property
     def tensor_buft_overrides(self) -> str:
         cdef string value 
