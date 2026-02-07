@@ -1,6 +1,6 @@
 # distutils: language=c++
 
-from xllamacpp.xllamacpp cimport common_params, ggml_backend_dev_props, llama_model_tensor_buft_override
+from xllamacpp.xllamacpp cimport common_params, ggml_backend_dev_props, llama_model_tensor_buft_override, ggml_backend_dev_t
 from libcpp cimport bool as c_bool
 from libcpp.string cimport string as std_string
 from libcpp.vector cimport vector as std_vector
@@ -41,3 +41,5 @@ cdef extern from "server.h" namespace "xllamacpp" nogil:
         const std_string & value, std_vector[llama_model_tensor_buft_override] & overrides) except +
     void c_build_tensor_buffer_overrides "xllamacpp::build_tensor_buffer_overrides" (
         const std_vector[llama_model_tensor_buft_override] & overrides, std_string & value) except +
+    std_vector[ggml_backend_dev_t] c_parse_device_list "xllamacpp::parse_device_list" (const std_string & value) except +
+    std_string c_build_device_string "xllamacpp::build_device_string" (const std_vector[ggml_backend_dev_t] & devices) except +

@@ -8,7 +8,7 @@
 """
 xllamacpp: a thin cython wrapper of llama.cpp
 """
-from libc.stdint cimport int32_t, uint32_t, int8_t
+from libc.stdint cimport int32_t, uint32_t, int8_t, uint16_t
 from libcpp cimport bool as c_bool
 from libcpp.vector cimport vector
 from libcpp.string cimport string
@@ -29,6 +29,8 @@ from server cimport (
     c_json_schema_to_grammar_str,
     c_parse_tensor_buffer_overrides,
     c_build_tensor_buffer_overrides,
+    c_parse_device_list,
+    c_build_device_string,
 )
 
 
@@ -638,13 +640,13 @@ cdef class CommonParamsSpeculative:
         raise Exception(f"Can't construct an instance of {type(self).__name__}")
 
     @property
-    def n_ctx(self) -> int:
-        """draft context size."""
-        return self.p.n_ctx
+    def type(self) -> xllamacpp.common_speculative_type:
+        """type of speculative decoding."""
+        return self.p.type
 
-    @n_ctx.setter
-    def n_ctx(self, value: int):
-        self.p.n_ctx = value
+    @type.setter
+    def type(self, value: xllamacpp.common_speculative_type):
+        self.p.type = value
 
     @property
     def n_max(self) -> int:
@@ -665,15 +667,6 @@ cdef class CommonParamsSpeculative:
         self.p.n_min = value
 
     @property
-    def n_gpu_layers(self) -> int:
-        """number of layers to store in VRAM (-1 - use default)."""
-        return self.p.n_gpu_layers
-
-    @n_gpu_layers.setter
-    def n_gpu_layers(self, value: int):
-        self.p.n_gpu_layers = value
-
-    @property
     def p_split(self) -> float:
         """speculative decoding split probability."""
         return self.p.p_split
@@ -692,23 +685,85 @@ cdef class CommonParamsSpeculative:
         self.p.p_min = value
 
     @property
-    def replacements(self) -> list:
-        """# main to speculative model replacements"""
-        return self.p.replacements
+    def ngram_size_n(self) -> int:
+        """ngram size for lookup."""
+        return self.p.ngram_size_n
 
-    @replacements.setter
-    def replacements(self, value: list):
-        self.p.replacements = value
+    @ngram_size_n.setter
+    def ngram_size_n(self, value: int):
+        self.p.ngram_size_n = value
 
     @property
-    def tensor_buft_overrides(self) -> str:
-        cdef string value 
-        c_build_tensor_buffer_overrides(self.p.tensor_buft_overrides, value)
-        return value
+    def ngram_size_m(self) -> int:
+        """mgram size for speculative tokens."""
+        return self.p.ngram_size_m
 
-    @tensor_buft_overrides.setter
-    def tensor_buft_overrides(self, value: str):
-        c_parse_tensor_buffer_overrides(value, self.p.tensor_buft_overrides)
+    @ngram_size_m.setter
+    def ngram_size_m(self, value: int):
+        self.p.ngram_size_m = value
+
+    @property
+    def ngram_check_rate(self) -> int:
+        """check rate for ngram lookup."""
+        return self.p.ngram_check_rate
+
+    @ngram_check_rate.setter
+    def ngram_check_rate(self, value: int):
+        self.p.ngram_check_rate = value
+
+    @property
+    def ngram_min_hits(self) -> int:
+        """minimum hits at ngram/mgram lookup for mgram to be proposed."""
+        return self.p.ngram_min_hits
+
+    @ngram_min_hits.setter
+    def ngram_min_hits(self, value: int):
+        self.p.ngram_min_hits = value
+
+    @property
+    def lookup_cache_static(self) -> str:
+        """path of static ngram cache file for lookup decoding"""
+        return self.p.lookup_cache_static
+
+    @lookup_cache_static.setter
+    def lookup_cache_static(self, value: str):
+        self.p.lookup_cache_static = value
+
+    @property
+    def lookup_cache_dynamic(self) -> str:
+        """path of dynamic ngram cache file for lookup decoding"""
+        return self.p.lookup_cache_dynamic
+
+    @lookup_cache_dynamic.setter
+    def lookup_cache_dynamic(self, value: str):
+        self.p.lookup_cache_dynamic = value
+
+    @property
+    def mparams_dft(self) -> CommonParamsModel:
+        """draft model parameters."""
+        return CommonParamsModel.from_ptr(&self.p.mparams_dft, self)
+
+    @mparams_dft.setter
+    def mparams_dft(self, value: CommonParamsModel):
+        self.p.mparams_dft = deref(value.p)
+
+    @property
+    def n_ctx(self) -> int:
+        """draft context size."""
+        return self.p.n_ctx
+
+    @n_ctx.setter
+    def n_ctx(self, value: int):
+        self.p.n_ctx = value
+
+    @property
+    def n_gpu_layers(self) -> int:
+        """number of layers to store in VRAM for the draft model (-1 - use default)."""
+        return self.p.n_gpu_layers
+
+    @n_gpu_layers.setter
+    def n_gpu_layers(self, value: int):
+        self.p.n_gpu_layers = value
 
     @property
     def cache_type_k(self) -> ggml_type:
@@ -745,12 +800,30 @@ cdef class CommonParamsSpeculative:
         self.p.cpuparams_batch = deref(value.p)
 
     @property
-    def model(self) -> CommonParamsModel:
-        return CommonParamsModel.from_ptr(&self.p.model, self)
+    def devices(self) -> str:
+        """devices to use for offloading (comma-separated device names, or 'none' to disable)"""
+        # Convert the vector of device pointers to a comma-separated string of device names
+        return c_build_device_string(self.p.devices)
 
-    @model.setter
-    def model(self, value: CommonParamsModel):
-        self.p.model = deref(value.p)
+    @devices.setter
+    def devices(self, value: str):
+        """Set devices from a comma-separated string of device names"""
+        self.p.devices = c_parse_device_list(value)
+
+    @property
+    def replacements(self) -> list:
+        """main to speculative model replacements"""
+        return self.p.replacements
+
+    @property
+    def tensor_buft_overrides(self) -> str:
+        cdef string value 
+        c_build_tensor_buffer_overrides(self.p.tensor_buft_overrides, value)
+        return value
+
+    @tensor_buft_overrides.setter
+    def tensor_buft_overrides(self, value: str):
+        c_parse_tensor_buffer_overrides(value, self.p.tensor_buft_overrides)
 
 
 cdef class CommonParamsVocoder:
@@ -1318,24 +1391,6 @@ cdef class CommonParams:
         self.p.input_suffix = value
 
     @property
-    def lookup_cache_static(self) -> str:
-        """path of static ngram cache file for lookup decoding"""
-        return self.p.lookup_cache_static
-
-    @lookup_cache_static.setter
-    def lookup_cache_static(self, value: str):
-        self.p.lookup_cache_static = value
-
-    @property
-    def lookup_cache_dynamic(self) -> str:
-        """path of dynamic ngram cache file for lookup decoding"""
-        return self.p.lookup_cache_dynamic
-
-    @lookup_cache_dynamic.setter
-    def lookup_cache_dynamic(self, value: str):
-        self.p.lookup_cache_dynamic = value
-
-    @property
     def logits_file(self) -> str:
         """file for saving *all* logits"""
         return self.p.logits_file
@@ -1730,7 +1785,7 @@ cdef class CommonParams:
 
     @property
     def use_direct_io(self) -> bool:
-        """read from disk without buffering for faster model loading"""
+        """read from disk without buffering"""
         return self.p.use_direct_io
 
     @use_direct_io.setter

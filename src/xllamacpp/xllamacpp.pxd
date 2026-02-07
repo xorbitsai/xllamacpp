@@ -1,6 +1,6 @@
 # distutils: language=c++
 
-from libc.stdint cimport int32_t, uint32_t, int64_t, int8_t, uint64_t
+from libc.stdint cimport int32_t, uint32_t, int64_t, int8_t, uint64_t, uint16_t
 from libcpp.string cimport string as std_string
 from libcpp.vector cimport vector as std_vector
 from libcpp.set cimport set as std_set
@@ -349,6 +349,18 @@ cdef extern from "common.h":
         bint backend_sampling
 
 
+    cpdef enum common_speculative_type:
+        COMMON_SPECULATIVE_TYPE_NONE          # no speculative decoding
+        COMMON_SPECULATIVE_TYPE_DRAFT         # draft model
+        COMMON_SPECULATIVE_TYPE_EAGLE3        # eagle draft model
+        COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE  # simple self-speculative decoding
+        COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K   # self-speculative decoding with n-gram keys only
+        COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V # self-speculative decoding with n-gram keys and 4 m-gram values
+        COMMON_SPECULATIVE_TYPE_NGRAM_MOD
+        COMMON_SPECULATIVE_TYPE_NGRAM_CACHE   # self-speculative decoding with 3-level n-gram cache
+        COMMON_SPECULATIVE_TYPE_COUNT         # number of types, unknown type
+
+
     ctypedef struct common_params_model:
         std_string path          # model local path                                           // NOLINT
         std_string url           # model url to download                                      // NOLINT
@@ -357,23 +369,41 @@ cdef extern from "common.h":
         std_string docker_repo   # Docker repo                                                // NOLINT
         std_string name          # in format <user>/<model>[:<tag>] (tag is optional)         // NOLINT
 
-    ctypedef struct common_params_speculative:
-        std_vector[ggml_backend_dev_t] devices # devices to use for offloading
-        int32_t n_ctx           # draft context size
-        int32_t n_max           # maximum number of tokens to draft during speculative decoding
-        int32_t n_min           # minimum number of draft tokens to use for speculative decoding
-        int32_t n_gpu_layers    # number of layers to store in VRAM for the draft model (-1 - use default)
-        float   p_split         # speculative decoding split probability
-        float   p_min           # minimum speculative decoding probability (greedy)
-        std_vector[std_pair[std_string, std_string]] replacements  # main to speculative model replacements
-        std_vector[llama_model_tensor_buft_override] tensor_buft_overrides
+    ctypedef struct common_ngram_mod
+    ctypedef struct llama_model
 
+    ctypedef struct common_params_speculative:
+        common_speculative_type type    # type of speculative decoding
+        
+        # general-purpose speculative decoding parameters
+        int32_t n_max   # maximum number of tokens to draft during speculative decoding
+        int32_t n_min   # minimum number of draft tokens to use for speculative decoding
+        float   p_split # speculative decoding split probability
+        float   p_min   # minimum speculative decoding probability (greedy)
+        
+        # ngram-based speculative decoding
+        uint16_t ngram_size_n     # ngram size for lookup
+        uint16_t ngram_size_m     # mgram size for speculative tokens
+        uint16_t ngram_check_rate  # check rate for ngram lookup
+        uint16_t ngram_min_hits   # minimum hits at ngram/mgram lookup for mgram to be proposed
+        # common_ngram_mod * ngram_mod  # ngram modification (runtime only, filled according to ngram_size_n, not exposed to Python)
+        
+        std_string lookup_cache_static   # path of static ngram cache file for lookup decoding
+        std_string lookup_cache_dynamic  # path of dynamic ngram cache file for lookup decoding
+        
+        # draft-model speculative decoding
+        common_params_model mparams_dft  # draft model parameters
+        # llama_model * model_dft         # a llama_model that can be shared by multiple speculative contexts (runtime only, not exposed to Python)
+        # llama_context_params cparams_dft  # parameters for the draft llama_context (runtime only, not exposed to Python)
+        int32_t n_ctx         # draft context size
+        int32_t n_gpu_layers  # number of layers to store in VRAM for the draft model (-1 - use default)
         ggml_type cache_type_k  # KV cache data type for the K
         ggml_type cache_type_v  # KV cache data type for the V
-
         cpu_params cpuparams
         cpu_params cpuparams_batch
-        common_params_model model
+        std_vector[ggml_backend_dev_t] devices  # devices to use for offloading
+        std_vector[std_pair[std_string, std_string]] replacements  # main to speculative model replacements
+        std_vector[llama_model_tensor_buft_override] tensor_buft_overrides
 
 
     ctypedef struct common_params_vocoder:
@@ -465,8 +495,6 @@ cdef extern from "common.h":
         std_string path_prompt_cache    # path to file for saving/loading prompt eval state
         std_string input_prefix         # string to prefix user inputs with
         std_string input_suffix         # string to suffix user inputs with
-        std_string lookup_cache_static  # path of static ngram cache file for lookup decoding
-        std_string lookup_cache_dynamic # path of dynamic ngram cache file for lookup decoding
         std_string logits_file          # file for saving *all* logits
 
         # llama-debug specific options
@@ -525,7 +553,7 @@ cdef extern from "common.h":
 
         bint input_prefix_bos       # prefix BOS to user inputs, preceding input_prefix
         bint use_mmap               # use mmap for faster loads
-        bint use_direct_io          # read from disk without buffering for faster model loading
+        bint use_direct_io          # read from disk without buffering
         bint use_mlock              # use mlock to keep model in memory
         bint verbose_prompt         # print prompt tokens before generation
         bint display_prompt         # print prompt before generation

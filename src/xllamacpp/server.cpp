@@ -632,4 +632,45 @@ void build_tensor_buffer_overrides(
   value = string_join(parts, ",");
 }
 
+// Helper function to parse device list
+std::vector<ggml_backend_dev_t> parse_device_list(const std::string &value) {
+  std::vector<ggml_backend_dev_t> devices;
+  auto dev_names = string_split<std::string>(value, ',');
+  if (dev_names.empty()) {
+    throw std::invalid_argument("no devices specified");
+  }
+  if (dev_names.size() == 1 && dev_names[0] == "none") {
+    devices.push_back(nullptr);
+  } else {
+    for (const auto &device : dev_names) {
+      auto *dev = ggml_backend_dev_by_name(device.c_str());
+      if (!dev || ggml_backend_dev_type(dev) == GGML_BACKEND_DEVICE_TYPE_CPU) {
+        throw std::invalid_argument(
+            string_format("invalid device: %s", device.c_str()));
+      }
+      devices.push_back(dev);
+    }
+    devices.push_back(nullptr);
+  }
+  return devices;
+}
+
+// Helper function to build device string from vector of ggml_backend_dev_t
+std::string
+build_device_string(const std::vector<ggml_backend_dev_t> &devices) {
+  if (devices.empty()) {
+    return "";
+  }
+  if (devices.size() == 1 && devices[0] == nullptr) {
+    return "";
+  }
+  std::vector<std::string> names;
+  for (size_t i = 0; i < devices.size() - 1; ++i) { // Skip the trailing nullptr
+    if (devices[i]) {
+      names.emplace_back(ggml_backend_dev_name(devices[i]));
+    }
+  }
+  return string_join(names, ",");
+}
+
 } // namespace xllamacpp

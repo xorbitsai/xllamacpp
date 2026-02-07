@@ -56,4 +56,6 @@ void parse_tensor_buffer_overrides(
 void build_tensor_buffer_overrides(
     const std::vector<llama_model_tensor_buft_override> &overrides,
     std::string &value);
+std::vector<ggml_backend_dev_t> parse_device_list(const std::string &value);
+std::string build_device_string(const std::vector<ggml_backend_dev_t> &devices);
 } // namespace xllamacpp
