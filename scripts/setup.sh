@@ -12,7 +12,7 @@ build_llamacpp() {
 	echo "update from llama.cpp main repo"
 	PROJECT=${THIRDPARTY}/llama.cpp
 	PREFIX=${CWD}/src/llama.cpp
-	NPROC=2
+	NPROC=${NPROC:-$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)}
 	cd ${PROJECT} && \
 		mkdir -p build &&
 		cd build

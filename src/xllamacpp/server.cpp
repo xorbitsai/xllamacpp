@@ -515,19 +515,19 @@ Server::~Server() {
 std::string Server::listening_address() const { return _listening_address; }
 
 std::string Server::handle_metrics() {
-  server_http_req req{{}, {}, "", "", not_stop};
+  server_http_req req{{}, {}, "", "", "", not_stop};
   auto res = _routes->get_metrics(req);
   return res->data;
 }
 
 std::string Server::handle_embeddings(const std::string &input_json_str) {
-  server_http_req req{{}, {}, "", input_json_str, not_stop};
+  server_http_req req{{}, {}, "", "", input_json_str, not_stop};
   auto res = _routes->post_embeddings_oai(req);
   return res->data;
 }
 
 std::string Server::handle_rerank(const std::string &input_json_str) {
-  server_http_req req{{}, {}, "", input_json_str, not_stop};
+  server_http_req req{{}, {}, "", "", input_json_str, not_stop};
   auto res = _routes->post_rerank(req);
   return res->data;
 }
@@ -535,7 +535,7 @@ std::string Server::handle_rerank(const std::string &input_json_str) {
 void Server::handle_completions(const std::string &prompt_json_str,
                                 Callback res_err, void *py_cb_err,
                                 Callback res_ok, void *py_cb_ok) {
-  server_http_req req{{}, {}, "", prompt_json_str, not_stop};
+  server_http_req req{{}, {}, "", "", prompt_json_str, not_stop};
   auto res = _routes->post_completions_oai(req);
   process_handler_response(
       res,
@@ -550,7 +550,7 @@ void Server::handle_completions(const std::string &prompt_json_str,
 void Server::handle_chat_completions(const std::string &prompt_json_str,
                                      Callback res_err, void *py_cb_err,
                                      Callback res_ok, void *py_cb_ok) {
-  server_http_req req{{}, {}, "", prompt_json_str, not_stop};
+  server_http_req req{{}, {}, "", "", prompt_json_str, not_stop};
   auto res = _routes->post_chat_completions(req);
   process_handler_response(
       res,

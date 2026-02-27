@@ -703,15 +703,6 @@ cdef class CommonParamsSpeculative:
         self.p.ngram_size_m = value
 
     @property
-    def ngram_check_rate(self) -> int:
-        """check rate for ngram lookup."""
-        return self.p.ngram_check_rate
-
-    @ngram_check_rate.setter
-    def ngram_check_rate(self, value: int):
-        self.p.ngram_check_rate = value
-
-    @property
     def ngram_min_hits(self) -> int:
         """minimum hits at ngram/mgram lookup for mgram to be proposed."""
         return self.p.ngram_min_hits

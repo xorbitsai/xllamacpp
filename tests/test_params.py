@@ -324,9 +324,15 @@ def test_common_params():
     assert params.speculative.replacements == [("a", "b")]
 
     # Test new speculative type field
-    assert params.speculative.type == xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_NONE
+    assert (
+        params.speculative.type
+        == xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_NONE
+    )
     params.speculative.type = xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT
-    assert params.speculative.type == xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT
+    assert (
+        params.speculative.type
+        == xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT
+    )
 
     # Test new ngram-based speculative decoding fields
     assert params.speculative.ngram_size_n == 12
@@ -336,10 +342,6 @@ def test_common_params():
     assert params.speculative.ngram_size_m == 48
     params.speculative.ngram_size_m = 32
     assert params.speculative.ngram_size_m == 32
-
-    assert params.speculative.ngram_check_rate == 1
-    params.speculative.ngram_check_rate = 2
-    assert params.speculative.ngram_check_rate == 2
 
     assert params.speculative.ngram_min_hits == 1
     params.speculative.ngram_min_hits = 3
