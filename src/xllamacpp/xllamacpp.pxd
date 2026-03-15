@@ -87,7 +87,8 @@ cdef extern from "ggml.h":
         # GGML_TYPE_IQ4_NL_4_4 = 36,
         # GGML_TYPE_IQ4_NL_4_8 = 37,
         # GGML_TYPE_IQ4_NL_8_8 = 38,
-        GGML_TYPE_MXFP4
+        GGML_TYPE_MXFP4 # MXFP4 (1 block)
+        GGML_TYPE_NVFP4 # NVFP4 (4 blocks, E4M3 scale)
         GGML_TYPE_COUNT
 
 
@@ -346,6 +347,14 @@ cdef extern from "common.h":
         std_vector[llama_logit_bias] logit_bias      # logit biases to apply
         std_vector[llama_logit_bias] logit_bias_eog  # pre-calculated logit biases for EOG tokens
 
+        # reasoning budget sampler parameters
+        # these are populated by the server/CLI based on chat template params
+        int32_t  reasoning_budget_tokens   # -1 = disabled, >= 0 = token budget
+        bint     reasoning_budget_activate_immediately
+        std_vector[llama_token] reasoning_budget_start  # start tag token sequence
+        std_vector[llama_token] reasoning_budget_end    # end tag token sequence
+        std_vector[llama_token] reasoning_budget_forced # forced sequence (message + end tag)
+
         bint backend_sampling
 
 
@@ -487,7 +496,8 @@ cdef extern from "common.h":
         common_params_diffusion   diffusion
         common_params_model model
 
-        std_string model_alias          # model alias
+        std_set[std_string] model_alias     # model aliases
+        std_set[std_string] model_tags      # model tags (informational, not used for routing)
         std_string hf_token             # HF token
         std_string prompt               #
         std_string prompt_file          # store the external prompt file name
@@ -530,6 +540,8 @@ cdef extern from "common.h":
         size_t multiple_choice_tasks # number of tasks to use when computing the TruthfulQA score. If 0, all tasks will be computed
 
         bint   kl_divergence        # compute KL divergence
+
+        bint   check                # check rather than generate results for llama-results
 
         bint usage                  # print usage
         bint completion             # print source-able completion script
@@ -596,6 +608,7 @@ cdef extern from "common.h":
         int32_t n_cache_reuse       # min chunk size to reuse from the cache via KV shifting
         bint    cache_prompt        # whether to enable prompt caching
         int32_t n_ctx_checkpoints   # max number of context checkpoints per slot
+        int32_t checkpoint_every_nt   # make a checkpoint every n tokens during prefill
         int32_t cache_ram_mib       # -1 = no limit, 0 - disable, 1 = 1 MiB, etc.
 
         std_string hostname
@@ -606,7 +619,9 @@ cdef extern from "common.h":
         bint enable_chat_template
 
         common_reasoning_format reasoning_format
+        int32_t enable_reasoning    # -1 = auto, 0 = disable, 1 = enable
         int32_t reasoning_budget
+        std_string reasoning_budget_message  # message injected before end tag when budget exhausted
         bint prefill_assistant      # if true, any trailing assistant message will be prefilled into the response
         int32_t sleep_idle_seconds  # if >0, server will sleep after this many seconds of idle time
 
@@ -619,16 +634,23 @@ cdef extern from "common.h":
 
         # webui configs
         bint webui
+        bint webui_mcp_proxy
         std_string webui_config_json
 
         bint endpoint_slots
         bint endpoint_props
         bint endpoint_metrics
 
+        # router server configs
+        std_string models_dir    # directory containing models for the router server
+        std_string models_preset # directory containing model presets for the router server
+        int32_t models_max       # maximum number of models to load simultaneously
+        bint models_autoload     # automatically load models when requested via the router server
+
         bint log_json
 
         std_string slot_save_path
-        std_string media_path
+        std_string media_path    # path to directory for loading media files
 
         float slot_prompt_similarity
 

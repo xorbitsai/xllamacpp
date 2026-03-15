@@ -23,6 +23,27 @@ def test_common_params_sampling():
     params.sampling.adaptive_decay = 0.95
     assert params.sampling.adaptive_decay == approx(0.95)
 
+    # Test new reasoning budget fields
+    assert params.sampling.reasoning_budget_tokens == -1
+    params.sampling.reasoning_budget_tokens = 100
+    assert params.sampling.reasoning_budget_tokens == 100
+
+    assert params.sampling.reasoning_budget_activate_immediately is False
+    params.sampling.reasoning_budget_activate_immediately = True
+    assert params.sampling.reasoning_budget_activate_immediately is True
+
+    assert params.sampling.reasoning_budget_start == []
+    params.sampling.reasoning_budget_start = [1, 2, 3]
+    assert params.sampling.reasoning_budget_start == [1, 2, 3]
+
+    assert params.sampling.reasoning_budget_end == []
+    params.sampling.reasoning_budget_end = [4, 5, 6]
+    assert params.sampling.reasoning_budget_end == [4, 5, 6]
+
+    assert params.sampling.reasoning_budget_forced == []
+    params.sampling.reasoning_budget_forced = [7, 8, 9]
+    assert params.sampling.reasoning_budget_forced == [7, 8, 9]
+
     # assert params.seed == xlc.LLAMA_DEFAULT_SEED
     # assert params.n_prev == 64
     # assert params.n_probs == 0
@@ -56,7 +77,7 @@ def test_enum_values():
     assert xlc.GGML_ROPE_TYPE_VISION == 24
     assert xlc.ggml_sched_priority.GGML_SCHED_PRIO_REALTIME == 3
     assert xlc.ggml_numa_strategy.GGML_NUMA_STRATEGY_COUNT == 5
-    assert xlc.ggml_type.GGML_TYPE_COUNT == 40
+    assert xlc.ggml_type.GGML_TYPE_COUNT == 41
     assert xlc.ggml_backend_dev_type.GGML_BACKEND_DEVICE_TYPE_ACCEL == 3
     assert xlc.llama_rope_scaling_type.LLAMA_ROPE_SCALING_TYPE_MAX_VALUE == 3
     assert xlc.llama_pooling_type.LLAMA_POOLING_TYPE_RANK == 4
@@ -134,7 +155,12 @@ def test_common_params():
     assert params.model.hf_file == ""
     assert params.model.docker_repo == ""
     assert params.model.name == ""
-    assert params.model_alias == ""
+    assert params.model_alias == set()
+    params.model_alias = {"alias1", "alias2"}
+    assert params.model_alias == {"alias1", "alias2"}
+    assert params.model_tags == set()
+    params.model_tags = {"tag1", "tag2"}
+    assert params.model_tags == {"tag1", "tag2"}
     assert params.hf_token == ""
     assert params.prompt == ""
     assert params.prompt_file == ""
@@ -171,6 +197,9 @@ def test_common_params():
     assert params.multiple_choice is False
     assert params.multiple_choice_tasks == 0
     assert params.kl_divergence is False
+    assert params.check is False
+    params.check = True
+    assert params.check is True
     assert params.usage is False
     assert params.use_color is False
     assert params.special is False
@@ -224,7 +253,10 @@ def test_common_params():
     assert params.cache_prompt is True
     params.cache_prompt = False
     assert params.cache_prompt is False
-    assert params.n_ctx_checkpoints == 8
+    assert params.n_ctx_checkpoints == 32
+    assert params.checkpoint_every_nt == 8192
+    params.checkpoint_every_nt = 100
+    assert params.checkpoint_every_nt == 100
     assert params.cache_ram_mib == 8192
 
     assert params.hostname == "127.0.0.1"
@@ -239,6 +271,9 @@ def test_common_params():
         params.reasoning_format
         == xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK
     )
+    assert params.enable_reasoning == -1
+    params.enable_reasoning = 1
+    assert params.enable_reasoning == 1
     assert params.prefill_assistant is True
 
     assert params.api_keys == []
@@ -249,6 +284,9 @@ def test_common_params():
     assert params.default_template_kwargs == {"abc": "def"}
 
     assert params.webui is True
+    assert params.webui_mcp_proxy is False
+    params.webui_mcp_proxy = True
+    assert params.webui_mcp_proxy is True
     assert params.endpoint_slots is True
     assert params.endpoint_props is False
     assert params.endpoint_metrics is False
@@ -311,6 +349,22 @@ def test_common_params():
     params.webui_config_json = '{"theme": "dark"}'
     assert params.webui_config_json == '{"theme": "dark"}'
 
+    assert params.models_dir == ""
+    params.models_dir = "/models"
+    assert params.models_dir == "/models"
+
+    assert params.models_preset == ""
+    params.models_preset = "/presets"
+    assert params.models_preset == "/presets"
+
+    assert params.models_max == 4
+    params.models_max = 5
+    assert params.models_max == 5
+
+    assert params.models_autoload is True
+    params.models_autoload = False
+    assert params.models_autoload is False
+
     sp = params.sampling.samplers
     assert sp
     params.sampling.samplers = sp
@@ -364,6 +418,9 @@ def test_common_params():
     assert params.cls_sep == "\t"
     assert params.offline is False
     assert params.reasoning_budget == -1
+    assert params.reasoning_budget_message == ""
+    params.reasoning_budget_message = "Budget exhausted"
+    assert params.reasoning_budget_message == "Budget exhausted"
 
     assert params.diffusion.steps == 128
     params.diffusion.steps = 13
