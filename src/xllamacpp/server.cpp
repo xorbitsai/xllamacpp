@@ -1,8 +1,8 @@
 #include "json-schema-to-grammar.h"
 #include "server-context.h"
+#include "server-cors-proxy.h"
 #include "server-http.h"
 #include "server-models.h"
-#include "server-cors-proxy.h"
 
 #include "arg.h"
 #include "common.h"
@@ -201,8 +201,9 @@ static void init(common_params &params, server_context &ctx_server,
   ctx_http.post("/chat/completions", ex_wrapper(routes.post_chat_completions));
   ctx_http.post("/v1/chat/completions",
                 ex_wrapper(routes.post_chat_completions));
-  ctx_http.post("/api/chat",
-              ex_wrapper(routes.post_chat_completions)); // ollama specific endpoint
+  ctx_http.post(
+      "/api/chat",
+      ex_wrapper(routes.post_chat_completions)); // ollama specific endpoint
   ctx_http.post("/v1/responses", ex_wrapper(routes.post_responses_oai));
   ctx_http.post("/responses", ex_wrapper(routes.post_responses_oai));
   ctx_http.post(
@@ -232,8 +233,10 @@ static void init(common_params &params, server_context &ctx_server,
   // CORS proxy (EXPERIMENTAL, only used by the Web UI for MCP)
   if (params.webui_mcp_proxy) {
     SRV_WRN("%s", "-----------------\n");
-    SRV_WRN("%s", "CORS proxy is enabled, do not expose server to untrusted environments\n");
-    SRV_WRN("%s", "This feature is EXPERIMENTAL and may be removed or changed in future versions\n");
+    SRV_WRN("%s", "CORS proxy is enabled, do not expose server to untrusted "
+                  "environments\n");
+    SRV_WRN("%s", "This feature is EXPERIMENTAL and may be removed or changed "
+                  "in future versions\n");
     SRV_WRN("%s", "-----------------\n");
     ctx_http.get("/cors-proxy", ex_wrapper(proxy_handler_get));
     ctx_http.post("/cors-proxy", ex_wrapper(proxy_handler_post));
