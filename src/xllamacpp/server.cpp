@@ -1,8 +1,12 @@
 #include "json-schema-to-grammar.h"
 #include "server-context.h"
-#include "server-cors-proxy.h"
-#include "server-http.h"
+// clang-format off
+// server-models.h must be included before server-cors-proxy.h because
+// server-cors-proxy.h uses server_http_proxy which is defined in server-models.h
 #include "server-models.h"
+#include "server-cors-proxy.h"
+// clang-format on
+#include "server-http.h"
 
 #include "arg.h"
 #include "common.h"
