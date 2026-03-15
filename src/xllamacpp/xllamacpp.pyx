@@ -477,6 +477,69 @@ cdef class CommonParamsSampling:
             vec.push_back(elem.ptr[0])
         self.p.logit_bias_eog = vec
 
+    @property
+    def reasoning_budget_tokens(self) -> int:
+        """-1 = disabled, >= 0 = token budget"""
+        return self.p.reasoning_budget_tokens
+
+    @reasoning_budget_tokens.setter
+    def reasoning_budget_tokens(self, int32_t value):
+        self.p.reasoning_budget_tokens = value
+
+    @property
+    def reasoning_budget_activate_immediately(self) -> bool:
+        """activate reasoning budget immediately"""
+        return self.p.reasoning_budget_activate_immediately
+
+    @reasoning_budget_activate_immediately.setter
+    def reasoning_budget_activate_immediately(self, value: bool):
+        self.p.reasoning_budget_activate_immediately = value
+
+    @property
+    def reasoning_budget_start(self) -> list[int]:
+        """start tag token sequence"""
+        result = []
+        for i in range(self.p.reasoning_budget_start.size()):
+            result.append(self.p.reasoning_budget_start[i])
+        return result
+
+    @reasoning_budget_start.setter
+    def reasoning_budget_start(self, value: list[int]):
+        cdef vector[xllamacpp.llama_token] vec
+        for token in value:
+            vec.push_back(token)
+        self.p.reasoning_budget_start = vec
+
+    @property
+    def reasoning_budget_end(self) -> list[int]:
+        """end tag token sequence"""
+        result = []
+        for i in range(self.p.reasoning_budget_end.size()):
+            result.append(self.p.reasoning_budget_end[i])
+        return result
+
+    @reasoning_budget_end.setter
+    def reasoning_budget_end(self, value: list[int]):
+        cdef vector[xllamacpp.llama_token] vec
+        for token in value:
+            vec.push_back(token)
+        self.p.reasoning_budget_end = vec
+
+    @property
+    def reasoning_budget_forced(self) -> list[int]:
+        """forced sequence (message + end tag)"""
+        result = []
+        for i in range(self.p.reasoning_budget_forced.size()):
+            result.append(self.p.reasoning_budget_forced[i])
+        return result
+
+    @reasoning_budget_forced.setter
+    def reasoning_budget_forced(self, value: list[int]):
+        cdef vector[xllamacpp.llama_token] vec
+        for token in value:
+            vec.push_back(token)
+        self.p.reasoning_budget_forced = vec
+
 
 
 cdef class CpuParams:
@@ -1325,13 +1388,32 @@ cdef class CommonParams:
         self.p.model = deref(value.p)
 
     @property
-    def model_alias(self) -> str:
-        """model alias"""
-        return self.p.model_alias
+    def model_alias(self) -> set[str]:
+        """model aliases"""
+        result = set()
+        for alias in self.p.model_alias:
+            result.add(alias)
+        return result
 
     @model_alias.setter
-    def model_alias(self, value: str):
-        self.p.model_alias = value
+    def model_alias(self, values: list[str] | set[str]):
+        self.p.model_alias.clear()
+        for i in values:
+            self.p.model_alias.insert(i)
+
+    @property
+    def model_tags(self) -> set[str]:
+        """model tags (informational, not used for routing)"""
+        result = set()
+        for tag in self.p.model_tags:
+            result.add(tag)
+        return result
+
+    @model_tags.setter
+    def model_tags(self, values: list[str] | set[str]):
+        self.p.model_tags.clear()
+        for i in values:
+            self.p.model_tags.insert(i)
 
     @property
     def hf_token(self) -> str:
@@ -1626,6 +1708,15 @@ cdef class CommonParams:
     @kl_divergence.setter
     def kl_divergence(self, value: bool):
         self.p.kl_divergence = value
+
+    @property
+    def check(self) -> bool:
+        """check rather than generate results for llama-results"""
+        return self.p.check
+
+    @check.setter
+    def check(self, value: bool):
+        self.p.check = value
 
     @property
     def usage(self) -> bool:
@@ -2062,6 +2153,15 @@ cdef class CommonParams:
         self.p.n_ctx_checkpoints = value
 
     @property
+    def checkpoint_every_nt(self) -> int:
+        """make a checkpoint every n tokens during prefill"""
+        return self.p.checkpoint_every_nt
+
+    @checkpoint_every_nt.setter
+    def checkpoint_every_nt(self, value: int):
+        self.p.checkpoint_every_nt = value
+
+    @property
     def cache_ram_mib(self) -> int:
         """-1 = no limit, 0 - disable, 1 = 1 MiB, etc."""
         return self.p.cache_ram_mib
@@ -2131,12 +2231,30 @@ cdef class CommonParams:
         self.p.reasoning_format = value
 
     @property
+    def enable_reasoning(self) -> int:
+        """-1 = auto, 0 = disable, 1 = enable"""
+        return self.p.enable_reasoning
+
+    @enable_reasoning.setter
+    def enable_reasoning(self, value: int):
+        self.p.enable_reasoning = value
+
+    @property
     def reasoning_budget(self) -> int:
         return self.p.reasoning_budget
 
     @reasoning_budget.setter
     def reasoning_budget(self, value: int):
         self.p.reasoning_budget = value
+
+    @property
+    def reasoning_budget_message(self) -> str:
+        """message injected before end tag when budget exhausted"""
+        return self.p.reasoning_budget_message
+
+    @reasoning_budget_message.setter
+    def reasoning_budget_message(self, value: str):
+        self.p.reasoning_budget_message = value
 
     @property
     def prefill_assistant(self) -> bool:
@@ -2206,6 +2324,15 @@ cdef class CommonParams:
         self.p.webui = value
 
     @property
+    def webui_mcp_proxy(self) -> bool:
+        """webui mcp proxy"""
+        return self.p.webui_mcp_proxy
+
+    @webui_mcp_proxy.setter
+    def webui_mcp_proxy(self, value: bool):
+        self.p.webui_mcp_proxy = value
+
+    @property
     def webui_config_json(self) -> str:
         """webui config json"""
         return self.p.webui_config_json
@@ -2240,6 +2367,42 @@ cdef class CommonParams:
     @endpoint_metrics.setter
     def endpoint_metrics(self, value: bool):
         self.p.endpoint_metrics = value
+
+    @property
+    def models_dir(self) -> str:
+        """directory containing models for the router server"""
+        return self.p.models_dir
+
+    @models_dir.setter
+    def models_dir(self, value: str):
+        self.p.models_dir = value
+
+    @property
+    def models_preset(self) -> str:
+        """directory containing model presets for the router server"""
+        return self.p.models_preset
+
+    @models_preset.setter
+    def models_preset(self, value: str):
+        self.p.models_preset = value
+
+    @property
+    def models_max(self) -> int:
+        """maximum number of models to load simultaneously"""
+        return self.p.models_max
+
+    @models_max.setter
+    def models_max(self, value: int):
+        self.p.models_max = value
+
+    @property
+    def models_autoload(self) -> bool:
+        """automatically load models when requested via the router server"""
+        return self.p.models_autoload
+
+    @models_autoload.setter
+    def models_autoload(self, value: bool):
+        self.p.models_autoload = value
 
     @property
     def log_json(self) -> bool:

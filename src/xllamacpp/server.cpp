@@ -1,7 +1,12 @@
 #include "json-schema-to-grammar.h"
 #include "server-context.h"
-#include "server-http.h"
+// clang-format off
+// server-models.h must be included before server-cors-proxy.h because
+// server-cors-proxy.h uses server_http_proxy which is defined in server-models.h
 #include "server-models.h"
+#include "server-cors-proxy.h"
+// clang-format on
+#include "server-http.h"
 
 #include "arg.h"
 #include "common.h"
@@ -9,6 +14,7 @@
 #include "log.h"
 
 #include <atomic>
+#include <clocale>
 #include <exception>
 #include <future>
 #include <signal.h>
@@ -99,7 +105,7 @@ static void init(common_params &params, server_context &ctx_server,
   // for consistency between server router mode and single-model mode, we set
   // the same model name as alias
   if (params.model_alias.empty() && !params.model.name.empty()) {
-    params.model_alias = params.model.name;
+    params.model_alias.insert(params.model.name);
   }
 
   common_init();
@@ -203,6 +209,7 @@ static void init(common_params &params, server_context &ctx_server,
       "/api/chat",
       ex_wrapper(routes.post_chat_completions)); // ollama specific endpoint
   ctx_http.post("/v1/responses", ex_wrapper(routes.post_responses_oai));
+  ctx_http.post("/responses", ex_wrapper(routes.post_responses_oai));
   ctx_http.post(
       "/v1/messages",
       ex_wrapper(routes.post_anthropic_messages)); // anthropic messages API
@@ -227,6 +234,17 @@ static void init(common_params &params, server_context &ctx_server,
   // Save & load slots
   ctx_http.get("/slots", ex_wrapper(routes.get_slots));
   ctx_http.post("/slots/:id_slot", ex_wrapper(routes.post_slots));
+  // CORS proxy (EXPERIMENTAL, only used by the Web UI for MCP)
+  if (params.webui_mcp_proxy) {
+    SRV_WRN("%s", "-----------------\n");
+    SRV_WRN("%s", "CORS proxy is enabled, do not expose server to untrusted "
+                  "environments\n");
+    SRV_WRN("%s", "This feature is EXPERIMENTAL and may be removed or changed "
+                  "in future versions\n");
+    SRV_WRN("%s", "-----------------\n");
+    ctx_http.get("/cors-proxy", ex_wrapper(proxy_handler_get));
+    ctx_http.post("/cors-proxy", ex_wrapper(proxy_handler_post));
+  }
 
   //
   // Start the server
