@@ -163,7 +163,17 @@ if PLATFORM == "Darwin":
             ]
         )
 elif PLATFORM == "Linux":
-    EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc"])
+    # Static-link libstdc++ / libgcc so the wheel stays manylinux_2_28
+    # compatible.  The manylinux_2_28 build image ships gcc-toolset-14
+    # whose libstdc++.so introduces GLIBCXX / CXXABI symbols newer than
+    # glibc 2.28; without static linking auditwheel bumps the tag to
+    # manylinux_2_31+.
+    #
+    # Trade-off: static libstdc++ slightly increases wheel size and means
+    # C++ exceptions / RTTI cannot cross shared-object boundaries.  This is
+    # acceptable here because the Python ↔ C++ boundary uses a C ABI
+    # (Cython) and the extension does not share C++ objects with other libs.
+    EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc", "-static-libstdc++"])
     # Check if BLAS is enabled in environment
     if os.path.exists(f"{LLAMACPP_LIBS_DIR}/libggml-blas.a"):
         print("BLAS is enabled, adding ggml-blas to link targets")
