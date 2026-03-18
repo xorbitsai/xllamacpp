@@ -88,13 +88,9 @@ if PLATFORM == "Windows":
         LIBRARIES.extend(["ggml-vulkan", "vulkan-1"])
 else:
     LIBRARIES.extend(["pthread"])
-    # Static link BoringSSL on all Unix platforms (Darwin and Linux)
-    EXTRA_OBJECTS.extend(
-        [
-            f"{LLAMACPP_LIBS_DIR}/libssl.a",
-            f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
-        ]
-    )
+    # Order matters for static linking: dependents before dependencies.
+    # libssl.a/libcrypto.a must come AFTER libraries that reference OpenSSL symbols
+    # (e.g., libcpp-httplib.a, libserver-context.a).
     EXTRA_OBJECTS.extend(
         [
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
@@ -106,6 +102,9 @@ else:
             f"{LLAMACPP_LIBS_DIR}/libggml.a",
             f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
             f"{LLAMACPP_LIBS_DIR}/libggml-base.a",
+            # BoringSSL static libraries must be last (they are dependencies, not dependents)
+            f"{LLAMACPP_LIBS_DIR}/libssl.a",
+            f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
         ]
     )
     if BUILD_CUDA:
