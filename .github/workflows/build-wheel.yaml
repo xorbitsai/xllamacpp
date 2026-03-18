@@ -71,7 +71,7 @@ jobs:
             --exclude libgomp.so.1
             -w {dest_dir} {wheel}
           CIBW_BEFORE_ALL_LINUX: >-
-            yum install -y gcc-toolset-12-gcc gcc-toolset-12-gcc-c++ gcc-toolset-12-libgomp-devel &&
+            yum install -y gcc-toolset-12-gcc gcc-toolset-12-gcc-c++ &&
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &&
             source $HOME/.cargo/env
           CIBW_BEFORE_BUILD: pip install -r requirements.txt && make
