@@ -88,16 +88,13 @@ if PLATFORM == "Windows":
         LIBRARIES.extend(["ggml-vulkan", "vulkan-1"])
 else:
     LIBRARIES.extend(["pthread"])
-    if PLATFORM == "Darwin":
-        EXTRA_OBJECTS.extend(
-            [
-                f"{LLAMACPP_LIBS_DIR}/libssl.a",
-                f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
-            ]
-        )
-    else:
-        # Linux platform link with system ssl.
-        LIBRARIES.extend(["ssl", "crypto"])
+    # Static link BoringSSL on all Unix platforms (Darwin and Linux)
+    EXTRA_OBJECTS.extend(
+        [
+            f"{LLAMACPP_LIBS_DIR}/libssl.a",
+            f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
+        ]
+    )
     EXTRA_OBJECTS.extend(
         [
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
@@ -164,7 +161,8 @@ if PLATFORM == "Darwin":
         )
 elif PLATFORM == "Linux":
     # Do not statically link to libstdc++; this will cause compatibility issues.
-    EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc"])
+    # Static link libgomp and libgcc to avoid runtime dependency on non-whitelisted libs
+    EXTRA_LINK_ARGS.extend(["-Wl,-Bstatic", "-lgomp", "-Wl,-Bdynamic", "-static-libgcc"])
     # Check if BLAS is enabled in environment
     if os.path.exists(f"{LLAMACPP_LIBS_DIR}/libggml-blas.a"):
         print("BLAS is enabled, adding ggml-blas to link targets")
