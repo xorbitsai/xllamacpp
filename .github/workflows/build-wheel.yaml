@@ -99,7 +99,10 @@ jobs:
             zip -q -r "$REPAIRED" .;
             rm -rf "$WORK";
             '
-          CIBW_BEFORE_ALL_LINUX: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source $HOME/.cargo/env
+          CIBW_BEFORE_ALL_LINUX: >-
+            yum install -y patchelf zip unzip &&
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &&
+            source $HOME/.cargo/env
           CIBW_BEFORE_BUILD: pip install -r requirements.txt && make
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
