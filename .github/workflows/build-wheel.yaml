@@ -65,45 +65,13 @@ jobs:
           CIBW_BUILD: cp310-*
           CIBW_TEST_REQUIRES: pytest requests pytest-asyncio pytest-timeout
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >-
-            bash -c '
-            set -e;
-            WHEEL="{wheel}";
-            DEST="{dest_dir}";
-            WORK=$(mktemp -d);
-            UNPACK="$WORK/unpack";
-            mkdir -p "$UNPACK";
-            cd "$UNPACK";
-            unzip -q "$WHEEL";
-            SO=$(find . -name "*.so" -path "*/xllamacpp/*" | head -1);
-            echo "=== Found .so: $SO ===";
-            echo "=== Before patchelf ===";
-            patchelf --print-needed "$SO";
-            patchelf --remove-needed libstdc++.so.6 --remove-needed libgomp.so.1 "$SO";
-            echo "=== After patchelf (removed libstdc++ and libgomp) ===";
-            patchelf --print-needed "$SO";
-            NEWWHEEL="$WORK/patched_$(basename $WHEEL)";
-            cd "$UNPACK";
-            zip -q -r "$NEWWHEEL" .;
-            echo "=== auditwheel show (should be manylinux_2_28) ===";
-            auditwheel show "$NEWWHEEL";
-            auditwheel repair -w "$DEST" "$NEWWHEEL";
-            REPAIRED=$(ls "$DEST"/*.whl | head -1);
-            echo "=== Repaired wheel: $(basename "$REPAIRED") ===";
-            REPACK="$WORK/repack";
-            mkdir -p "$REPACK";
-            cd "$REPACK";
-            unzip -q "$REPAIRED";
-            SO2=$(find . -name "*.so" -path "*/xllamacpp/*" | head -1);
-            patchelf --add-needed libstdc++.so.6 --add-needed libgomp.so.1 "$SO2";
-            echo "=== Final needed (restored libstdc++ and libgomp) ===";
-            patchelf --print-needed "$SO2";
-            rm "$REPAIRED";
-            cd "$REPACK";
-            zip -q -r "$REPAIRED" .;
-            rm -rf "$WORK";
-            '
+            auditwheel show {wheel} &&
+            auditwheel repair
+            --exclude libstdc++.so.6
+            --exclude libgomp.so.1
+            -w {dest_dir} {wheel}
           CIBW_BEFORE_ALL_LINUX: >-
-            yum install -y patchelf zip unzip &&
+            yum install -y gcc-toolset-12-gcc gcc-toolset-12-gcc-c++ gcc-toolset-12-libgomp-devel &&
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &&
             source $HOME/.cargo/env
           CIBW_BEFORE_BUILD: pip install -r requirements.txt && make
