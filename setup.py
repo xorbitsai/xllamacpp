@@ -161,8 +161,9 @@ if PLATFORM == "Darwin":
         )
 elif PLATFORM == "Linux":
     # Do not statically link to libstdc++; this will cause compatibility issues.
-    # Static link libgomp and libgcc to avoid runtime dependency on non-whitelisted libs
-    EXTRA_LINK_ARGS.extend(["-Wl,-Bstatic", "-lgomp", "-Wl,-Bdynamic", "-static-libgcc"])
+    # gcc-toolset-14's libgomp.a is not built with -fPIC on both x86_64 and aarch64,
+    # so we dynamically link libgomp and exclude it via auditwheel instead.
+    EXTRA_LINK_ARGS.extend(["-fopenmp", "-static-libgcc"])
     # Check if BLAS is enabled in environment
     if os.path.exists(f"{LLAMACPP_LIBS_DIR}/libggml-blas.a"):
         print("BLAS is enabled, adding ggml-blas to link targets")
