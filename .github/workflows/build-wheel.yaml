@@ -76,22 +76,17 @@ jobs:
             source $HOME/.cargo/env
           CIBW_BEFORE_BUILD: >-
             pip install -r requirements.txt && make &&
-            echo "=== Checking glibc symbol versions in each .a file ===" &&
-            for f in src/llama.cpp/lib/*.a; do
-              echo "--- $f ---";
-              for obj in $(ar t "$f" 2>/dev/null); do
-                ar p "$f" "$obj" > /tmp/_check_obj.o 2>/dev/null;
-                vers=$(readelf -V /tmp/_check_obj.o 2>/dev/null | grep -oP 'GLIBC_\d+\.\d+(\.\d+)?' | sort -t. -k1,1n -k2,2n -k3,3n -u);
-                for v in $vers; do
-                  minor=$(echo "$v" | sed 's/GLIBC_[0-9]*\.//' | cut -d. -f1);
-                  if [ "$minor" -gt 28 ] 2>/dev/null; then echo "  HIGH: $obj requires $v"; fi;
-                done;
-              done;
-              maxver=$(readelf -V "$f" 2>/dev/null | grep -oP 'GLIBC_\d+\.\d+(\.\d+)?' | sort -t. -k1,1n -k2,2n -k3,3n -u | tail -1);
-              if [ -n "$maxver" ]; then echo "  max_glibc=$maxver"; fi;
-            done &&
-            echo "=== Checking glibc versions in final .so ===" &&
-            find build/ -name '*.so' -exec sh -c 'echo "--- {} ---"; readelf -V "{}" 2>/dev/null | grep -oP "GLIBC_\d+\.\d+(\.\d+)?" | sort -t. -k1,1n -k2,2n -k3,3n -u' \; 2>/dev/null || true
+            echo "=== lddtree on final .so ===" &&
+            find build/ -name '*.so' -exec lddtree {} \; 2>/dev/null || true &&
+            echo "=== readelf dynamic needed on final .so ===" &&
+            find build/ -name '*.so' -exec sh -c 'echo "--- {} ---"; readelf -d "{}" 2>/dev/null | grep NEEDED' \; 2>/dev/null || true &&
+            echo "=== check all system .so versions ===" &&
+            find build/ -name '*.so' -exec sh -c 'for dep in $(ldd "{}" 2>/dev/null | awk "/=>/{print \$3}"); do echo "  $dep:"; readelf -V "$dep" 2>/dev/null | grep -E "Name: (GLIBC|GLIBCXX|CXXABI)" | sort -u; done' \; 2>/dev/null || true &&
+            echo "=== gcc and libstdc++ version ===" &&
+            gcc --version 2>/dev/null || true &&
+            ls -la /opt/rh/gcc-toolset-*/root/usr/lib/gcc/x86_64-redhat-linux/*/ 2>/dev/null || true &&
+            find / -name 'libstdc++.so.6' 2>/dev/null | head -5 || true &&
+            for f in $(find / -name 'libstdc++.so.6' 2>/dev/null | head -5); do echo "--- $f ---"; readelf -V "$f" 2>/dev/null | grep -E "Name: (GLIBCXX|CXXABI)" | sort -u; done || true
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
           CIBW_ENVIRONMENT_MACOS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
