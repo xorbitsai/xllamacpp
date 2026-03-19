@@ -74,7 +74,24 @@ jobs:
           CIBW_BEFORE_ALL_LINUX: >-
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &&
             source $HOME/.cargo/env
-          CIBW_BEFORE_BUILD: pip install -r requirements.txt && make
+          CIBW_BEFORE_BUILD: >-
+            pip install -r requirements.txt && make &&
+            echo "=== Checking glibc symbol versions in each .a file ===" &&
+            for f in src/llama.cpp/lib/*.a; do
+              echo "--- $f ---";
+              for obj in $(ar t "$f" 2>/dev/null); do
+                ar p "$f" "$obj" > /tmp/_check_obj.o 2>/dev/null;
+                vers=$(readelf -V /tmp/_check_obj.o 2>/dev/null | grep -oP 'GLIBC_\d+\.\d+(\.\d+)?' | sort -t. -k1,1n -k2,2n -k3,3n -u);
+                for v in $vers; do
+                  minor=$(echo "$v" | sed 's/GLIBC_[0-9]*\.//' | cut -d. -f1);
+                  if [ "$minor" -gt 28 ] 2>/dev/null; then echo "  HIGH: $obj requires $v"; fi;
+                done;
+              done;
+              maxver=$(readelf -V "$f" 2>/dev/null | grep -oP 'GLIBC_\d+\.\d+(\.\d+)?' | sort -t. -k1,1n -k2,2n -k3,3n -u | tail -1);
+              if [ -n "$maxver" ]; then echo "  max_glibc=$maxver"; fi;
+            done &&
+            echo "=== Checking glibc versions in final .so ===" &&
+            find build/ -name '*.so' -exec sh -c 'echo "--- {} ---"; readelf -V "{}" 2>/dev/null | grep -oP "GLIBC_\d+\.\d+(\.\d+)?" | sort -t. -k1,1n -k2,2n -k3,3n -u' \; 2>/dev/null || true
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
           CIBW_ENVIRONMENT_MACOS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
