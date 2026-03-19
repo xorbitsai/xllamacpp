@@ -112,7 +112,7 @@ jobs:
         uses: pypa/cibuildwheel@v3.4.0
         env:
           VERSIONEER_CLOSEST_TAG_ONLY: 1
-          CIBW_SKIP: *i686
+          CIBW_SKIP: "*i686"
           CIBW_ARCHS: ${{ matrix.arch }}
           # Build only cp310 for abi3 wheel (compatible with all Python 3.10+)
           CIBW_BUILD: cp310-*
