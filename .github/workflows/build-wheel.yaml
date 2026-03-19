@@ -11,23 +11,76 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_wheels:
+  build_linux_wheels:
+    name: Build wheels on Linux ${{ matrix.arch }} (abi3)
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+            image: quay.io/pypa/manylinux2014_x86_64
+            platform-id: manylinux_x86_64
+          - arch: aarch64
+            runner: ubuntu-22.04-arm
+            image: quay.io/pypa/manylinux2014_aarch64
+            platform-id: manylinux_aarch64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Build wheel in manylinux2014 container
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            -e VERSIONEER_CLOSEST_TAG_ONLY=1 \
+            -e XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }} \
+            ${{ matrix.image }} \
+            bash -c '
+              set -ex
+
+              # Use Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
+              export PATH=/opt/python/cp310-cp310/bin:$PATH
+
+              # Install Rust toolchain (needed by llguidance)
+              curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+              source $HOME/.cargo/env
+
+              # Install build dependencies
+              pip install -r requirements.txt
+
+              # Build llama.cpp and the extension
+              make
+
+              # Build the wheel
+              pip wheel . --no-deps --no-build-isolation -w /tmp/wheelhouse
+
+              # Repair the wheel with auditwheel
+              auditwheel show /tmp/wheelhouse/*.whl
+              auditwheel repair \
+                --exclude libstdc++.so.6 \
+                --exclude libgomp.so.1 \
+                -w /workspace/wheelhouse \
+                /tmp/wheelhouse/*.whl
+            '
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-abi3-${{ matrix.platform-id }}
+          path: wheelhouse/*.whl
+
+  build_other_wheels:
     name: Build wheels on ${{ matrix.os }} ${{ matrix.arch }} (abi3)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Linux x86_64 - single abi3 wheel for all Python 3.10+
-          - os: ubuntu-latest
-            arch: auto
-            platform-id: manylinux_x86_64
-
-          # Linux aarch64 - single abi3 wheel for all Python 3.10+
-          - os: ubuntu-22.04-arm
-            arch: aarch64
-            platform-id: manylinux_aarch64
-
           # macOS x86_64 - single abi3 wheel for all Python 3.10+
           - os: macos-15-intel
             arch: x86_64
@@ -59,15 +112,13 @@ jobs:
         uses: pypa/cibuildwheel@v3.4.0
         env:
           VERSIONEER_CLOSEST_TAG_ONLY: 1
-          CIBW_SKIP: pp* *i686
+          CIBW_SKIP: "*i686"
           CIBW_ARCHS: ${{ matrix.arch }}
           # Build only cp310 for abi3 wheel (compatible with all Python 3.10+)
           CIBW_BUILD: cp310-*
           CIBW_TEST_REQUIRES: pytest requests pytest-asyncio pytest-timeout
-          CIBW_BEFORE_ALL_LINUX: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source $HOME/.cargo/env && (yum install -y openssl-devel 2>/dev/null || apk add openssl-dev 2>/dev/null)
           CIBW_BEFORE_BUILD: pip install -r requirements.txt && make
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
           CIBW_ENVIRONMENT_MACOS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
           CIBW_ENVIRONMENT_WINDOWS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
         with:
@@ -96,7 +147,7 @@ jobs:
           path: ./dist/*.tar.gz
 
   upload_pypi:
-    needs: [build_wheels, build_sdist]
+    needs: [build_linux_wheels, build_other_wheels, build_sdist]
     runs-on: ubuntu-latest
     # upload to PyPI on every tag starting with 'v'
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
