@@ -64,8 +64,7 @@ jobs:
           # Build only cp310 for abi3 wheel (compatible with all Python 3.10+)
           CIBW_BUILD: cp310-*
           CIBW_TEST_REQUIRES: pytest requests pytest-asyncio pytest-timeout
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
-          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux2014
+          CIBW_MANYLINUX_IMAGE: manylinux2014
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >-
             auditwheel show {wheel} &&
             auditwheel repair
