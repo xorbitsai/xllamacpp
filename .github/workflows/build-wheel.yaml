@@ -44,6 +44,8 @@ jobs:
             bash -c '
               set -ex
 
+              # Mark the mounted workspace as safe for git (needed by versioneer)
+              git config --global --add safe.directory /workspace
               # Use Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
               export PATH=/opt/python/cp310-cp310/bin:$PATH
 
