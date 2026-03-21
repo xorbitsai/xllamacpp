@@ -352,7 +352,9 @@ jobs:
           # Try different CUDA package names and channels
           echo "Attempting to install CUDA ${{ matrix.cuda }}..."
           
-          mamba install -y -c nvidia 'cuda==${{ matrix.cuda }}' 'cuda-cudart-dev' 'cuda-nvcc'
+          # Extract major.minor version (e.g. 12.4.1 -> 12.4) for sub-package pinning
+          CUDA_MAJOR_MINOR=$(echo "${{ matrix.cuda }}" | cut -d. -f1,2)
+          mamba install -y -c nvidia "cuda==${{ matrix.cuda }}" "cuda-cudart-dev==${CUDA_MAJOR_MINOR}.*" "cuda-nvcc==${CUDA_MAJOR_MINOR}.*"
           echo "Successfully installed CUDA ${{ matrix.cuda }}"
           
           # Verify cuda_runtime.h exists
