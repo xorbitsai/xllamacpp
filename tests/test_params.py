@@ -498,41 +498,52 @@ def test_common_grammar():
     """Test CommonGrammar class."""
     # Test default constructor
     grammar = xlc.CommonGrammar()
-    assert grammar.type == 0
+    assert grammar.type == xlc.common_grammar_type.COMMON_GRAMMAR_TYPE_NONE
     assert grammar.grammar == ""
     assert grammar.empty() is True
 
-    # Test constructor with arguments
-    grammar = xlc.CommonGrammar(type=1, grammar="root ::= [a-z]+")
-    assert grammar.type == 1
+    # Test constructor with arguments using enum
+    grammar = xlc.CommonGrammar(
+        type=xlc.common_grammar_type.COMMON_GRAMMAR_TYPE_USER, grammar="root ::= [a-z]+"
+    )
+    assert grammar.type == xlc.common_grammar_type.COMMON_GRAMMAR_TYPE_USER
     assert grammar.grammar == "root ::= [a-z]+"
     assert grammar.empty() is False
 
-    # Test setters
-    grammar.type = 2
-    assert grammar.type == 2
+    # Test setters with enum
+    grammar.type = xlc.common_grammar_type.COMMON_GRAMMAR_TYPE_OUTPUT_FORMAT
+    assert grammar.type == xlc.common_grammar_type.COMMON_GRAMMAR_TYPE_OUTPUT_FORMAT
     grammar.grammar = "root ::= [0-9]+"
     assert grammar.grammar == "root ::= [0-9]+"
 
     # Test __repr__
     assert "CommonGrammar" in repr(grammar)
-    assert "type=2" in repr(grammar)
+    assert "type=" in repr(grammar)
 
     # Test grammar property on CommonParamsSampling
     params = xlc.CommonParams()
     # Default grammar should be empty
     assert params.sampling.grammar.empty() is True
 
-    # Set grammar via CommonGrammar object
-    new_grammar = xlc.CommonGrammar(type=1, grammar="root ::= [a-z]+")
+    # Set grammar via CommonGrammar object using enum
+    new_grammar = xlc.CommonGrammar(
+        type=xlc.common_grammar_type.COMMON_GRAMMAR_TYPE_USER, grammar="root ::= [a-z]+"
+    )
     params.sampling.grammar = new_grammar
-    assert params.sampling.grammar.type == 1
+    assert (
+        params.sampling.grammar.type == xlc.common_grammar_type.COMMON_GRAMMAR_TYPE_USER
+    )
     assert params.sampling.grammar.grammar == "root ::= [a-z]+"
     assert params.sampling.grammar.empty() is False
 
-    # Test modifying grammar properties
-    params.sampling.grammar.type = 2
-    assert params.sampling.grammar.type == 2
+    # Test modifying grammar properties with enum
+    params.sampling.grammar.type = (
+        xlc.common_grammar_type.COMMON_GRAMMAR_TYPE_OUTPUT_FORMAT
+    )
+    assert (
+        params.sampling.grammar.type
+        == xlc.common_grammar_type.COMMON_GRAMMAR_TYPE_OUTPUT_FORMAT
+    )
 
 
 def test_json_schema_to_grammar():

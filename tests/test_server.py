@@ -262,8 +262,10 @@ def test_llama_server_chat_with_grammar(model_path):
     params.cpuparams_batch.n_threads = 2
     params.sampling.temp = 0
     params.sampling.top_k = 1
-    # Use CommonGrammar object instead of string
-    params.sampling.grammar = xlc.CommonGrammar(type=1, grammar=grammar_str)
+    # Use CommonGrammar object with enum type instead of string
+    params.sampling.grammar = xlc.CommonGrammar(
+        type=xlc.common_grammar_type.COMMON_GRAMMAR_TYPE_USER, grammar=grammar_str
+    )
 
     server = xlc.Server(params)
 

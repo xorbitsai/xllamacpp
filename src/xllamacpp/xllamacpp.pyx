@@ -1031,14 +1031,14 @@ cdef class CommonGrammar:
         self.p = &self._owned_data
         self.owner = None
 
-    def __init__(self, type: int = 0, grammar: str = ""):
+    def __init__(self, type: common_grammar_type = common_grammar_type.COMMON_GRAMMAR_TYPE_NONE, grammar: str = ""):
         """Construct a new CommonGrammar with the given type and grammar string.
 
         Args:
-            type: Grammar type (0=NONE, 1=USER, 2=OUTPUT_FORMAT, 3=TOOL_CALLS)
+            type: Grammar type (common_grammar_type enum)
             grammar: Grammar string (GBNF format)
         """
-        self._owned_data.type = <xllamacpp.common_grammar_type>type
+        self._owned_data.type = type
         self._owned_data.grammar = grammar
 
     cdef void deref(self):
@@ -1048,13 +1048,13 @@ cdef class CommonGrammar:
         self.owner = None
 
     @property
-    def type(self) -> int:
-        """Grammar type (0=NONE, 1=USER, 2=OUTPUT_FORMAT, 3=TOOL_CALLS)"""
+    def type(self) -> common_grammar_type:
+        """Grammar type (common_grammar_type enum)"""
         return self.p.type
 
     @type.setter
-    def type(self, value: int):
-        self.p.type = <xllamacpp.common_grammar_type>value
+    def type(self, value: common_grammar_type):
+        self.p.type = value
 
     @property
     def grammar(self) -> str:
