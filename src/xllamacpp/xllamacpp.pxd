@@ -286,6 +286,19 @@ cdef extern from "common.h":
         bint at_start
         llama_token token
 
+    cpdef enum common_grammar_type:
+        COMMON_GRAMMAR_TYPE_NONE
+        COMMON_GRAMMAR_TYPE_USER
+        COMMON_GRAMMAR_TYPE_OUTPUT_FORMAT
+        COMMON_GRAMMAR_TYPE_TOOL_CALLS
+
+    cdef cppclass common_grammar:
+        common_grammar_type type
+        std_string grammar
+        common_grammar()
+        common_grammar(common_grammar_type t, std_string g)
+        bint empty()
+
     cpdef enum  common_params_sampling_config:
         COMMON_PARAMS_SAMPLING_CONFIG_SAMPLERS
         COMMON_PARAMS_SAMPLING_CONFIG_TOP_K
@@ -339,7 +352,7 @@ cdef extern from "common.h":
 
         std_vector[common_sampler_type] samplers
 
-        std_string grammar # optional BNF-like grammar to constrain sampling
+        common_grammar                      grammar           # optional grammar constraint (user / output-format / tool-calls)
         bint                                grammar_lazy
         std_vector[common_grammar_trigger]  grammar_triggers  # optional triggers (for lazy grammars)
         std_set[llama_token]                preserved_tokens
@@ -347,10 +360,15 @@ cdef extern from "common.h":
         std_vector[llama_logit_bias] logit_bias      # logit biases to apply
         std_vector[llama_logit_bias] logit_bias_eog  # pre-calculated logit biases for EOG tokens
 
+        # The assistant generation prompt already prefilled into the prompt.
+        # Fed to the grammar sampler (to advance past pre-existing tokens) and used
+        # to determine the reasoning budget sampler's initial state.
+        # Only applied when the grammar is of output-format or tool-calls type.
+        std_string generation_prompt
+
         # reasoning budget sampler parameters
         # these are populated by the server/CLI based on chat template params
         int32_t  reasoning_budget_tokens   # -1 = disabled, >= 0 = token budget
-        bint     reasoning_budget_activate_immediately
         std_vector[llama_token] reasoning_budget_start  # start tag token sequence
         std_vector[llama_token] reasoning_budget_end    # end tag token sequence
         std_vector[llama_token] reasoning_budget_forced # forced sequence (message + end tag)
@@ -602,11 +620,13 @@ cdef extern from "common.h":
 
         # server params
         int32_t port                # server listens on this network port
+        bint    reuse_port          # allow multiple sockets to bind to the same port
         int32_t timeout_read        # http read timeout in seconds
         int32_t timeout_write       # http write timeout in seconds
         int32_t n_threads_http      # number of threads to process HTTP requests (TODO: support threadpool)
         int32_t n_cache_reuse       # min chunk size to reuse from the cache via KV shifting
         bint    cache_prompt        # whether to enable prompt caching
+        bint    clear_idle          # save and clear idle slots upon starting a new task
         int32_t n_ctx_checkpoints   # max number of context checkpoints per slot
         int32_t checkpoint_every_nt   # make a checkpoint every n tokens during prefill
         int32_t cache_ram_mib       # -1 = no limit, 0 - disable, 1 = 1 MiB, etc.
@@ -617,6 +637,7 @@ cdef extern from "common.h":
         std_string chat_template
         bint use_jinja
         bint enable_chat_template
+        bint force_pure_content_parser
 
         common_reasoning_format reasoning_format
         int32_t enable_reasoning    # -1 = auto, 0 = disable, 1 = enable
@@ -640,6 +661,9 @@ cdef extern from "common.h":
         bint endpoint_slots
         bint endpoint_props
         bint endpoint_metrics
+
+        # enable built-in tools
+        std_vector[std_string] server_tools
 
         # router server configs
         std_string models_dir    # directory containing models for the router server
@@ -704,6 +728,7 @@ cdef extern from "common.h":
         # return false from callback to abort model loading or true to continue
         llama_progress_callback load_progress_callback
         void *                  load_progress_callback_user_data
+        bint no_alloc # Don't allocate model buffers
 
 
     

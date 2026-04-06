@@ -433,13 +433,13 @@ cdef class CommonParamsSampling:
         self.p.backend_sampling = value
 
     @property
-    def grammar(self) -> str:
-        """optional BNF-like grammar to constrain sampling"""
-        return self.p.grammar
+    def grammar(self) -> CommonGrammar:
+        """optional grammar constraint (user / output-format / tool-calls)"""
+        return CommonGrammar.from_ptr(&self.p.grammar, self)
 
     @grammar.setter
-    def grammar(self, str value):
-        self.p.grammar = value
+    def grammar(self, CommonGrammar value):
+        self.p.grammar = deref(value.p)
 
     @property
     def logit_bias(self) -> list[LlamaLogitBias]:
@@ -478,6 +478,20 @@ cdef class CommonParamsSampling:
         self.p.logit_bias_eog = vec
 
     @property
+    def generation_prompt(self) -> str:
+        """The assistant generation prompt already prefilled into the prompt.
+
+        Fed to the grammar sampler (to advance past pre-existing tokens) and used
+        to determine the reasoning budget sampler's initial state.
+        Only applied when the grammar is of output-format or tool-calls type.
+        """
+        return self.p.generation_prompt
+
+    @generation_prompt.setter
+    def generation_prompt(self, value: str):
+        self.p.generation_prompt = value
+
+    @property
     def reasoning_budget_tokens(self) -> int:
         """-1 = disabled, >= 0 = token budget"""
         return self.p.reasoning_budget_tokens
@@ -485,15 +499,6 @@ cdef class CommonParamsSampling:
     @reasoning_budget_tokens.setter
     def reasoning_budget_tokens(self, int32_t value):
         self.p.reasoning_budget_tokens = value
-
-    @property
-    def reasoning_budget_activate_immediately(self) -> bool:
-        """activate reasoning budget immediately"""
-        return self.p.reasoning_budget_activate_immediately
-
-    @reasoning_budget_activate_immediately.setter
-    def reasoning_budget_activate_immediately(self, value: bool):
-        self.p.reasoning_budget_activate_immediately = value
 
     @property
     def reasoning_budget_start(self) -> list[int]:
@@ -1003,6 +1008,69 @@ cdef class CommonParamsDiffusion:
     @add_gumbel_noise.setter
     def add_gumbel_noise(self, value: bool):
         self.p.add_gumbel_noise = value
+
+
+cdef class CommonGrammar:
+    """Wrapper class for common_grammar struct.
+
+    Represents a grammar constraint for text generation.
+    Can be constructed directly with type and grammar string.
+    """
+    cdef xllamacpp.common_grammar *p
+    cdef xllamacpp.common_grammar _owned_data
+    cdef object owner
+
+    @staticmethod
+    cdef CommonGrammar from_ptr(xllamacpp.common_grammar *g, object owner):
+        cdef CommonGrammar wrapper = CommonGrammar.__new__(CommonGrammar)
+        wrapper.p = g
+        wrapper.owner = owner
+        return wrapper
+
+    def __cinit__(self):
+        self.p = &self._owned_data
+        self.owner = None
+
+    def __init__(self, type: int = 0, grammar: str = ""):
+        """Construct a new CommonGrammar with the given type and grammar string.
+
+        Args:
+            type: Grammar type (0=NONE, 1=USER, 2=OUTPUT_FORMAT, 3=TOOL_CALLS)
+            grammar: Grammar string (GBNF format)
+        """
+        self._owned_data.type = <xllamacpp.common_grammar_type>type
+        self._owned_data.grammar = grammar
+
+    cdef void deref(self):
+        """Copy data from pointed object to owned_data and make independent."""
+        self._owned_data = deref(self.p)
+        self.p = &self._owned_data
+        self.owner = None
+
+    @property
+    def type(self) -> int:
+        """Grammar type (0=NONE, 1=USER, 2=OUTPUT_FORMAT, 3=TOOL_CALLS)"""
+        return self.p.type
+
+    @type.setter
+    def type(self, value: int):
+        self.p.type = <xllamacpp.common_grammar_type>value
+
+    @property
+    def grammar(self) -> str:
+        """Grammar string (GBNF format)"""
+        return self.p.grammar
+
+    @grammar.setter
+    def grammar(self, value: str):
+        self.p.grammar = value
+
+    def empty(self) -> bool:
+        """Check if grammar is empty (no grammar set)"""
+        return self.p.empty()
+
+    def __repr__(self):
+        return f"CommonGrammar(type={self.type}, grammar='{self.grammar}')"
 
 
 cdef class CommonAdapterLoraInfo:
@@ -2099,6 +2167,15 @@ cdef class CommonParams:
         self.p.port = value
 
     @property
+    def reuse_port(self) -> bool:
+        """allow multiple sockets to bind to the same port"""
+        return self.p.reuse_port
+
+    @reuse_port.setter
+    def reuse_port(self, value: bool):
+        self.p.reuse_port = value
+
+    @property
     def timeout_read(self) -> int:
         """http read timeout in seconds"""
         return self.p.timeout_read
@@ -2142,6 +2219,15 @@ cdef class CommonParams:
     @cache_prompt.setter
     def cache_prompt(self, value: bool):
         self.p.cache_prompt = value
+
+    @property
+    def clear_idle(self) -> bool:
+        """save and clear idle slots upon starting a new task"""
+        return self.p.clear_idle
+
+    @clear_idle.setter
+    def clear_idle(self, value: bool):
+        self.p.clear_idle = value
 
     @property
     def n_ctx_checkpoints(self) -> int:
@@ -2221,6 +2307,15 @@ cdef class CommonParams:
     @enable_chat_template.setter
     def enable_chat_template(self, value: bool):
         self.p.enable_chat_template = value
+
+    @property
+    def force_pure_content_parser(self) -> bool:
+        """force pure content parser"""
+        return self.p.force_pure_content_parser
+
+    @force_pure_content_parser.setter
+    def force_pure_content_parser(self, value: bool):
+        self.p.force_pure_content_parser = value
 
     @property
     def reasoning_format(self) -> common_reasoning_format:
@@ -2367,6 +2462,20 @@ cdef class CommonParams:
     @endpoint_metrics.setter
     def endpoint_metrics(self, value: bool):
         self.p.endpoint_metrics = value
+
+    @property
+    def server_tools(self) -> list[str]:
+        """enable built-in tools"""
+        result = []
+        for i in range(self.p.server_tools.size()):
+            result.append(self.p.server_tools[i])
+        return result
+
+    @server_tools.setter
+    def server_tools(self, values: list[str]):
+        self.p.server_tools.clear()
+        for i in values:
+            self.p.server_tools.push_back(i)
 
     @property
     def models_dir(self) -> str:
@@ -2652,6 +2761,15 @@ cdef class CommonParams:
     @fit_params_min_ctx.setter
     def fit_params_min_ctx(self, value: int):
         self.p.fit_params_min_ctx = value
+
+    @property
+    def no_alloc(self) -> bool:
+        """Don't allocate model buffers"""
+        return self.p.no_alloc
+
+    @no_alloc.setter
+    def no_alloc(self, value: bool):
+        self.p.no_alloc = value
 
     # // cvector-generator params
     # dimre_method cvector_dimre_method = DIMRE_METHOD_PCA;
