@@ -247,9 +247,11 @@ static void init(common_params &params, server_context &ctx_server,
   if (!params.server_tools.empty()) {
     tools.setup(params.server_tools);
     SRV_WRN("%s", "-----------------\n");
-    SRV_WRN("%s", "Built-in tools are enabled, do not expose server to untrusted "
-                  "environments\n");
-    SRV_WRN("%s", "This feature is EXPERIMENTAL and may be changed in the future\n");
+    SRV_WRN("%s",
+            "Built-in tools are enabled, do not expose server to untrusted "
+            "environments\n");
+    SRV_WRN("%s",
+            "This feature is EXPERIMENTAL and may be changed in the future\n");
     SRV_WRN("%s", "-----------------\n");
     ctx_http.get("/tools", ex_wrapper(tools.handle_get));
     ctx_http.post("/tools", ex_wrapper(tools.handle_post));
