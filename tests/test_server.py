@@ -250,7 +250,7 @@ def test_llama_server_chat_with_grammar(model_path):
         },
         "required": ["answer"],
     }
-    grammar = xlc.json_schema_to_grammar(schema)
+    grammar_str = xlc.json_schema_to_grammar(schema)
 
     params = xlc.CommonParams()
 
@@ -262,7 +262,8 @@ def test_llama_server_chat_with_grammar(model_path):
     params.cpuparams_batch.n_threads = 2
     params.sampling.temp = 0
     params.sampling.top_k = 1
-    params.sampling.grammar = grammar
+    # Use CommonGrammar object instead of string
+    params.sampling.grammar = xlc.CommonGrammar(type=1, grammar=grammar_str)
 
     server = xlc.Server(params)
 

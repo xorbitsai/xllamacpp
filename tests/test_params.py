@@ -28,10 +28,6 @@ def test_common_params_sampling():
     params.sampling.reasoning_budget_tokens = 100
     assert params.sampling.reasoning_budget_tokens == 100
 
-    assert params.sampling.reasoning_budget_activate_immediately is False
-    params.sampling.reasoning_budget_activate_immediately = True
-    assert params.sampling.reasoning_budget_activate_immediately is True
-
     assert params.sampling.reasoning_budget_start == []
     params.sampling.reasoning_budget_start = [1, 2, 3]
     assert params.sampling.reasoning_budget_start == [1, 2, 3]
@@ -43,6 +39,11 @@ def test_common_params_sampling():
     assert params.sampling.reasoning_budget_forced == []
     params.sampling.reasoning_budget_forced = [7, 8, 9]
     assert params.sampling.reasoning_budget_forced == [7, 8, 9]
+
+    # Test new generation_prompt field
+    assert params.sampling.generation_prompt == ""
+    params.sampling.generation_prompt = "<think>"
+    assert params.sampling.generation_prompt == "<think>"
 
     # assert params.seed == xlc.LLAMA_DEFAULT_SEED
     # assert params.n_prev == 64
@@ -246,6 +247,9 @@ def test_common_params():
     assert params.embd_sep == "\n"
 
     assert params.port == 0
+    assert params.reuse_port is False
+    params.reuse_port = True
+    assert params.reuse_port is True
     assert params.timeout_read == 600
     assert params.timeout_write == 600
     assert params.n_threads_http == -1
@@ -253,6 +257,9 @@ def test_common_params():
     assert params.cache_prompt is True
     params.cache_prompt = False
     assert params.cache_prompt is False
+    assert params.clear_idle is True
+    params.clear_idle = False
+    assert params.clear_idle is False
     assert params.n_ctx_checkpoints == 32
     assert params.checkpoint_every_nt == 8192
     params.checkpoint_every_nt = 100
@@ -267,6 +274,9 @@ def test_common_params():
     params.use_jinja = False
     assert params.use_jinja is False
     assert params.enable_chat_template is True
+    assert params.force_pure_content_parser is False
+    params.force_pure_content_parser = True
+    assert params.force_pure_content_parser is True
     assert (
         params.reasoning_format
         == xlc.common_reasoning_format.COMMON_REASONING_FORMAT_DEEPSEEK
@@ -290,6 +300,11 @@ def test_common_params():
     assert params.endpoint_slots is True
     assert params.endpoint_props is False
     assert params.endpoint_metrics is False
+
+    # Test new server_tools field
+    assert params.server_tools == []
+    params.server_tools = ["tool1", "tool2"]
+    assert params.server_tools == ["tool1", "tool2"]
 
     assert params.log_json is False
 
@@ -338,6 +353,11 @@ def test_common_params():
     assert params.fit_params_min_ctx == 4096
     params.fit_params_min_ctx = 512
     assert params.fit_params_min_ctx == 512
+
+    # Test new no_alloc field
+    assert params.no_alloc is False
+    params.no_alloc = True
+    assert params.no_alloc is True
 
     # Test new sleep_idle_seconds field
     assert params.sleep_idle_seconds == -1
@@ -472,6 +492,47 @@ def test_common_params():
     # assert params.batched_bench_output_jsonl is False
 
     # ... rest not yet implemented
+
+
+def test_common_grammar():
+    """Test CommonGrammar class."""
+    # Test default constructor
+    grammar = xlc.CommonGrammar()
+    assert grammar.type == 0
+    assert grammar.grammar == ""
+    assert grammar.empty() is True
+
+    # Test constructor with arguments
+    grammar = xlc.CommonGrammar(type=1, grammar="root ::= [a-z]+")
+    assert grammar.type == 1
+    assert grammar.grammar == "root ::= [a-z]+"
+    assert grammar.empty() is False
+
+    # Test setters
+    grammar.type = 2
+    assert grammar.type == 2
+    grammar.grammar = "root ::= [0-9]+"
+    assert grammar.grammar == "root ::= [0-9]+"
+
+    # Test __repr__
+    assert "CommonGrammar" in repr(grammar)
+    assert "type=2" in repr(grammar)
+
+    # Test grammar property on CommonParamsSampling
+    params = xlc.CommonParams()
+    # Default grammar should be empty
+    assert params.sampling.grammar.empty() is True
+
+    # Set grammar via CommonGrammar object
+    new_grammar = xlc.CommonGrammar(type=1, grammar="root ::= [a-z]+")
+    params.sampling.grammar = new_grammar
+    assert params.sampling.grammar.type == 1
+    assert params.sampling.grammar.grammar == "root ::= [a-z]+"
+    assert params.sampling.grammar.empty() is False
+
+    # Test modifying grammar properties
+    params.sampling.grammar.type = 2
+    assert params.sampling.grammar.type == 2
 
 
 def test_json_schema_to_grammar():
