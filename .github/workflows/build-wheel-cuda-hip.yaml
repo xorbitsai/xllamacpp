@@ -217,7 +217,18 @@ jobs:
         run: |
           # Download and install Vulkan SDK
           brew install cmake libomp vulkan-headers glslang molten-vk shaderc vulkan-loader vulkan-tools
-          vulkaninfo
+          # On headless CI runners, vulkaninfo needs an ICD file to avoid Abort trap: 6
+          # Try MoltenVK ICD first, fall back to mock ICD from vulkan-tools
+          MOLTENVK_ICD="$(brew --prefix molten-vk)/share/vulkan/icd.d/MoltenVK_icd.json"
+          MOCK_ICD="$(brew --prefix vulkan-tools)/lib/mock_icd/VkICD_mock_icd.json"
+          if [ -f "$MOLTENVK_ICD" ]; then
+            echo "VK_ICD_FILENAMES=$MOLTENVK_ICD" >> $GITHUB_ENV
+            export VK_ICD_FILENAMES="$MOLTENVK_ICD"
+          elif [ -f "$MOCK_ICD" ]; then
+            echo "VK_ICD_FILENAMES=$MOCK_ICD" >> $GITHUB_ENV
+            export VK_ICD_FILENAMES="$MOCK_ICD"
+          fi
+          vulkaninfo --summary || echo "Warning: vulkaninfo failed (expected on headless CI), continuing build..."
 
       - name: Setup Python environment
         run: |
