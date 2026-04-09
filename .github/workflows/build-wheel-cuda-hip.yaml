@@ -115,7 +115,8 @@ jobs:
           VERSIONEER_CLOSEST_TAG_ONLY: "1"
           VERBOSE: "1"
         run: |
-          docker exec -e XLLAMACPP_BUILD_HIP=$XLLAMACPP_BUILD_HIP \
+          docker exec -e XLLAMACPP_RELEASE=1 \
+                     -e XLLAMACPP_BUILD_HIP=$XLLAMACPP_BUILD_HIP \
                      -e VERSIONEER_CLOSEST_TAG_ONLY=$VERSIONEER_CLOSEST_TAG_ONLY \
                      -e VERBOSE=$VERBOSE \
                      rocm-container bash -l -c '
@@ -250,6 +251,7 @@ jobs:
 
       - name: Build Wheel
         env:
+          XLLAMACPP_RELEASE: "1"
           XLLAMACPP_BUILD_VULKAN: "1"
           VERSIONEER_CLOSEST_TAG_ONLY: "1"
           VERBOSE: "1"
@@ -363,14 +365,9 @@ jobs:
           # Try different CUDA package names and channels
           echo "Attempting to install CUDA ${{ matrix.cuda }}..."
           
-          # Extract major.minor version (e.g. 12.4.1 -> 12.4) for sub-package pinning
-          CUDA_MAJOR_MINOR=$(echo "${{ matrix.cuda }}" | cut -d. -f1,2)
-          mamba install -y -c nvidia "cuda==${{ matrix.cuda }}" "cuda-cudart-dev==${CUDA_MAJOR_MINOR}.*" "cuda-nvcc==${CUDA_MAJOR_MINOR}.*"
+          # Install using the cuda meta-package from the official channel
+          mamba install -y -c conda-forge 'cuda==${{ matrix.cuda }}'
           echo "Successfully installed CUDA ${{ matrix.cuda }}"
-          
-          # Verify cuda_runtime.h exists
-          echo "=== Checking cuda_runtime.h ==="
-          find $CONDA_PREFIX -name "cuda_runtime.h" || echo "WARNING: cuda_runtime.h not found!"
           
           # Verify CONDA_PREFIX is set
           if [ -z "$CONDA_PREFIX" ]; then
@@ -443,6 +440,7 @@ jobs:
           cuda_version=${cuda_version:0:${#cuda_version}-1}
           
           # Export build variables
+          export XLLAMACPP_RELEASE=1
           export XLLAMACPP_BUILD_CUDA=1
           export VERSIONEER_CLOSEST_TAG_ONLY=1
           export VERBOSE=1S
@@ -526,6 +524,7 @@ jobs:
           cuda_version=${CUDAVER//./}
           cuda_version=${cuda_version:0:${#cuda_version}-1}
           
+          export XLLAMACPP_RELEASE=1
           export XLLAMACPP_BUILD_CUDA=1
           export VERSIONEER_CLOSEST_TAG_ONLY=1
           export VERBOSE=1
