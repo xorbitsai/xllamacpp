@@ -30,6 +30,16 @@ build_llamacpp() {
   cmake_args+=("-DLLAMA_BUILD_BORINGSSL=ON")
   cmake_args+=("-DLLAMA_OPENSSL=OFF")
 
+  # Release builds on non-macOS: disable native CPU optimizations for portability
+  # macOS: always enable native optimizations (same CPU per architecture)
+  # User self-builds: enable native CPU optimizations for best performance (CMake default)
+  if [[ -n "${XLLAMACPP_RELEASE:-}" && "$(uname -s)" != "Darwin" ]]; then
+    echo "Release mode: disabling native CPU optimizations for portability"
+    cmake_args+=("-DGGML_NATIVE=OFF")
+  else
+    echo "Optimizing for native CPU (GGML_NATIVE=ON by default)"
+  fi
+
   # Add any additional CMake arguments from environment
   if [ -n "${CMAKE_ARGS}" ]; then
     cmake_args+=(${CMAKE_ARGS})
@@ -58,7 +68,6 @@ build_llamacpp() {
     echo "Using CUDA architectures: ${cuda_archs}"
 
     cmake_args+=(
-      "-DGGML_NATIVE=OFF"
       "-DGGML_CUDA=ON"
       "-DGGML_CUDA_FORCE_MMQ=ON"
 	  "-DCMAKE_CUDA_ARCHITECTURES=${cuda_archs}"
@@ -67,7 +76,6 @@ build_llamacpp() {
   elif [[ -n "${XLLAMACPP_BUILD_HIP}" ]]; then
     echo "Building for AMD GPU"
     cmake_args+=(
-      "-DGGML_NATIVE=OFF"
       "-DAMDGPU_TARGETS=gfx1100;gfx1101;gfx1102;gfx1030;gfx1031;gfx1032"
       "-DCMAKE_HIP_COMPILER=$(hipconfig -l)/clang"
       "-DGGML_HIP_ROCWMMA_FATTN=ON"
@@ -91,7 +99,6 @@ build_llamacpp() {
     else
       echo "Building with Vulkan"
       cmake_args+=(
-        "-DGGML_NATIVE=OFF"
         "-DGGML_VULKAN=ON"
       )
       targets+=("ggml-vulkan")
@@ -99,7 +106,6 @@ build_llamacpp() {
   elif [[ -n "${XLLAMACPP_BUILD_AARCH64}" ]]; then
     echo "Building for aarch64"
     cmake_args+=(
-      "-DGGML_NATIVE=OFF"
       "-DGGML_CPU_ARM_ARCH=armv8-a"
     )
     # Add ggml-blas target if BLAS is enabled via CMAKE_ARGS
@@ -120,7 +126,7 @@ build_llamacpp() {
         targets+=("ggml-blas" "ggml-metal")
       fi
     else
-      echo "Building for non-MacOS CPU (optimize for native CPU)"
+      echo "Building for non-MacOS CPU"
       # Let CMake handle GGML_BLAS from environment
       if [[ "${CMAKE_ARGS:-}" == *"-DGGML_BLAS=ON"* ]]; then
         echo "BLAS is enabled via CMAKE_ARGS, adding ggml-blas to build targets"

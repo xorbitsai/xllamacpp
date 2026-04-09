@@ -39,6 +39,7 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             -e VERSIONEER_CLOSEST_TAG_ONLY=1 \
+            -e XLLAMACPP_RELEASE=1 \
             -e XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }} \
             ${{ matrix.image }} \
             bash -c '
@@ -121,8 +122,8 @@ jobs:
           CIBW_TEST_REQUIRES: pytest requests pytest-asyncio pytest-timeout
           CIBW_BEFORE_BUILD: pip install -r requirements.txt && make
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_ENVIRONMENT_MACOS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
-          CIBW_ENVIRONMENT_WINDOWS: "XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
+          CIBW_ENVIRONMENT_MACOS: "XLLAMACPP_RELEASE=1 XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
+          CIBW_ENVIRONMENT_WINDOWS: "XLLAMACPP_RELEASE=1 XLLAMACPP_BUILD_AARCH64=${{ matrix.arch == 'aarch64' && '1' || '' }}"
         with:
           package-dir: ./
 

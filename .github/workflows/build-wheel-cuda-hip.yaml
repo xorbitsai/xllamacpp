@@ -115,7 +115,8 @@ jobs:
           VERSIONEER_CLOSEST_TAG_ONLY: "1"
           VERBOSE: "1"
         run: |
-          docker exec -e XLLAMACPP_BUILD_HIP=$XLLAMACPP_BUILD_HIP \
+          docker exec -e XLLAMACPP_RELEASE=1 \
+                     -e XLLAMACPP_BUILD_HIP=$XLLAMACPP_BUILD_HIP \
                      -e VERSIONEER_CLOSEST_TAG_ONLY=$VERSIONEER_CLOSEST_TAG_ONLY \
                      -e VERBOSE=$VERBOSE \
                      rocm-container bash -l -c '
@@ -250,6 +251,7 @@ jobs:
 
       - name: Build Wheel
         env:
+          XLLAMACPP_RELEASE: "1"
           XLLAMACPP_BUILD_VULKAN: "1"
           VERSIONEER_CLOSEST_TAG_ONLY: "1"
           VERBOSE: "1"
@@ -443,9 +445,10 @@ jobs:
           cuda_version=${cuda_version:0:${#cuda_version}-1}
           
           # Export build variables
+          export XLLAMACPP_RELEASE=1
           export XLLAMACPP_BUILD_CUDA=1
           export VERSIONEER_CLOSEST_TAG_ONLY=1
-          export VERBOSE=1S
+          export VERBOSE=1
           
           make
           python -m build --wheel
@@ -526,6 +529,7 @@ jobs:
           cuda_version=${CUDAVER//./}
           cuda_version=${cuda_version:0:${#cuda_version}-1}
           
+          export XLLAMACPP_RELEASE=1
           export XLLAMACPP_BUILD_CUDA=1
           export VERSIONEER_CLOSEST_TAG_ONLY=1
           export VERBOSE=1

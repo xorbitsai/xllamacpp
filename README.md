@@ -43,9 +43,22 @@ As the intent is to provide a very thin wrapping layer and play to the strengths
 
 **Note on Performance and Compatibility**
 
-For maximum performance, you can build `xllamacpp` from source to optimize for your specific native CPU architecture. The pre-built wheels are designed for broad compatibility.
+> ⚠️ **The pre-built Linux/Windows CPU-only release wheels are NOT fully optimized.** They are compiled for **maximum compatibility** across a wide range of hardware, not for maximum performance. CPU-native optimizations (e.g., AVX-512, SVE, AMX) are **disabled** in these builds to ensure they run on as many machines as possible.
+>
+> ✅ **macOS wheels are fully optimized.** Since each macOS architecture (Apple Silicon / Intel) uses a consistent CPU, native optimizations are enabled in release builds.
+>
+> ✅ **GPU-accelerated wheels (CUDA / ROCm / Vulkan) are already optimized for GPU computation.** The heavy lifting is done on the GPU, so the lack of CPU-native optimizations has minimal impact on overall performance.
+>
+> **If you are on Linux/Windows using CPU-only inference and want the best performance, build from source.** When building locally, all native CPU optimizations are automatically enabled for your specific machine. See [Build from Source](#build-from-source) for instructions.
 
-Specifically, the `aarch64` wheels are built for the `armv8-a` architecture. This ensures they run on a wide range of ARM64 devices, but it means that more advanced CPU instruction sets (like SVE) are not enabled. If your CPU supports these advanced features, building from source will provide better performance.
+Specifically:
+- **macOS** (Apple Silicon & Intel): wheels are built with native CPU optimizations enabled — **no action needed**.
+- **CUDA / ROCm / Vulkan** wheels: GPU acceleration is fully optimized; CPU-native optimizations are not critical since inference runs primarily on the GPU.
+- **Linux x86_64 CPU-only** wheels disable `-march=native`, so advanced instruction sets like AVX-512 or AMX are not used.
+- **Linux aarch64 CPU-only** wheels target the baseline `armv8-a` architecture, so advanced features like SVE are not enabled.
+- **Windows x86_64 CPU-only** wheels disable `-march=native`, similar to Linux x86_64.
+
+If you are on Linux/Windows using **CPU-only** inference and your CPU supports these advanced features, building from source can provide **significantly better performance**.
 
 - From pypi for `CPU` or `Mac`:
 
@@ -87,9 +100,12 @@ pip install -U xllamacpp
 
 Before pip installing `xllamacpp`, please ensure your system meets the following requirements based on your build type:
 
-- **CPU (aarch64)**:
+- **CPU (macOS)**:
+  - Pre-built wheels are already optimized for native CPU — no additional steps needed
+
+- **CPU (Linux aarch64)**:
   - Requires ARMv8-A or later architecture
-  - For best performance, build from source if your CPU supports advanced instruction sets
+  - For best performance, build from source if your CPU supports advanced instruction sets (e.g., SVE)
 
 - **CUDA (Linux)**:
   - Requires glibc 2.35 or later
