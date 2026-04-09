@@ -365,9 +365,14 @@ jobs:
           # Try different CUDA package names and channels
           echo "Attempting to install CUDA ${{ matrix.cuda }}..."
           
-          # Install using the cuda meta-package from the official channel
-          mamba install -y -c conda-forge 'cuda==${{ matrix.cuda }}'
+          # Extract major.minor version (e.g. 12.4.1 -> 12.4) for sub-package pinning
+          CUDA_MAJOR_MINOR=$(echo "${{ matrix.cuda }}" | cut -d. -f1,2)
+          mamba install -y -c nvidia "cuda==${{ matrix.cuda }}" "cuda-cudart-dev==${CUDA_MAJOR_MINOR}.*" "cuda-nvcc==${CUDA_MAJOR_MINOR}.*"
           echo "Successfully installed CUDA ${{ matrix.cuda }}"
+          
+          # Verify cuda_runtime.h exists
+          echo "=== Checking cuda_runtime.h ==="
+          find $CONDA_PREFIX -name "cuda_runtime.h" || echo "WARNING: cuda_runtime.h not found!"
           
           # Verify CONDA_PREFIX is set
           if [ -z "$CONDA_PREFIX" ]; then
