@@ -36,6 +36,8 @@ build_llamacpp() {
   if [[ -n "${XLLAMACPP_RELEASE:-}" && "$(uname -s)" != "Darwin" ]]; then
     echo "Release mode: disabling native CPU optimizations for portability"
     cmake_args+=("-DGGML_NATIVE=OFF")
+  else
+    echo "Optimizing for native CPU (GGML_NATIVE=ON by default)"
   fi
 
   # Add any additional CMake arguments from environment
