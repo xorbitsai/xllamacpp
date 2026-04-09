@@ -448,7 +448,7 @@ jobs:
           export XLLAMACPP_RELEASE=1
           export XLLAMACPP_BUILD_CUDA=1
           export VERSIONEER_CLOSEST_TAG_ONLY=1
-          export VERBOSE=1S
+          export VERBOSE=1
           
           make
           python -m build --wheel
