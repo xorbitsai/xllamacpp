@@ -89,6 +89,7 @@ cdef extern from "ggml.h":
         # GGML_TYPE_IQ4_NL_8_8 = 38,
         GGML_TYPE_MXFP4 # MXFP4 (1 block)
         GGML_TYPE_NVFP4 # NVFP4 (4 blocks, E4M3 scale)
+        GGML_TYPE_Q1_0
         GGML_TYPE_COUNT
 
 
@@ -122,6 +123,7 @@ cdef extern from "ggml-backend.h":
         GGML_BACKEND_DEVICE_TYPE_IGPU
         # accelerator devices intended to be used together with the CPU backend (e.g. BLAS or AMX)
         GGML_BACKEND_DEVICE_TYPE_ACCEL
+        GGML_BACKEND_DEVICE_TYPE_META
 
     # functionality supported by the device
     ctypedef struct ggml_backend_dev_caps:
@@ -197,6 +199,7 @@ cdef extern from "llama.h":
         LLAMA_SPLIT_MODE_NONE   # single GPU
         LLAMA_SPLIT_MODE_LAYER  # split layers and KV across GPUs
         LLAMA_SPLIT_MODE_ROW    # split layers and KV across GPUs, use tensor parallelism if supported
+        LLAMA_SPLIT_MODE_TENSOR
 
     cpdef enum llama_model_kv_override_type:
         LLAMA_KV_OVERRIDE_TYPE_INT
@@ -224,6 +227,17 @@ cdef extern from "llama.h":
 
 
 #------------------------------------------------------------------------------
+# build-info.h
+
+cdef extern from "build-info.h":
+
+    int llama_build_number()
+    const char * llama_commit()
+    const char * llama_compiler()
+    const char * llama_build_target()
+
+
+#------------------------------------------------------------------------------
 # common.h
 
 cdef extern from "common.h":
@@ -238,14 +252,6 @@ cdef extern from "common.h":
         llama_adapter_lora *ptr
 
     ctypedef struct common_control_vector_load_info: pass
-
-    # -------------------------------------------------------------------------
-    # Build info
-
-    cdef int LLAMA_BUILD_NUMBER
-    cdef const char * LLAMA_COMMIT
-    cdef const char * LLAMA_COMPILER
-    cdef const char * LLAMA_BUILD_TARGET
 
     # -------------------------------------------------------------------------
     # CPU utils
@@ -372,6 +378,7 @@ cdef extern from "common.h":
         std_vector[llama_token] reasoning_budget_start  # start tag token sequence
         std_vector[llama_token] reasoning_budget_end    # end tag token sequence
         std_vector[llama_token] reasoning_budget_forced # forced sequence (message + end tag)
+        std_string              reasoning_budget_message  # message injected before end tag when budget exhausted
 
         bint backend_sampling
 
@@ -488,6 +495,7 @@ cdef extern from "common.h":
         int32_t main_gpu           # the GPU that is used for scratch and small tensors
         float   tensor_split[128]  # how split tensors should be distributed across GPUs
         bint    fit_params         # whether to fit unset model/context parameters to free device memory
+        bint    fit_params_print   # print the estimated required memory to run the model
         int32_t fit_params_min_ctx # minimum context size to set when trying to reduce memory use
 
         # margin per device in bytes for fitting parameters to free memory:
@@ -626,7 +634,7 @@ cdef extern from "common.h":
         int32_t n_threads_http      # number of threads to process HTTP requests (TODO: support threadpool)
         int32_t n_cache_reuse       # min chunk size to reuse from the cache via KV shifting
         bint    cache_prompt        # whether to enable prompt caching
-        bint    clear_idle          # save and clear idle slots upon starting a new task
+        bint    cache_idle_slots    # save and clear idle slots upon starting a new task
         int32_t n_ctx_checkpoints   # max number of context checkpoints per slot
         int32_t checkpoint_every_nt   # make a checkpoint every n tokens during prefill
         int32_t cache_ram_mib       # -1 = no limit, 0 - disable, 1 = 1 MiB, etc.
@@ -641,8 +649,6 @@ cdef extern from "common.h":
 
         common_reasoning_format reasoning_format
         int32_t enable_reasoning    # -1 = auto, 0 = disable, 1 = enable
-        int32_t reasoning_budget
-        std_string reasoning_budget_message  # message injected before end tag when budget exhausted
         bint prefill_assistant      # if true, any trailing assistant message will be prefilled into the response
         int32_t sleep_idle_seconds  # if >0, server will sleep after this many seconds of idle time
 

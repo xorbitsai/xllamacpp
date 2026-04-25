@@ -256,6 +256,24 @@ params.warmup = True
 params.endpoint_metrics = True
 ```
 
+### Environment Variables
+
+xllamacpp supports several environment variables to control low-level behavior:
+
+- **`LLAMA_ATTN_ROT_DISABLE`**: Set to `1` to disable attention rotation in KV cache quantization, enabling classic KV attention. This is useful for troubleshooting when comparing behavior with older versions or when the rotation feature causes issues. Default: rotation is enabled.
+
+```python
+import os
+import xllamacpp as xlc
+
+# Disable attention rotation for classic KV attention
+os.environ["LLAMA_ATTN_ROT_DISABLE"] = "1"
+
+params = xlc.CommonParams()
+params.model.path = "models/Llama-3.2-1B-Instruct-Q8_0.gguf"
+server = xlc.Server(params)
+```
+
 ### Text Completions
 
 Generate text from a prompt using the completions API:
@@ -667,7 +685,6 @@ The server exposes the following endpoints. For full details on request/response
 |:---------|:------:|:------------|
 | `/health`, `/v1/health` | GET | Health check (public, no API key required) |
 | `/models`, `/v1/models` | GET | List loaded models (OpenAI compatible) |
-| `/api/tags` | GET | List models (Ollama compatible) |
 | `/props` | GET/POST | Server properties & default generation settings |
 | `/metrics` | GET | Prometheus-format metrics (requires `endpoint_metrics = True`) |
 | `/slots` | GET | View inference slot states (requires `endpoint_slots = True`) |
@@ -679,7 +696,6 @@ The server exposes the following endpoints. For full details on request/response
 | `/completion` | POST | Text completions (llama.cpp native format) |
 | `/v1/completions`, `/completions` | POST | Text completions (OpenAI compatible) |
 | `/v1/chat/completions`, `/chat/completions` | POST | Chat completions (OpenAI compatible) |
-| `/api/chat` | POST | Chat (Ollama compatible) |
 | `/v1/responses` | POST | Responses API (OpenAI compatible) |
 | `/v1/messages` | POST | Messages API (Anthropic compatible) |
 | `/infill` | POST | Code infill (FIM: fill-in-the-middle) |
