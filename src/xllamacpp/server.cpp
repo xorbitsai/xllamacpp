@@ -10,7 +10,9 @@
 #include "server-http.h"
 
 #include "arg.h"
+#include "build-info.h"
 #include "common.h"
+#include "fit.h"
 #include "llama.h"
 #include "log.h"
 
@@ -114,7 +116,7 @@ static void init(common_params &params, server_context &ctx_server,
   llama_backend_init();
   llama_numa_init(params.numa);
 
-  LOG_INF("build_info: %s\n", build_info.c_str());
+  LOG_INF("build_info: %s\n", llama_build_info());
   LOG_INF("%s\n", common_params_get_system_info(params).c_str());
 
   server_http_context ctx_http;
@@ -149,11 +151,11 @@ static void init(common_params &params, server_context &ctx_server,
     // note: routes.get_health stays the same
     routes.get_metrics = models_routes->proxy_get;
     routes.post_props = models_routes->proxy_post;
-    routes.get_api_show = models_routes->proxy_get;
     routes.post_completions = models_routes->proxy_post;
     routes.post_completions_oai = models_routes->proxy_post;
     routes.post_chat_completions = models_routes->proxy_post;
     routes.post_responses_oai = models_routes->proxy_post;
+    routes.post_transcriptions_oai = models_routes->proxy_post;
     routes.post_anthropic_messages = models_routes->proxy_post;
     routes.post_anthropic_count_tokens = models_routes->proxy_post;
     routes.post_infill = models_routes->proxy_post;
@@ -186,35 +188,29 @@ static void init(common_params &params, server_context &ctx_server,
   ctx_http.get("/metrics", ex_wrapper(routes.get_metrics));
   ctx_http.get("/props", ex_wrapper(routes.get_props));
   ctx_http.post("/props", ex_wrapper(routes.post_props));
-  ctx_http.post("/api/show", ex_wrapper(routes.get_api_show));
   ctx_http.get(
       "/models",
       ex_wrapper(routes.get_models)); // public endpoint (no API key check)
   ctx_http.get(
       "/v1/models",
       ex_wrapper(routes.get_models)); // public endpoint (no API key check)
-  ctx_http.get(
-      "/api/tags",
-      ex_wrapper(routes.get_models)); // ollama specific endpoint. public
-                                      // endpoint (no API key check)
   ctx_http.post("/completion", ex_wrapper(routes.post_completions)); // legacy
   ctx_http.post("/completions", ex_wrapper(routes.post_completions));
   ctx_http.post("/v1/completions", ex_wrapper(routes.post_completions_oai));
   ctx_http.post("/chat/completions", ex_wrapper(routes.post_chat_completions));
   ctx_http.post("/v1/chat/completions",
                 ex_wrapper(routes.post_chat_completions));
-  ctx_http.post(
-      "/api/chat",
-      ex_wrapper(routes.post_chat_completions)); // ollama specific endpoint
   ctx_http.post("/v1/responses", ex_wrapper(routes.post_responses_oai));
   ctx_http.post("/responses", ex_wrapper(routes.post_responses_oai));
-  ctx_http.post(
-      "/v1/messages",
-      ex_wrapper(routes.post_anthropic_messages)); // anthropic messages API
-  ctx_http.post(
-      "/v1/messages/count_tokens",
-      ex_wrapper(
-          routes.post_anthropic_count_tokens)); // anthropic token counting
+  ctx_http.post("/v1/audio/transcriptions",
+                ex_wrapper(routes.post_transcriptions_oai));
+  ctx_http.post("/audio/transcriptions",
+                ex_wrapper(routes.post_transcriptions_oai));
+  ctx_http.post("/v1/messages",
+                ex_wrapper(routes.post_anthropic_messages)); // anthropic messages API
+  ctx_http.post("/v1/messages/count_tokens",
+                ex_wrapper(
+                    routes.post_anthropic_count_tokens)); // anthropic token counting
   ctx_http.post("/infill", ex_wrapper(routes.post_infill));
   ctx_http.post("/embedding", ex_wrapper(routes.post_embeddings)); // legacy
   ctx_http.post("/embeddings", ex_wrapper(routes.post_embeddings));
@@ -389,10 +385,10 @@ static void init(common_params &params, server_context &ctx_server,
     if (monitor_thread.joinable()) {
       monitor_thread.join();
     }
-    // crash during llama_memory_breakdown_print if the model is rerank.
+    // crash during common_memory_breakdown_print if the model is rerank.
     auto *ll_ctx = ctx_server.get_llama_context();
     if (ll_ctx != nullptr && params.pooling_type != LLAMA_POOLING_TYPE_RANK) {
-      llama_memory_breakdown_print(ll_ctx);
+      common_memory_breakdown_print(ll_ctx);
     }
   }
 }
@@ -549,19 +545,19 @@ Server::~Server() {
 std::string Server::listening_address() const { return _listening_address; }
 
 std::string Server::handle_metrics() {
-  server_http_req req{{}, {}, "", "", "", not_stop};
+  server_http_req req{{}, {}, "", "", "", {}, not_stop};
   auto res = _routes->get_metrics(req);
   return res->data;
 }
 
 std::string Server::handle_embeddings(const std::string &input_json_str) {
-  server_http_req req{{}, {}, "", "", input_json_str, not_stop};
+  server_http_req req{{}, {}, "", "", input_json_str, {}, not_stop};
   auto res = _routes->post_embeddings_oai(req);
   return res->data;
 }
 
 std::string Server::handle_rerank(const std::string &input_json_str) {
-  server_http_req req{{}, {}, "", "", input_json_str, not_stop};
+  server_http_req req{{}, {}, "", "", input_json_str, {}, not_stop};
   auto res = _routes->post_rerank(req);
   return res->data;
 }
@@ -569,7 +565,7 @@ std::string Server::handle_rerank(const std::string &input_json_str) {
 void Server::handle_completions(const std::string &prompt_json_str,
                                 Callback res_err, void *py_cb_err,
                                 Callback res_ok, void *py_cb_ok) {
-  server_http_req req{{}, {}, "", "", prompt_json_str, not_stop};
+  server_http_req req{{}, {}, "", "", prompt_json_str, {}, not_stop};
   auto res = _routes->post_completions_oai(req);
   process_handler_response(
       res,
@@ -584,7 +580,7 @@ void Server::handle_completions(const std::string &prompt_json_str,
 void Server::handle_chat_completions(const std::string &prompt_json_str,
                                      Callback res_err, void *py_cb_err,
                                      Callback res_ok, void *py_cb_ok) {
-  server_http_req req{{}, {}, "", "", prompt_json_str, not_stop};
+  server_http_req req{{}, {}, "", "", prompt_json_str, {}, not_stop};
   auto res = _routes->post_chat_completions(req);
   process_handler_response(
       res,
