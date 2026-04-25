@@ -206,11 +206,13 @@ static void init(common_params &params, server_context &ctx_server,
                 ex_wrapper(routes.post_transcriptions_oai));
   ctx_http.post("/audio/transcriptions",
                 ex_wrapper(routes.post_transcriptions_oai));
-  ctx_http.post("/v1/messages",
-                ex_wrapper(routes.post_anthropic_messages)); // anthropic messages API
-  ctx_http.post("/v1/messages/count_tokens",
-                ex_wrapper(
-                    routes.post_anthropic_count_tokens)); // anthropic token counting
+  ctx_http.post(
+      "/v1/messages",
+      ex_wrapper(routes.post_anthropic_messages)); // anthropic messages API
+  ctx_http.post(
+      "/v1/messages/count_tokens",
+      ex_wrapper(
+          routes.post_anthropic_count_tokens)); // anthropic token counting
   ctx_http.post("/infill", ex_wrapper(routes.post_infill));
   ctx_http.post("/embedding", ex_wrapper(routes.post_embeddings)); // legacy
   ctx_http.post("/embeddings", ex_wrapper(routes.post_embeddings));
