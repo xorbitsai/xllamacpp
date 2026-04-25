@@ -256,6 +256,24 @@ params.warmup = True
 params.endpoint_metrics = True
 ```
 
+### Environment Variables
+
+xllamacpp supports several environment variables to control low-level behavior:
+
+- **`LLAMA_ATTN_ROT_DISABLE`**: Set to `1` to disable attention rotation in KV cache quantization, enabling classic KV attention. This is useful for troubleshooting when comparing behavior with older versions or when the rotation feature causes issues. Default: rotation is enabled.
+
+```python
+import os
+import xllamacpp as xlc
+
+# Disable attention rotation for classic KV attention
+os.environ["LLAMA_ATTN_ROT_DISABLE"] = "1"
+
+params = xlc.CommonParams()
+params.model.path = "models/Llama-3.2-1B-Instruct-Q8_0.gguf"
+server = xlc.Server(params)
+```
+
 ### Text Completions
 
 Generate text from a prompt using the completions API:

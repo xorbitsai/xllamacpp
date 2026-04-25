@@ -1,3 +1,4 @@
+import os
 import pytest
 from pytest import approx
 
@@ -613,3 +614,36 @@ def test_lora_adapters():
     # Clear adapters
     params.lora_adapters = []
     assert params.lora_adapters == []
+
+
+def test_llama_attn_rot_disable_env():
+    """Test that LLAMA_ATTN_ROT_DISABLE environment variable can be set without errors."""
+    # Save original value
+    original_value = os.environ.get("LLAMA_ATTN_ROT_DISABLE")
+
+    try:
+        # Test setting to 1 (disable rotation)
+        os.environ["LLAMA_ATTN_ROT_DISABLE"] = "1"
+        params = xlc.CommonParams()
+        assert params is not None
+        # Verify the environment variable is set
+        assert os.environ.get("LLAMA_ATTN_ROT_DISABLE") == "1"
+
+        # Test setting to 0 (enable rotation, default behavior)
+        os.environ["LLAMA_ATTN_ROT_DISABLE"] = "0"
+        params = xlc.CommonParams()
+        assert params is not None
+        assert os.environ.get("LLAMA_ATTN_ROT_DISABLE") == "0"
+
+        # Test unsetting the variable
+        os.environ.pop("LLAMA_ATTN_ROT_DISABLE", None)
+        params = xlc.CommonParams()
+        assert params is not None
+        assert os.environ.get("LLAMA_ATTN_ROT_DISABLE") is None
+
+    finally:
+        # Restore original value
+        if original_value is not None:
+            os.environ["LLAMA_ATTN_ROT_DISABLE"] = original_value
+        else:
+            os.environ.pop("LLAMA_ATTN_ROT_DISABLE", None)
