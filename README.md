@@ -685,7 +685,6 @@ The server exposes the following endpoints. For full details on request/response
 |:---------|:------:|:------------|
 | `/health`, `/v1/health` | GET | Health check (public, no API key required) |
 | `/models`, `/v1/models` | GET | List loaded models (OpenAI compatible) |
-| `/api/tags` | GET | List models (Ollama compatible) |
 | `/props` | GET/POST | Server properties & default generation settings |
 | `/metrics` | GET | Prometheus-format metrics (requires `endpoint_metrics = True`) |
 | `/slots` | GET | View inference slot states (requires `endpoint_slots = True`) |
@@ -697,7 +696,6 @@ The server exposes the following endpoints. For full details on request/response
 | `/completion` | POST | Text completions (llama.cpp native format) |
 | `/v1/completions`, `/completions` | POST | Text completions (OpenAI compatible) |
 | `/v1/chat/completions`, `/chat/completions` | POST | Chat completions (OpenAI compatible) |
-| `/api/chat` | POST | Chat (Ollama compatible) |
 | `/v1/responses` | POST | Responses API (OpenAI compatible) |
 | `/v1/messages` | POST | Messages API (Anthropic compatible) |
 | `/infill` | POST | Code infill (FIM: fill-in-the-middle) |
