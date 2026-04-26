@@ -44,10 +44,10 @@ LLAMA_DEFAULT_SEED = 0xFFFFFFFF
 # -----------------------------------------------------------------------------
 
 BUILD_INFO = {
-    'build_number': xllamacpp.LLAMA_BUILD_NUMBER,
-    'commit': xllamacpp.LLAMA_COMMIT,
-    'compiler': xllamacpp.LLAMA_COMPILER,
-    'build_target': xllamacpp.LLAMA_BUILD_TARGET,
+    'build_number': xllamacpp.llama_build_number(),
+    'commit': xllamacpp.llama_commit(),
+    'compiler': xllamacpp.llama_compiler(),
+    'build_target': xllamacpp.llama_build_target(),
 }
 
 def json_schema_to_grammar(schema) -> str:
@@ -544,6 +544,15 @@ cdef class CommonParamsSampling:
         for token in value:
             vec.push_back(token)
         self.p.reasoning_budget_forced = vec
+
+    @property
+    def reasoning_budget_message(self) -> str:
+        """message injected before end tag when budget exhausted"""
+        return self.p.reasoning_budget_message
+
+    @reasoning_budget_message.setter
+    def reasoning_budget_message(self, value: str):
+        self.p.reasoning_budget_message = value
 
 
 
@@ -2221,13 +2230,13 @@ cdef class CommonParams:
         self.p.cache_prompt = value
 
     @property
-    def clear_idle(self) -> bool:
+    def cache_idle_slots(self) -> bool:
         """save and clear idle slots upon starting a new task"""
-        return self.p.clear_idle
+        return self.p.cache_idle_slots
 
-    @clear_idle.setter
-    def clear_idle(self, value: bool):
-        self.p.clear_idle = value
+    @cache_idle_slots.setter
+    def cache_idle_slots(self, value: bool):
+        self.p.cache_idle_slots = value
 
     @property
     def n_ctx_checkpoints(self) -> int:
@@ -2333,23 +2342,6 @@ cdef class CommonParams:
     @enable_reasoning.setter
     def enable_reasoning(self, value: int):
         self.p.enable_reasoning = value
-
-    @property
-    def reasoning_budget(self) -> int:
-        return self.p.reasoning_budget
-
-    @reasoning_budget.setter
-    def reasoning_budget(self, value: int):
-        self.p.reasoning_budget = value
-
-    @property
-    def reasoning_budget_message(self) -> str:
-        """message injected before end tag when budget exhausted"""
-        return self.p.reasoning_budget_message
-
-    @reasoning_budget_message.setter
-    def reasoning_budget_message(self, value: str):
-        self.p.reasoning_budget_message = value
 
     @property
     def prefill_assistant(self) -> bool:
@@ -2743,6 +2735,15 @@ cdef class CommonParams:
     @fit_params.setter
     def fit_params(self, value: bool):
         self.p.fit_params = value
+
+    @property
+    def fit_params_print(self) -> bool:
+        """print the estimated required memory to run the model"""
+        return self.p.fit_params_print
+
+    @fit_params_print.setter
+    def fit_params_print(self, value: bool):
+        self.p.fit_params_print = value
 
     @property
     def fit_params_target(self) -> list[int]:

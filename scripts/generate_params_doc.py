@@ -387,7 +387,7 @@ COMMON_PARAMS_GROUPS = [
     ]),
     ("GPU / Offloading", [
         "n_gpu_layers", "main_gpu", "tensor_split", "split_mode",
-        "fit_params", "fit_params_min_ctx", "fit_params_target",
+        "fit_params", "fit_params_print", "fit_params_min_ctx", "fit_params_target",
         "no_kv_offload", "no_op_offload", "no_extra_bufts", "no_host",
     ]),
     ("IMatrix", [
@@ -433,9 +433,9 @@ COMMON_PARAMS_GROUPS = [
     ("Server", [
         "port", "hostname", "public_path", "api_prefix",
         "timeout_read", "timeout_write", "n_threads_http",
-        "n_cache_reuse", "cache_prompt", "n_ctx_checkpoints", "checkpoint_every_nt", "cache_ram_mib",
+        "n_cache_reuse", "cache_prompt", "cache_idle_slots", "n_ctx_checkpoints", "checkpoint_every_nt", "cache_ram_mib",
         "chat_template", "use_jinja", "enable_chat_template",
-        "reasoning_format", "enable_reasoning", "reasoning_budget", "reasoning_budget_message",
+        "reasoning_format", "enable_reasoning",
         "prefill_assistant", "sleep_idle_seconds",
         "api_keys", "ssl_file_key", "ssl_file_cert",
         "default_template_kwargs",

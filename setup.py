@@ -62,7 +62,8 @@ LIBRARIES = []
 if PLATFORM == "Windows":
     LIBRARIES.extend(
         [
-            "common",
+            "llama-common-base",
+            "llama-common",
             "llama",
             "ggml",
             "ggml-base",
@@ -96,7 +97,8 @@ else:
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
             f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
             f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
-            f"{LLAMACPP_LIBS_DIR}/libcommon.a",
+            f"{LLAMACPP_LIBS_DIR}/libllama-common-base.a",
+            f"{LLAMACPP_LIBS_DIR}/libllama-common.a",
             f"{LLAMACPP_LIBS_DIR}/libllguidance.a",
             f"{LLAMACPP_LIBS_DIR}/libllama.a",
             f"{LLAMACPP_LIBS_DIR}/libggml.a",
