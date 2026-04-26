@@ -120,6 +120,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 |:---------|:-----|:--------|:---:|:------------|
 | `fit_params` | bool | `true` | R/W | whether to fit unset model/context parameters to free device memory |
 | `fit_params_min_ctx` | int | `4096` | R/W | minimum context size to set when trying to reduce memory use |
+| `fit_params_print` | bool | `false` | R/W | print the estimated required memory to run the model |
 | `fit_params_target` | list[int] | `std::vector<size_t>(llama_max_devices(), 1024 * 1024*1024)` | R/W | margin per device in bytes for fitting parameters to free memory |
 | `main_gpu` | int | `0` | R/W | the GPU that is used for scratch and small tensors |
 | `n_gpu_layers` | int | `-1` | R/W | number of layers to store in VRAM, -1 is auto, <= -2 is all |
@@ -254,6 +255,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 |:---------|:-----|:--------|:---:|:------------|
 | `api_keys` | list[str] | `` | R/W | list of api keys |
 | `api_prefix` | str | `""` | R/W |  |
+| `cache_idle_slots` | bool | `true` | R/W | save and clear idle slots upon starting a new task |
 | `cache_prompt` | bool | `true` | R/W | whether to enable prompt caching |
 | `cache_ram_mib` | int | `8192` | R/W | -1 = no limit, 0 - disable, 1 = 1 MiB, etc. |
 | `chat_template` | str | `""` | R/W | chat template |
@@ -277,8 +279,6 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `port` | int | `8080` | R/W | server listens on this network port |
 | `prefill_assistant` | bool | `true` | R/W | if true, any trailing assistant message will be prefilled into the response |
 | `public_path` | str | `""` | R/W | server public_path |
-| `reasoning_budget` | int | `-1` | R/W |  |
-| `reasoning_budget_message` | str | `` | R/W | message injected before end tag when budget exhausted |
 | `reasoning_format` | common_reasoning_format | `COMMON_REASONING_FORMAT_DEEPSEEK` | R/W |  |
 | `sleep_idle_seconds` | int | `-1` | R/W | if >0, server will sleep after this many seconds of idle time |
 | `slot_prompt_similarity` | float | `0.1` | R/W | slot prompt similarity. |
@@ -306,6 +306,15 @@ The central configuration object. Controls model loading, inference, sampling, s
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
 | `tensor_buft_overrides` | str | `` | R/W |  |
+
+### Other
+
+| Property | Type | Default | R/W | Description |
+|:---------|:-----|:--------|:---:|:------------|
+| `force_pure_content_parser` | bool | `false` | R/W | force pure content parser |
+| `no_alloc` | bool | `false` | R/W | Don't allocate model buffers |
+| `reuse_port` | bool | `false` | R/W | allow multiple sockets to bind to the same port |
+| `server_tools` | list[str] | `` | R/W | enable built-in tools |
 
 ---
 
@@ -356,7 +365,8 @@ Sampling parameters that control token generation strategy. Access via `params.s
 | `dry_penalty_last_n` | int | `-1` | R/W | how many tokens to scan for repetitions (0 = disable penalty, -1 = context size) |
 | `dynatemp_exponent` | float | `1.00` | R/W | controls how entropy maps to temperature in dynamic temperature sampler |
 | `dynatemp_range` | float | `0.00` | R/W | 0.0 = disabled |
-| `grammar` | str | `` | R/W | optional BNF-like grammar to constrain sampling |
+| `generation_prompt` | str | `` | R/W | The assistant generation prompt already prefilled into the prompt. |
+| `grammar` | CommonGrammar | `` | R/W | optional grammar constraint (user / output-format / tool-calls) |
 | `ignore_eos` | bool | `false` | R/W | ignore end-of-sentence |
 | `logit_bias` | list[LlamaLogitBias] | `` | R/W | logit biases to apply |
 | `logit_bias_eog` | list[LlamaLogitBias] | `` | R/W | pre-calculated logit biases for EOG tokens |
@@ -372,9 +382,9 @@ Sampling parameters that control token generation strategy. Access via `params.s
 | `penalty_last_n` | int | `64` | R/W | last n tokens to penalize (0 = disable penalty, -1 = context size) |
 | `penalty_present` | float | `0.00` | R/W | 0.0 = disabled |
 | `penalty_repeat` | float | `1.00` | R/W | 1.0 = disabled |
-| `reasoning_budget_activate_immediately` | bool | `` | R/W | activate reasoning budget immediately |
 | `reasoning_budget_end` | list[int] | `` | R/W | end tag token sequence |
 | `reasoning_budget_forced` | list[int] | `` | R/W | forced sequence (message + end tag) |
+| `reasoning_budget_message` | str | `` | R/W | message injected before end tag when budget exhausted |
 | `reasoning_budget_start` | list[int] | `` | R/W | start tag token sequence |
 | `reasoning_budget_tokens` | int | `` | R/W | -1 = disabled, >= 0 = token budget |
 | `samplers` | str | `` | R/W | get/set sampler types |
