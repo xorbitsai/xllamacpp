@@ -616,30 +616,66 @@ def test_lora_adapters():
     assert params.lora_adapters == []
 
 
-def test_llama_attn_rot_disable_env():
-    """Test that LLAMA_ATTN_ROT_DISABLE environment variable can be set without errors."""
+def test_llama_attn_rot_disable_env(model_path):
+    """Test that LLAMA_ATTN_ROT_DISABLE environment variable affects the logic."""
+    import subprocess
+    import sys
+
     # Save original value
     original_value = os.environ.get("LLAMA_ATTN_ROT_DISABLE")
 
     try:
-        # Test setting to 1 (disable rotation)
-        os.environ["LLAMA_ATTN_ROT_DISABLE"] = "1"
-        params = xlc.CommonParams()
-        assert params is not None
-        # Verify the environment variable is set
-        assert os.environ.get("LLAMA_ATTN_ROT_DISABLE") == "1"
+        # Single test script that uses the environment variable as set by subprocess
+        test_script = """
+import os
+import sys
+import xllamacpp as xlc
 
-        # Test setting to 0 (enable rotation, default behavior)
-        os.environ["LLAMA_ATTN_ROT_DISABLE"] = "0"
-        params = xlc.CommonParams()
-        assert params is not None
-        assert os.environ.get("LLAMA_ATTN_ROT_DISABLE") == "0"
+params = xlc.CommonParams()
+params.model.path = sys.argv[1]
+params.n_ctx = 256
+params.n_predict = 1
+params.warmup = False
+params.cpuparams.n_threads = 2
+params.cpuparams_batch.n_threads = 2
+params.cache_ram_mib = 0
+server = xlc.Server(params)
+"""
+        model_file = os.path.join(model_path, "Llama-3.2-1B-Instruct-Q8_0.gguf")
 
-        # Test unsetting the variable
-        os.environ.pop("LLAMA_ATTN_ROT_DISABLE", None)
-        params = xlc.CommonParams()
-        assert params is not None
-        assert os.environ.get("LLAMA_ATTN_ROT_DISABLE") is None
+        # Test setting to 1 (disable rotation) - should log a warning
+        result = subprocess.run(
+            [sys.executable, "-c", test_script, model_file],
+            capture_output=True,
+            text=True,
+            cwd=os.getcwd(),
+            env={**os.environ, "LLAMA_ATTN_ROT_DISABLE": "1"}
+        )
+        assert "attention rotation force disabled (LLAMA_ATTN_ROT_DISABLE)" in result.stderr, \
+            f"Expected warning not found in stderr: {result.stderr}"
+
+        # Test setting to 0 (enable rotation, default behavior) - should not log the warning
+        result = subprocess.run(
+            [sys.executable, "-c", test_script, model_file],
+            capture_output=True,
+            text=True,
+            cwd=os.getcwd(),
+            env={**os.environ, "LLAMA_ATTN_ROT_DISABLE": "0"}
+        )
+        assert "attention rotation force disabled (LLAMA_ATTN_ROT_DISABLE)" not in result.stderr, \
+            f"Unexpected warning found in stderr: {result.stderr}"
+
+        # Test unsetting the variable (default behavior) - should not log the warning
+        env_without = {k: v for k, v in os.environ.items() if k != "LLAMA_ATTN_ROT_DISABLE"}
+        result = subprocess.run(
+            [sys.executable, "-c", test_script, model_file],
+            capture_output=True,
+            text=True,
+            cwd=os.getcwd(),
+            env=env_without
+        )
+        assert "attention rotation force disabled (LLAMA_ATTN_ROT_DISABLE)" not in result.stderr, \
+            f"Unexpected warning found in stderr: {result.stderr}"
 
     finally:
         # Restore original value
