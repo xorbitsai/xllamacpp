@@ -643,13 +643,17 @@ server = xlc.Server(params)
 """
         model_file = os.path.join(model_path, "Llama-3.2-1B-Instruct-Q8_0.gguf")
 
+        # Add current directory to PYTHONPATH so subprocess can find xllamacpp
+        pythonpath = os.pathsep.join([os.getcwd()] + sys.path)
+        base_env = {**os.environ, "PYTHONPATH": pythonpath}
+
         # Test setting to 1 (disable rotation) - should log a warning
         result = subprocess.run(
             [sys.executable, "-c", test_script, model_file],
             capture_output=True,
             text=True,
             cwd=os.getcwd(),
-            env={**os.environ, "LLAMA_ATTN_ROT_DISABLE": "1"}
+            env={**base_env, "LLAMA_ATTN_ROT_DISABLE": "1"}
         )
         assert "attention rotation force disabled (LLAMA_ATTN_ROT_DISABLE)" in result.stderr, \
             f"Expected warning not found in stderr: {result.stderr}"
@@ -660,13 +664,13 @@ server = xlc.Server(params)
             capture_output=True,
             text=True,
             cwd=os.getcwd(),
-            env={**os.environ, "LLAMA_ATTN_ROT_DISABLE": "0"}
+            env={**base_env, "LLAMA_ATTN_ROT_DISABLE": "0"}
         )
         assert "attention rotation force disabled (LLAMA_ATTN_ROT_DISABLE)" not in result.stderr, \
             f"Unexpected warning found in stderr: {result.stderr}"
 
         # Test unsetting the variable (default behavior) - should not log the warning
-        env_without = {k: v for k, v in os.environ.items() if k != "LLAMA_ATTN_ROT_DISABLE"}
+        env_without = {k: v for k, v in base_env.items() if k != "LLAMA_ATTN_ROT_DISABLE"}
         result = subprocess.run(
             [sys.executable, "-c", test_script, model_file],
             capture_output=True,
