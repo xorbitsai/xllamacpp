@@ -168,16 +168,15 @@ jobs:
 
       - name: Publish to PyPI
         if: github.repository == 'xorbitsai/xllamacpp'
-        uses: pypa/gh-action-pypi-publish@7f25271a4aa483500f742f9492b2ab5648d61011 # v1.12.4
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           user: __token__
           password: ${{ secrets.PYPI_PASSWORD }}
 
       - name: Publish to Test PyPI
         if: github.repository != 'xorbitsai/xllamacpp'
-        uses: pypa/gh-action-pypi-publish@7f25271a4aa483500f742f9492b2ab5648d61011 # v1.12.4
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           user: __token__
           password: ${{ secrets.TEST_PYPI_PASSWORD }}
-          verbose: true
           repository_url: https://test.pypi.org/legacy/
