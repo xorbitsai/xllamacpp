@@ -25,6 +25,7 @@ The following table provide an overview of the current implementations / feature
 | Continuous batching        |         yes         |                no                |
 | Thread safe                |         yes         |                no                |
 | Release package            |      prebuilt       |    build during installation     |
+| Structured outputs         | C++ / [LLGuidance](https://github.com/guidance-ai/llguidance) (Rust) |  Python (`SchemaConverter`)    |
 
 It goes without saying that any help / collaboration / contributions to accelerate the above would be welcome!
 
@@ -378,13 +379,18 @@ server.handle_completions(
 
 ### Structured Output with JSON Grammar
 
-Constrain model output to a JSON schema using grammar:
+Constrain model output to conform to a JSON schema or GBNF grammar. xllamacpp is built with [LLGuidance](https://github.com/guidance-ai/llguidance) enabled (`LLAMA_LLGUIDANCE=ON`), a high-performance Rust-based constrained decoding library. When LLGuidance is enabled, JSON Schema requests are automatically routed through LLGuidance instead of the default GBNF grammar engine, providing faster token mask computation (~50μs average) and more spec-compliant JSON Schema support. The entire structured output pipeline — schema conversion, grammar parsing, and token mask computation — runs in native C++/Rust with no Python overhead.
+
+In contrast, `llama-cpp-python` does not enable LLGuidance and implements JSON Schema → GBNF conversion in Python via a `SchemaConverter` class. It relies solely on llama.cpp's built-in GBNF grammar engine for constrained sampling.
+
+**Important:** For server endpoints, grammar constraints must be passed **in the request body**, not via `params.sampling.grammar` (which only affects the CLI path). See the comparison below.
+
+All three methods below share the same setup:
 
 ```python
 import json
 import xllamacpp as xlc
 
-# Define a JSON schema
 schema = {
     "type": "object",
     "properties": {
@@ -394,31 +400,88 @@ schema = {
     "required": ["answer"],
 }
 
-# Convert schema to grammar string
-grammar = xlc.json_schema_to_grammar(schema)
-
 params = xlc.CommonParams()
 params.model.path = "models/Llama-3.2-1B-Instruct-Q8_0.gguf"
 params.n_predict = 64
 params.n_ctx = 256
 params.sampling.temp = 0
 params.sampling.top_k = 1
-params.sampling.grammar = grammar
 
 server = xlc.Server(params)
 
+messages = [
+    {"role": "system", "content": "Respond with a JSON object matching the provided schema."},
+    {"role": "user", "content": "Provide an answer string and an optional numeric score."},
+]
+```
+
+#### Method 1: `grammar` in Request Body
+
+Convert the JSON schema to a grammar string using `xlc.json_schema_to_grammar()`, then pass it in the request. The output format depends on the build: LLGuidance Lark format when built with `LLAMA_LLGUIDANCE=ON` (default for xllamacpp), or GBNF otherwise.
+
+```python
+# Convert schema to grammar string (LLGuidance Lark format when built with LLAMA_LLGUIDANCE=ON)
+grammar_str = xlc.json_schema_to_grammar(schema)
+
 result = server.handle_chat_completions({
     "max_tokens": 64,
-    "messages": [
-        {"role": "system", "content": "Respond with a JSON object matching the provided schema."},
-        {"role": "user", "content": "Provide an answer string and an optional numeric score."},
-    ],
+    "messages": messages,
+    # Grammar MUST be passed in the request body for server endpoints
+    "grammar": grammar_str,
+})
+```
+
+#### Method 2: `json_schema` in Request Body
+
+Pass the JSON schema directly in the request — llama.cpp converts it to a grammar constraint internally (LLGuidance Lark format when built with `LLAMA_LLGUIDANCE=ON`, or GBNF otherwise):
+
+```python
+result = server.handle_chat_completions({
+    "max_tokens": 64,
+    "messages": messages,
+    "json_schema": schema,
+})
+```
+
+#### Method 3: `response_format` (OpenAI-Compatible)
+
+Use the OpenAI-compatible `response_format` field for chat completions:
+
+```python
+# Type "json_object" with optional schema
+result = server.handle_chat_completions({
+    "messages": messages,
+    "response_format": {"type": "json_object", "schema": schema},
 })
 
+# Type "json_schema" (OpenAI-style nested format)
+result = server.handle_chat_completions({
+    "messages": messages,
+    "response_format": {
+        "type": "json_schema",
+        "json_schema": {"schema": schema},
+    },
+})
+```
+
+For all methods above, parse the result the same way:
+
+```python
 content = result["choices"][0]["message"]["content"]
 parsed = json.loads(content)
 print(parsed)  # e.g. {"answer": "Hello", "score": 42}
 ```
+
+> **Note:** `json_schema` and `grammar` cannot be used simultaneously in the same request.
+
+#### Structured Outputs: xllamacpp vs llama-cpp-python
+
+| Aspect | xllamacpp | llama-cpp-python |
+|:---|:---|:---|
+| [LLGuidance](https://github.com/guidance-ai/llguidance) | Enabled (`LLAMA_LLGUIDANCE=ON`) | Not enabled |
+| JSON Schema → Grammar | C++ / Rust (LLGuidance Lark format, ~50μs/mask) | Python (`SchemaConverter` → GBNF) |
+| Grammar enforcement | LLGuidance sampler (Rust) | GBNF sampler (C++, via ctypes) |
+| Structured output API | Request body: `grammar`, `json_schema`, or `response_format` | Python args: `grammar=LlamaGrammar(...)` or `response_format={...}` |
 
 ### Embeddings
 
