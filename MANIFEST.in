@@ -1,8 +1,7 @@
 global-include *.pxd
 global-include *.pyx
 global-include *.pxi
-include scripts/setup.sh
-include scripts/setup_llamacpp.py
+include scripts/build.py
 include scripts/copy_libs.py
 include requirements.txt
 include Makefile

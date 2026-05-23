@@ -200,7 +200,7 @@ def mk_extension(name, sources, define_macros=None):
 
 def _build_llamacpp():
     code = subprocess.call(
-        [sys.executable, os.path.join(CWD, "scripts/setup_llamacpp.py")], cwd=CWD
+        [sys.executable, os.path.join(CWD, "scripts/build.py")], cwd=CWD
     )
     if code:
         raise SystemExit(code)
