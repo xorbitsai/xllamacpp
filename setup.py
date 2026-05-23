@@ -201,7 +201,7 @@ def _build_llamacpp():
 
 
 def _cythonize_extensions(extensions):
-    return cythonize(
+    cythonized = cythonize(
         extensions,
         include_path=["src/xllamacpp"],
         compiler_directives={
@@ -212,6 +212,10 @@ def _cythonize_extensions(extensions):
             "binding": True,  # Required for ABI3+
         },
     )
+    for extension in cythonized:
+        if not hasattr(extension, "_needs_stub"):
+            extension._needs_stub = False
+    return cythonized
 
 
 # ----------------------------------------------------------------------------

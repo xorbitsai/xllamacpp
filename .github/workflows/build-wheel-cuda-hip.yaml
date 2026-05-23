@@ -125,7 +125,6 @@ jobs:
             cargo --version
             printenv
             git config --global --add safe.directory "*"
-            make
             python -m build --wheel
             df -ha
             echo "Clean up"
@@ -293,7 +292,6 @@ jobs:
           python --version
           printenv
           git config --global --add safe.directory "*"
-          make
           python -m build --wheel
 
       - name: Repair Wheel (Linux)
@@ -503,7 +501,6 @@ jobs:
           echo "CMAKE_ARGS=$CMAKE_ARGS"
           $CXX --version
           
-          make
           python -m build --wheel
           
           echo "CUDA_VERSION=$cuda_version" >> $GITHUB_ENV
@@ -621,7 +618,6 @@ jobs:
           export VERSIONEER_CLOSEST_TAG_ONLY=1
           export VERBOSE=1
                     
-          make
           python -m build --wheel
           
           # On Windows, we use delvewheel for wheel repair
