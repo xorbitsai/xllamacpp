@@ -13,6 +13,9 @@ build_llamacpp() {
 	PROJECT=${THIRDPARTY}/llama.cpp
 	PREFIX=${CWD}/src/llama.cpp
 	NPROC=${NPROC:-$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)}
+	if [[ "$(uname -s)" == "Darwin" ]]; then
+		export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-15.0}"
+	fi
 	cd ${PROJECT} && \
 		mkdir -p build &&
 		cd build
@@ -38,6 +41,10 @@ build_llamacpp() {
     cmake_args+=("-DGGML_NATIVE=OFF")
   else
     echo "Optimizing for native CPU (GGML_NATIVE=ON by default)"
+  fi
+
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    cmake_args+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}")
   fi
 
   # Add any additional CMake arguments from environment

@@ -26,6 +26,7 @@ VERSION = versioneer.get_version()
 PLATFORM = platform.system()
 
 LLAMACPP_LIBS_DIR = os.path.join(CWD, "src/llama.cpp/lib")
+MACOSX_DEPLOYMENT_TARGET = os.getenv("MACOSX_DEPLOYMENT_TARGET", "15.0")
 
 # ABI3+ (Limited API) support for Python 3.10+
 PY_LIMITED_API_VERSION = 0x030A0000  # Python 3.10
@@ -36,7 +37,7 @@ if PLATFORM == "Windows":
 else:
     EXTRA_COMPILE_ARGS = ["-std=c++17", "-fvisibility=hidden", "-fvisibility-inlines-hidden"]
     if PLATFORM == "Darwin":
-        EXTRA_COMPILE_ARGS.append("-mmacosx-version-min=12.0")
+        EXTRA_COMPILE_ARGS.append(f"-mmacosx-version-min={MACOSX_DEPLOYMENT_TARGET}")
 EXTRA_LINK_ARGS = []
 EXTRA_OBJECTS = []
 INCLUDE_DIRS = [
@@ -140,6 +141,7 @@ else:
         LIBRARIES.extend(["vulkan"])
 
 if PLATFORM == "Darwin":
+    EXTRA_LINK_ARGS.append(f"-mmacosx-version-min={MACOSX_DEPLOYMENT_TARGET}")
     EXTRA_LINK_ARGS.append("-Wl,-rpath," + LLAMACPP_LIBS_DIR)
     os.environ["LDFLAGS"] = " ".join(
         [
