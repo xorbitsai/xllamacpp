@@ -36,7 +36,11 @@ DEFINE_MACROS = [("Py_LIMITED_API", PY_LIMITED_API_VERSION)]
 if PLATFORM == "Windows":
     EXTRA_COMPILE_ARGS = ["/std:c++17"]
 else:
-    EXTRA_COMPILE_ARGS = ["-std=c++17", "-fvisibility=hidden", "-fvisibility-inlines-hidden"]
+    EXTRA_COMPILE_ARGS = [
+        "-std=c++17",
+        "-fvisibility=hidden",
+        "-fvisibility-inlines-hidden",
+    ]
     if PLATFORM == "Darwin":
         EXTRA_COMPILE_ARGS.append(f"-mmacosx-version-min={MACOSX_DEPLOYMENT_TARGET}")
 EXTRA_LINK_ARGS = []
@@ -195,7 +199,9 @@ def mk_extension(name, sources, define_macros=None):
 
 
 def _build_llamacpp():
-    code = subprocess.call(["bash", os.path.join(CWD, "scripts/setup.sh")], cwd=CWD)
+    code = subprocess.call(
+        [sys.executable, os.path.join(CWD, "scripts/setup_llamacpp.py")], cwd=CWD
+    )
     if code:
         raise SystemExit(code)
 
