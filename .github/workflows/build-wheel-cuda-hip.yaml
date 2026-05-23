@@ -525,7 +525,7 @@ jobs:
           # The system GCC fully supports C++17 which is all that's needed.
           export CC=/usr/bin/gcc
           export CXX=/usr/bin/g++
-          # CMAKE_ARGS is picked up by scripts/setup.sh to pass to CMake
+          # CMAKE_ARGS is picked up by scripts/build.py to pass to CMake
           # -DCMAKE_CUDA_HOST_COMPILER ensures nvcc also uses system g++ for
           # host-side compilation, preventing CXXABI_1.3.15 from CUDA objects.
           export CMAKE_ARGS="-DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++"
