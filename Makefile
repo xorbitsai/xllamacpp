@@ -10,7 +10,6 @@ LLAMACPP := $(THIRDPARTY)/llama.cpp
 all: build
 
 build:
-	@bash scripts/setup.sh
 	python setup.py build_ext --inplace
 
 wheel:

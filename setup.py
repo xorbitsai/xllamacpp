@@ -5,6 +5,7 @@ import sys
 import platform
 import subprocess
 from setuptools import Extension, setup
+from setuptools.command.build_ext import build_ext as setuptools_build_ext
 
 from Cython.Build import cythonize
 
@@ -193,22 +194,56 @@ def mk_extension(name, sources, define_macros=None):
     )
 
 
+def _build_llamacpp():
+    code = subprocess.call(["bash", os.path.join(CWD, "scripts/setup.sh")], cwd=CWD)
+    if code:
+        raise SystemExit(code)
+
+
+def _cythonize_extensions(extensions):
+    return cythonize(
+        extensions,
+        include_path=["src/xllamacpp"],
+        compiler_directives={
+            "language_level": "3",
+            "embedsignature": False,  # default: False
+            "emit_code_comments": False,  # default: True
+            "warn.unused": True,  # default: False
+            "binding": True,  # Required for ABI3+
+        },
+    )
+
+
 # ----------------------------------------------------------------------------
 # COMMON SETUP CONFIG
+
+cmdclass = versioneer.get_cmdclass()
+
+_build_ext = cmdclass.get("build_ext", setuptools_build_ext)
+
+
+class build_ext(_build_ext):
+    def run(self):
+        _build_llamacpp()
+        self.distribution.ext_modules = _cythonize_extensions(
+            self.distribution.ext_modules
+        )
+        self.extensions = self.distribution.ext_modules
+        super().run()
+
+
+cmdclass["build_ext"] = build_ext
 
 common = {
     "name": NAME,
     "version": VERSION,
     "description": "A cython wrapper of the llama.cpp inference engine.",
     "python_requires": ">=3.10",
-    "cmdclass": versioneer.get_cmdclass(),
+    "cmdclass": cmdclass,
     "license": "MIT",
     # "include_package_data": True,
 }
 
-
-# forces cythonize in this case
-subprocess.call("cythonize *.pyx", cwd="src/xllamacpp", shell=True)
 
 if not os.path.exists("MANIFEST.in"):
     with open("MANIFEST.in", "w") as f:
@@ -232,16 +267,7 @@ extensions = [
 
 setup(
     **common,
-    ext_modules=cythonize(
-        extensions,
-        compiler_directives={
-            "language_level": "3",
-            "embedsignature": False,  # default: False
-            "emit_code_comments": False,  # default: True
-            "warn.unused": True,  # default: False
-            "binding": True,  # Required for ABI3+
-        },
-    ),
+    ext_modules=extensions,
     package_dir={"": "src"},
     options={
         "bdist_wheel": {
