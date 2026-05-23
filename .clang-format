@@ -75,7 +75,7 @@ EmptyLineBeforeAccessModifier: Leave
 EmptyLineAfterAccessModifier: Never
 ExperimentalAutoDetectBinPacking: false
 FixNamespaceComments: true
-IncludeBlocks:   Regroup
+IncludeBlocks:   Preserve
 IncludeCategories:
   - Regex:           '".*"'
     Priority:        1
@@ -141,7 +141,7 @@ RawStringFormats:
 ReferenceAlignment: Middle
 ReflowComments:  false # IndentOnly
 SeparateDefinitionBlocks: Always
-SortIncludes:    CaseInsensitive
+SortIncludes:    false
 SortUsingDeclarations: LexicographicNumeric
 SpaceAfterCStyleCast: true
 SpaceAfterLogicalNot: false
@@ -168,4 +168,3 @@ TabWidth:        4
 UseTab:          Never
 WhitespaceSensitiveMacros: ['STRINGIZE']
 ...
-
