@@ -51,6 +51,7 @@ INCLUDE_DIRS = [
         CWD, "thirdparty/llama.cpp/build/tools/server"
     ),  # For including index.html.gz.hpp and loading.html.hpp
     os.path.join(CWD, "thirdparty/llama.cpp/tools/server"),
+    os.path.join(CWD, "thirdparty/llama.cpp/tools/ui"),
     os.path.join(CWD, "thirdparty/llama.cpp/tools/mtmd"),
     os.path.join(CWD, "thirdparty/llama.cpp/vendor"),
 ]
