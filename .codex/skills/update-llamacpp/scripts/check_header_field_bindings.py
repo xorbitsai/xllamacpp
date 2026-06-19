@@ -128,7 +128,7 @@ def extract_fields(text: str) -> dict[tuple[str, str], Field]:
         if owner is None:
             match = re.match(r"(?:typedef\s+)?(?:struct|class)\s+([A-Za-z_]\w*)\b", line)
             if match:
-                pending_owner = match.group(1)
+                pending_owner = None if ";" in line else match.group(1)
             if pending_owner and "{" in line:
                 owner = pending_owner
                 depth = line.count("{") - line.count("}")
@@ -136,6 +136,8 @@ def extract_fields(text: str) -> dict[tuple[str, str], Field]:
                 after = line.split("{", 1)[1]
                 if after.strip():
                     statement += " " + after
+            elif not match:
+                pending_owner = None
             continue
 
         depth += line.count("{") - line.count("}")
