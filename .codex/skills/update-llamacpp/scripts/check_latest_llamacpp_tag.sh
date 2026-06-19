@@ -11,7 +11,7 @@ if [[ ! -d "${llama_dir}/.git" && ! -f "${llama_dir}/.git" ]]; then
 fi
 
 latest_tag="$(
-  git -C "${llama_dir}" for-each-ref refs/tags \
+  git -C "${llama_dir}" for-each-ref refs/tags/b* \
     --sort=-creatordate \
     --format='%(refname:short)' \
     --count=1
