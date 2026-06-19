@@ -65,7 +65,7 @@ static server_http_context::handler_t ex_wrapper(server_http_context::handler_t 
             json error_data = format_error_response(message, error);
             res->status     = json_value(error_data, "code", 500);
             res->data       = safe_json_to_str({
-                {"error", error_data}
+                { "error", error_data }
             });
             SRV_WRN("got exception: %s\n", res->data.c_str());
         } catch (const std::exception & e) {
@@ -217,7 +217,7 @@ static void init(common_params &   params,
     ctx_http.post("/responses/input_tokens", ex_wrapper(routes.post_responses_tok_oai));
     ctx_http.post("/v1/responses/input_tokens", ex_wrapper(routes.post_responses_tok_oai));
     ctx_http.post("/v1/messages/count_tokens",
-                  ex_wrapper(routes.post_anthropic_count_tokens));              // anthropic token counting
+                  ex_wrapper(routes.post_anthropic_count_tokens));  // anthropic token counting
     // LoRA adapters hotswap
     ctx_http.get("/lora-adapters", ex_wrapper(routes.get_lora_adapters));
     ctx_http.post("/lora-adapters", ex_wrapper(routes.post_lora_adapters));
