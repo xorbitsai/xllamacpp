@@ -35,7 +35,9 @@ static inline void signal_handler(int signal) {
         exit(1);
     }
 
-    shutdown_handler(signal);
+    if (shutdown_handler) {
+        shutdown_handler(signal);
+    }
 }
 
 // wrapper function that handles exceptions and logs errors
@@ -396,6 +398,10 @@ static void init(common_params &   params,
             common_memory_breakdown_print(ll_ctx);
         }
     }
+
+    // init() runs on the Python Server thread; clear the process-wide handler
+    // before its lambdas can outlive ctx_http / ctx_server stack references.
+    shutdown_handler = nullptr;
 }
 
 static void ggml_log_callback_default(enum ggml_log_level level, const char * text, void * user_data) {
