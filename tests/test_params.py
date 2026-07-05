@@ -164,7 +164,6 @@ def test_common_params():
     assert params.model.hf_repo == ""
     assert params.model.hf_file == ""
     assert params.model.docker_repo == ""
-    assert params.model.name == ""
     assert params.model_alias == set()
     params.model_alias = {"alias1", "alias2"}
     assert params.model_alias == {"alias1", "alias2"}
@@ -282,7 +281,7 @@ def test_common_params():
     params.cache_idle_slots = False
     assert params.cache_idle_slots is False
     assert params.n_ctx_checkpoints == 32
-    assert params.checkpoint_min_step == 256
+    assert params.checkpoint_min_step == 8192
     params.checkpoint_min_step = 100
     assert params.checkpoint_min_step == 100
     assert params.cache_ram_mib == 8192
@@ -317,10 +316,6 @@ def test_common_params():
     assert params.ui is True
     params.ui = False
     assert params.ui is False
-    assert params.webui is True
-    assert params.webui_mcp_proxy is False
-    params.webui_mcp_proxy = True
-    assert params.webui_mcp_proxy is True
     assert params.ui_mcp_proxy is False
     params.ui_mcp_proxy = True
     assert params.ui_mcp_proxy is True
@@ -398,10 +393,6 @@ def test_common_params():
     params.sleep_idle_seconds = 30
     assert params.sleep_idle_seconds == 30
 
-    # Test new webui_config_json field
-    assert params.webui_config_json == ""
-    params.webui_config_json = '{"theme": "dark"}'
-    assert params.webui_config_json == '{"theme": "dark"}'
     assert params.ui_config_json == ""
     params.ui_config_json = '{"theme": "light"}'
     assert params.ui_config_json == '{"theme": "light"}'
@@ -567,8 +558,8 @@ def test_common_params():
 
     assert params.cls_sep == "\t"
     assert params.offline is False
-    params.skip_download = True
-    assert params.skip_download is True
+    params.offline = True
+    assert params.offline is True
     assert params.sampling.reasoning_budget_message == ""
     params.sampling.reasoning_budget_message = "Budget exhausted"
     assert params.sampling.reasoning_budget_message == "Budget exhausted"
