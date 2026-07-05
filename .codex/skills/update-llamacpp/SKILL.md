@@ -71,24 +71,33 @@ Use this skill to update the vendored `thirdparty/llama.cpp` checkout in this re
    ```
 
 12. For each reported field or enum change, read the changed header in `src/llama.cpp/` and check `src/xllamacpp/xllamacpp.pxd` plus `src/xllamacpp/xllamacpp.pyx`.
-13. If a changed or removed field has an existing Python binding, update or remove the binding so its Cython declaration and property access match the header.
-14. If a new field was added and its owning C++ struct/class already has Python bindings, add the corresponding Cython declaration and Python property binding for the new field.
-15. Treat enum members like fields: if a new enum member is added and its enum type already has a Python binding, add the new enum member to the binding; if a removed enum member is bound, remove it.
-16. Ignore initializer/default value-only changes and enum value-only changes for now; this step only cares about field type changes, removed fields, added fields, removed enum members, and added enum members.
-17. After the build succeeds, run the full local test suite outside the sandbox:
+13. If a field was removed, remove every binding for that field from both `src/xllamacpp/xllamacpp.pxd` and `src/xllamacpp/xllamacpp.pyx`. Also remove or update tests that access it. Do not preserve the removed Python name by mapping it to another field, adding a computed property, or creating a compatibility alias unless the user explicitly requests backward compatibility. In particular, do not infer that similarly named fields are semantically interchangeable.
+14. If a field changed type, update its Cython declaration and Python property access to match the header exactly.
+15. If a new field was added and its owning C++ struct/class already has Python bindings, add the corresponding Cython declaration and Python property binding for the new field.
+16. Treat enum members like fields: if a new enum member is added and its enum type already has a Python binding, add the new enum member to the binding; if a removed enum member is bound, remove it.
+17. Ignore initializer/default value-only changes and enum value-only changes for now; this step only cares about field type changes, removed fields, added fields, removed enum members, and added enum members.
+18. Search `xllamacpp.pxd`, `xllamacpp.pyx`, owned C++ sources, and tests for every removed field name. Confirm no binding implementation or stale test remains. Unrelated uses of a generic name such as `name` may remain.
+19. Compile the Cython extension outside the sandbox after binding edits. The native build wrapper only builds and stages llama.cpp libraries; it does not validate `.pxd`, `.pyx`, or owned C++ compatibility:
+
+   ```bash
+   python3 setup.py build_ext --inplace
+   ```
+
+   Use the project's configured Python environment if the default `python3` lacks `setuptools` or `Cython`.
+20. After the extension build succeeds, run the full local test suite outside the sandbox:
 
    ```bash
    PYTHONPATH=src python3 -m pytest tests
    ```
 
-18. Fix all test failures caused by the update. Do not treat sandbox-only local socket binding failures or native backend initialization failures as project regressions until the same test also fails outside the sandbox.
-19. After the build and tests pass, create the local working branch `enh/update_llama_cpp` from the current repository state. If a local branch with that name already exists, delete it first:
+21. Fix all test failures caused by the update. Do not treat sandbox-only local socket binding failures or native backend initialization failures as project regressions until the same test also fails outside the sandbox.
+22. After the build and tests pass, create the local working branch `enh/update_llama_cpp` from the current repository state. If a local branch with that name already exists, delete it first:
 
    ```bash
    git branch -D enh/update_llama_cpp
    git switch -c enh/update_llama_cpp
    ```
-20. Tell the user the update work is done. Summarize the work, especially the llama.cpp tag and commit that the vendored submodule was updated to, the compatibility fixes made, and the build/test results. Ask the user to review the changes and commit manually.
+23. Tell the user the update work is done. Summarize the work, especially the llama.cpp tag and commit that the vendored submodule was updated to, the compatibility fixes made, and the build/test results. Ask the user to review the changes and commit manually.
 
 ## Guardrails
 
@@ -102,6 +111,8 @@ Use this skill to update the vendored `thirdparty/llama.cpp` checkout in this re
 - Pin `thirdparty/llama.cpp` to the exact latest `b*` tag before compatibility work. Do not leave it on `master`, another branch commit beyond the tag, or a non-`b*` tag.
 - On macOS, the build wrapper defaults `MACOSX_DEPLOYMENT_TARGET` to `13.3` only when it is unset, matching this repository's wheel workflow. Caller-provided build environment variables still take precedence.
 - Run the xllamacpp build outside the sandbox. llama.cpp's CMake build may provision UI assets or initialize native build tooling differently under sandbox restrictions.
+- Treat removed upstream fields as removed public bindings by default. Never silently retain them as aliases or computed properties; backward compatibility requires an explicit user request.
+- Run the in-place Cython extension build outside the sandbox after changing bindings or owned C++ compatibility code.
 - Run the full `tests/` suite outside the sandbox. The server tests bind local HTTP sockets and native backend initialization can behave differently under sandbox restrictions.
 - Only delete the local `enh/update_llama_cpp` branch when recreating the update branch. Do not delete any remote branch unless the user explicitly asks.
 - Do not create a commit as part of this skill unless the user explicitly asks. End with a summary of the work, including the updated llama.cpp tag/commit, then prompt the user to review the changes and commit manually.
