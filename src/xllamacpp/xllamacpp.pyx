@@ -701,16 +701,6 @@ cdef class CommonParamsModel:
     def docker_repo(self, value: str):
         self.p.docker_repo = value
 
-    @property
-    def name(self) -> str:
-        """Docker repo"""
-        return self.p.name
-
-    @name.setter
-    def name(self, value: str):
-        self.p.name = value
-
-
 cdef class CommonParamsSpeculativeDraft:
     cdef xllamacpp.common_params_speculative_draft *p
     cdef object owner
@@ -1851,15 +1841,6 @@ cdef class CommonParams:
         self.p.offline = value
 
     @property
-    def skip_download(self) -> bool:
-        """skip model file downloading"""
-        return self.p.skip_download
-
-    @skip_download.setter
-    def skip_download(self, value: bool):
-        self.p.skip_download = value
-
-    @property
     def ppl_stride(self) -> int:
         """stride for perplexity calculations. If left at 0, the pre-existing approach will be used."""
         return self.p.ppl_stride
@@ -2583,33 +2564,6 @@ cdef class CommonParams:
     @ui.setter
     def ui(self, value: bool):
         self.p.ui = value
-
-    @property
-    def webui(self) -> bool:
-        """deprecated alias for ui"""
-        return self.p.webui
-
-    @webui.setter
-    def webui(self, value: bool):
-        self.p.webui = value
-
-    @property
-    def webui_mcp_proxy(self) -> bool:
-        """deprecated alias for ui_mcp_proxy"""
-        return self.p.webui_mcp_proxy
-
-    @webui_mcp_proxy.setter
-    def webui_mcp_proxy(self, value: bool):
-        self.p.webui_mcp_proxy = value
-
-    @property
-    def webui_config_json(self) -> str:
-        """deprecated alias for ui_config_json"""
-        return self.p.webui_config_json
-
-    @webui_config_json.setter
-    def webui_config_json(self, value: str):
-        self.p.webui_config_json = value
 
     @property
     def ui_mcp_proxy(self) -> bool:

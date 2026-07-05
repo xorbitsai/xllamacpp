@@ -117,8 +117,8 @@ static void init(common_params &   params,
     }
 
     // for consistency between server router mode and single-model mode, we set the same model name as alias
-    if (params.model_alias.empty() && !params.model.name.empty()) {
-        params.model_alias.insert(params.model.name);
+    if (params.model_alias.empty() && !params.model.empty()) {
+        params.model_alias.insert(params.model.get_name());
     }
 
     server_http_context ctx_http;
@@ -133,6 +133,7 @@ static void init(common_params &   params,
     //
 
     // register API routes
+    server_child  child;
     server_routes routes(params, ctx_server);
     server_tools  tools;
 
@@ -231,8 +232,7 @@ static void init(common_params &   params,
     ctx_http.register_gcp_compat();
 
     // CORS proxy (EXPERIMENTAL, only used by the Web UI for MCP)
-    // Supports both new ui_mcp_proxy and deprecated webui_mcp_proxy fields
-    if (params.ui_mcp_proxy || params.webui_mcp_proxy) {
+    if (params.ui_mcp_proxy) {
         SRV_WRN("%s", "-----------------\n");
         SRV_WRN("%s", "CORS proxy is enabled, do not expose server to untrusted environments\n");
         SRV_WRN("%s", "This feature is EXPERIMENTAL and may be removed or changed in future versions\n");
@@ -311,9 +311,9 @@ static void init(common_params &   params,
         // load the model
         SRV_INF("%s", "loading model\n");
 
-        if (server_models::is_child_server()) {
-            ctx_server.on_sleeping_changed(
-                [&](bool sleeping) { server_models::notify_router_sleeping_state(sleeping); });
+        if (child.is_child()) {
+            ctx_server.set_state_callback(
+                [&](server_state state, json payload) { child.notify_to_router(server_state_to_str(state), payload); });
         }
 
         if (!ctx_server.load_model(params)) {
@@ -371,9 +371,9 @@ static void init(common_params &   params,
 
         // optionally, notify router server that this instance is ready
         std::thread monitor_thread;
-        if (server_models::is_child_server()) {
-            json model_info = routes.get_model_info();
-            monitor_thread  = server_models::setup_child_server(shutdown_handler, model_info);
+        if (child.is_child()) {
+            monitor_thread = child.setup(shutdown_handler);
+            child.notify_to_router(server_state_to_str(SERVER_STATE_READY), routes.get_model_info());
         }
 
         // write the listening_address

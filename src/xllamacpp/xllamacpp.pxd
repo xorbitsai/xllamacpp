@@ -398,6 +398,7 @@ cdef extern from "common.h":
         COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE  # standalone draft model speculative decoding
         COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3  # Eagle3 speculative decoding
         COMMON_SPECULATIVE_TYPE_DRAFT_MTP     # Multi-token prediction
+        COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH  # DFlash speculative decoding
         COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE  # simple self-speculative decoding based on n-grams
         COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K   # self-speculative decoding with n-gram keys only
         COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V # self-speculative decoding with n-gram keys and 4 m-gram values
@@ -412,7 +413,6 @@ cdef extern from "common.h":
         std_string hf_repo       # HF repo                                                    // NOLINT
         std_string hf_file       # HF file                                                    // NOLINT
         std_string docker_repo   # Docker repo                                                // NOLINT
-        std_string name          # in format <user>/<model>[:<tag>] (tag is optional)         // NOLINT
 
     # draft-model-based speculative decoding parameters
     ctypedef struct common_params_speculative_draft:
@@ -580,7 +580,6 @@ cdef extern from "common.h":
         int32_t control_vector_layer_start # layer range for control vector
         int32_t control_vector_layer_end   # layer range for control vector
         bint    offline
-        bint    skip_download
 
         int32_t ppl_stride          # stride for perplexity calculations. If left at 0, the pre-existing approach will be used.
         int32_t ppl_output_type     # = 0 -> ppl output is as usual, = 1 -> ppl output is num_tokens, ppl, one per line
@@ -692,11 +691,6 @@ cdef extern from "common.h":
 
         # UI configs
         bint ui
-
-        # Deprecated: use ui, ui_mcp_proxy, ui_config_json instead
-        bint webui
-        bint webui_mcp_proxy
-        std_string webui_config_json
 
         bint ui_mcp_proxy
         std_string ui_config_json
