@@ -91,6 +91,7 @@ if PLATFORM == "Windows":
             "ssl",
             "crypto",
             "Advapi32",
+            "Shell32",
             "userenv",
             "ntdll",
         ]
