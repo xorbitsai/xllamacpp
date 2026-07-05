@@ -180,6 +180,30 @@ class TestServerHTTP:
         data = response.json()
         assert isinstance(data, list)
 
+    def test_resumable_stream_endpoints(self, server_url):
+        response = requests.post(
+            f"{server_url}/v1/streams/lookup", json={"conversation_ids": []}
+        )
+        assert response.status_code == 200
+        assert response.json() == []
+
+        response = requests.get(f"{server_url}/v1/stream/unknown")
+        assert response.status_code == 404
+
+        response = requests.delete(f"{server_url}/v1/stream/unknown")
+        assert response.status_code == 204
+
+    def test_disabled_feature_endpoints(self, server_url):
+        for method, path in (
+            (requests.get, "/cors-proxy"),
+            (requests.post, "/cors-proxy"),
+            (requests.get, "/tools"),
+            (requests.post, "/tools"),
+        ):
+            response = method(f"{server_url}{path}")
+            assert response.status_code == 403
+            assert response.json()["error"]["type"] == "feature_disabled"
+
     def test_streaming_completions(self, server_url):
         """Test streaming completion endpoints"""
         completion_data = {

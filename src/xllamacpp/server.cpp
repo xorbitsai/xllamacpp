@@ -3,6 +3,7 @@
 #include "server-http.h"
 #include "server-models.h"
 #include "server-cors-proxy.h"
+#include "server-stream.h"
 #include "server-tools.h"
 
 #include "arg.h"
@@ -95,6 +96,16 @@ static void init(common_params &   params,
 
     SRV_INF("build_info: %s\n", llama_build_info());
 
+    common_models_handler models_handler;
+    try {
+        models_handler = common_models_handler_init(params, LLAMA_EXAMPLE_SERVER);
+    } catch (const std::exception & e) {
+        SRV_ERR("failed to fetch model metadata: %s\n", e.what());
+        llama_backend_free();
+        out.set_value(1);
+        return;
+    }
+
     const bool is_router_server = false;
     common_params_print_info(params, !is_router_server);
 
@@ -109,7 +120,7 @@ static void init(common_params &   params,
         }
 
         if (params.n_parallel < 0) {
-            SRV_INF("%s", "n_parallel is set to auto, using n_parallel = 4 and kv_unified = true\n");
+            SRV_TRC("%s", "n_parallel is set to auto, using n_parallel = 4 and kv_unified = true\n");
 
             params.n_parallel = 4;
             params.kv_unified = true;
@@ -128,6 +139,9 @@ static void init(common_params &   params,
         return;
     }
 
+    // Start the stream session manager before any HTTP route can use it.
+    g_stream_sessions.start_gc();
+
     //
     // Router
     //
@@ -144,6 +158,8 @@ static void init(common_params &   params,
             models_routes.emplace(params, 0, nullptr);
         } catch (const std::exception & e) {
             SRV_ERR("failed to initialize router models: %s\n", e.what());
+            g_stream_sessions.stop_gc();
+            llama_backend_free();
             out.set_value(1);
             return;
         }
@@ -228,8 +244,26 @@ static void init(common_params &   params,
     ctx_http.get("/slots", ex_wrapper(routes.get_slots));
     ctx_http.post("/slots/:id_slot", ex_wrapper(routes.post_slots));
 
+    // Resumable streaming uses the conversation ID as the session identity.
+    ctx_http.get("/v1/stream/:conv_id", ex_wrapper(make_stream_get_handler()));
+    ctx_http.post("/v1/streams/lookup", ex_wrapper(make_streams_lookup_handler()));
+    ctx_http.del("/v1/stream/:conv_id", ex_wrapper(make_stream_delete_handler()));
+
     // Google Cloud Platform (Vertex AI) compat
     ctx_http.register_gcp_compat();
+
+    // Return a stable response for features that are present but disabled.
+    server_http_context::handler_t res_403 = [](const server_http_req &) {
+        auto res    = std::make_unique<server_http_res>();
+        res->status = 403;
+        res->data   = safe_json_to_str({
+            { "error", {
+                { "message", "this feature is disabled" },
+                { "type", "feature_disabled" },
+            } }
+        });
+        return res;
+    };
 
     // CORS proxy (EXPERIMENTAL, only used by the Web UI for MCP)
     if (params.ui_mcp_proxy) {
@@ -239,13 +273,19 @@ static void init(common_params &   params,
         SRV_WRN("%s", "-----------------\n");
         ctx_http.get("/cors-proxy", ex_wrapper(proxy_handler_get));
         ctx_http.post("/cors-proxy", ex_wrapper(proxy_handler_post));
+    } else {
+        ctx_http.get("/cors-proxy", ex_wrapper(res_403));
+        ctx_http.post("/cors-proxy", ex_wrapper(res_403));
     }
+
     // EXPERIMENTAL built-in tools
     if (!params.server_tools.empty()) {
         try {
             tools.setup(params.server_tools);
         } catch (const std::exception & e) {
             SRV_ERR("tools setup failed: %s\n", e.what());
+            g_stream_sessions.stop_gc();
+            llama_backend_free();
             out.set_value(1);
             return;
         }
@@ -255,6 +295,31 @@ static void init(common_params &   params,
         SRV_WRN("%s", "-----------------\n");
         ctx_http.get("/tools", ex_wrapper(tools.handle_get));
         ctx_http.post("/tools", ex_wrapper(tools.handle_post));
+    } else {
+        ctx_http.get("/tools", ex_wrapper(res_403));
+        ctx_http.post("/tools", ex_wrapper(res_403));
+    }
+
+    //
+    // Handle downloading model
+    //
+
+    if (child.is_child() && child.get_mode() == SERVER_CHILD_MODE_DOWNLOAD) {
+        const int result = child.run_download(params);
+        g_stream_sessions.stop_gc();
+        llama_backend_free();
+        out.set_value(result);
+        return;
+    }
+
+    try {
+        common_models_handler_apply(models_handler, params);
+    } catch (const std::exception & e) {
+        SRV_ERR("failed to download model: %s\n", e.what());
+        g_stream_sessions.stop_gc();
+        llama_backend_free();
+        out.set_value(1);
+        return;
     }
 
     //
@@ -268,6 +333,7 @@ static void init(common_params &   params,
 
         clean_up = [&models_routes]() {
             SRV_INF("%s: cleaning up before exit...\n", __func__);
+            g_stream_sessions.stop_gc();
             if (models_routes.has_value()) {
                 models_routes->stopping.store(true);  // maybe redundant, but just to be safe
                 models_routes->models.unload_all();
@@ -295,6 +361,7 @@ static void init(common_params &   params,
         // setup clean up function, to be called before exit
         clean_up = [&ctx_http, &ctx_server]() {
             SRV_INF("%s: cleaning up before exit...\n", __func__);
+            g_stream_sessions.stop_gc();
             ctx_http.stop();
             ctx_server.terminate();
             llama_backend_free();
@@ -352,8 +419,9 @@ static void init(common_params &   params,
     SetConsoleCtrlHandler(reinterpret_cast<PHANDLER_ROUTINE>(console_ctrl_handler), true);
 #endif
 
+    SRV_INF("listening on %s\n", ctx_http.listening_address.c_str());
+
     if (is_router_server) {
-        SRV_INF("router server is listening on %s\n", ctx_http.listening_address.c_str());
         SRV_WRN("%s", "NOTE: router mode is experimental\n");
         SRV_WRN("%s", "      it is not recommended to use this mode in untrusted environments\n");
         if (!params.models_preset_hf.empty()) {
@@ -367,8 +435,6 @@ static void init(common_params &   params,
         // when the HTTP server stops, clean up and exit
         clean_up();
     } else {
-        SRV_INF("server is listening on %s\n", ctx_http.listening_address.c_str());
-
         // optionally, notify router server that this instance is ready
         std::thread monitor_thread;
         if (child.is_child()) {
