@@ -287,9 +287,6 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `timeout_read` | int | `3600` | R/W | http read timeout in seconds |
 | `timeout_write` | int | `timeout_read` | R/W | http write timeout in seconds |
 | `use_jinja` | bool | `true` | R/W |  |
-| `webui` | bool | `ui` | R/W | deprecated alias for ui |
-| `webui_config_json` | str | `` | R/W | deprecated alias for ui_config_json |
-| `webui_mcp_proxy` | bool | `false` | R/W | deprecated alias for ui_mcp_proxy |
 
 ### Sub-params
 
@@ -310,7 +307,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
-| `checkpoint_min_step` | int | `256` | R/W | minimum spacing between context checkpoints |
+| `checkpoint_min_step` | int | `8192` | R/W | minimum spacing between context checkpoints |
 | `force_pure_content_parser` | bool | `false` | R/W | force pure content parser |
 | `models_preset_hf` | str | `""` | R/W | show a warning about remote presets on router loaded (if not empty) |
 | `mtmd_batch_max_tokens` | int | `1024` | R/W |  |
@@ -319,7 +316,6 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `path_prompts_log_dir` | str | `""` | R/W | directory with logged prompts |
 | `reuse_port` | bool | `false` | R/W | allow multiple sockets to bind to the same port |
 | `server_tools` | list[str] | `` | R/W | enable built-in tools |
-| `skip_download` | bool | `false` | R/W | skip model file downloading |
 | `sse_ping_interval` | int | `30` | R/W | SSE ping interval in seconds |
 | `system_prompt` | str | `""` | R/W | the system prompt text |
 | `ui` | bool | `true` | R/W | enable UI |
@@ -351,11 +347,10 @@ Model path and source parameters. Access via `params.model`.
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
-| `docker_repo` | str | `""` | R/W | Docker repo |
+| `docker_repo` | str | `` | R/W | Docker repo |
 | `hf_file` | str | `""` | R/W | HF file |
-| `hf_repo` | str | `""` | R/W | HF repo |
-| `name` | str | `""` | R/W | in format <user>/<model>[:<tag>] (tag is optional) |
-| `path` | str | `""` | R/W | model local path |
+| `hf_repo` | str | `` | R/W | HF repo |
+| `path` | str | `` | R/W | model local path |
 | `url` | str | `""` | R/W | model url to download |
 
 ---
