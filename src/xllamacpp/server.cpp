@@ -91,6 +91,10 @@ static void init(common_params &   params,
 
     common_init();
 
+    // Start the stream session manager GC right after common init, before any HTTP route can
+    // touch it. Lifecycle is symmetric: every exit after this point calls stop_gc().
+    g_stream_sessions.start_gc();
+
     llama_backend_init();
     llama_numa_init(params.numa);
 
@@ -101,6 +105,7 @@ static void init(common_params &   params,
         models_handler = common_models_handler_init(params, LLAMA_EXAMPLE_SERVER);
     } catch (const std::exception & e) {
         SRV_ERR("failed to fetch model metadata: %s\n", e.what());
+        g_stream_sessions.stop_gc();
         llama_backend_free();
         out.set_value(1);
         return;
@@ -135,12 +140,11 @@ static void init(common_params &   params,
     server_http_context ctx_http;
     if (!ctx_http.init(params)) {
         SRV_ERR("%s", "failed to initialize HTTP server\n");
+        g_stream_sessions.stop_gc();
+        llama_backend_free();
         out.set_value(1);
         return;
     }
-
-    // Start the stream session manager before any HTTP route can use it.
-    g_stream_sessions.start_gc();
 
     //
     // Router
@@ -244,10 +248,23 @@ static void init(common_params &   params,
     ctx_http.get("/slots", ex_wrapper(routes.get_slots));
     ctx_http.post("/slots/:id_slot", ex_wrapper(routes.post_slots));
 
-    // Resumable streaming uses the conversation ID as the session identity.
-    ctx_http.get("/v1/stream/:conv_id", ex_wrapper(make_stream_get_handler()));
-    ctx_http.post("/v1/streams/lookup", ex_wrapper(make_streams_lookup_handler()));
-    ctx_http.del("/v1/stream/:conv_id", ex_wrapper(make_stream_delete_handler()));
+    // Resumable streaming uses the conversation ID as the session identity end to end. Router
+    // and child wire different handlers under the same paths.
+    server_http_context::handler_t stream_get_h;
+    server_http_context::handler_t streams_lookup_h;
+    server_http_context::handler_t stream_delete_h;
+    if (is_router_server) {
+        stream_get_h     = models_routes->router_stream_get;
+        streams_lookup_h = models_routes->router_streams_lookup;
+        stream_delete_h  = models_routes->router_stream_delete;
+    } else {
+        stream_get_h     = make_stream_get_handler();
+        streams_lookup_h = make_streams_lookup_handler();
+        stream_delete_h  = make_stream_delete_handler();
+    }
+    ctx_http.get("/v1/stream/:conv_id", ex_wrapper(stream_get_h));
+    ctx_http.post("/v1/streams/lookup", ex_wrapper(streams_lookup_h));
+    ctx_http.del("/v1/stream/:conv_id", ex_wrapper(stream_delete_h));
 
     // Google Cloud Platform (Vertex AI) compat
     ctx_http.register_gcp_compat();
@@ -257,10 +274,11 @@ static void init(common_params &   params,
         auto res    = std::make_unique<server_http_res>();
         res->status = 403;
         res->data   = safe_json_to_str({
-            { "error", {
-                { "message", "this feature is disabled" },
-                { "type", "feature_disabled" },
-            } }
+            { "error",
+             {
+                  { "message", "this feature is disabled" },
+                  { "type", "feature_disabled" },
+              } }
         });
         return res;
     };
@@ -310,16 +328,16 @@ static void init(common_params &   params,
         llama_backend_free();
         out.set_value(result);
         return;
-    }
-
-    try {
-        common_models_handler_apply(models_handler, params);
-    } catch (const std::exception & e) {
-        SRV_ERR("failed to download model: %s\n", e.what());
-        g_stream_sessions.stop_gc();
-        llama_backend_free();
-        out.set_value(1);
-        return;
+    } else if (!is_router_server) {
+        try {
+            common_models_handler_apply(models_handler, params);
+        } catch (const std::exception & e) {
+            SRV_ERR("failed to download model: %s\n", e.what());
+            g_stream_sessions.stop_gc();
+            llama_backend_free();
+            out.set_value(1);
+            return;
+        }
     }
 
     //
@@ -333,6 +351,7 @@ static void init(common_params &   params,
 
         clean_up = [&models_routes]() {
             SRV_INF("%s: cleaning up before exit...\n", __func__);
+            // Stop the session GC first so live readers are finalized before backend teardown.
             g_stream_sessions.stop_gc();
             if (models_routes.has_value()) {
                 models_routes->stopping.store(true);  // maybe redundant, but just to be safe
@@ -361,6 +380,7 @@ static void init(common_params &   params,
         // setup clean up function, to be called before exit
         clean_up = [&ctx_http, &ctx_server]() {
             SRV_INF("%s: cleaning up before exit...\n", __func__);
+            // Stop the session GC first so live readers are finalized before backend teardown.
             g_stream_sessions.stop_gc();
             ctx_http.stop();
             ctx_server.terminate();
