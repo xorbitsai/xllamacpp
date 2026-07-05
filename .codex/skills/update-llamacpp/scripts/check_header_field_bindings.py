@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Report changed C/C++ fields and enum members in staged llama.cpp headers."""
+"""Report changed C/C++ fields and enum members in llama.cpp working-tree headers."""
 
 from __future__ import annotations
 
@@ -55,6 +55,7 @@ def changed_headers() -> list[Path]:
     result = run_git(
         [
             "diff",
+            "HEAD",
             "--name-only",
             "--",
             "src/llama.cpp/include",
