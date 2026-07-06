@@ -44,12 +44,20 @@ def split_cmake_args(value: str) -> list[str]:
 
 
 def hip_compiler() -> str:
+    """Return the path to the HIP C++ compiler (clang).
+
+    On ROCm 7.0+ the hipconfig Perl scripts were removed; if the
+    ``hipconfig`` binary is unavailable or fails, fall back to the
+    standard ROCm installation path.
+    """
     try:
         hip_root = subprocess.check_output(
             ["hipconfig", "-l"], text=True, stderr=subprocess.STDOUT
         ).strip()
     except (OSError, subprocess.CalledProcessError) as exc:
-        raise SystemExit("`hipconfig -l` failed while configuring HIP build") from exc
+        rocm_path = os.environ.get("ROCM_PATH", "/opt/rocm")
+        hip_root = str(Path(rocm_path) / "llvm")
+        log(f"`hipconfig -l` failed ({exc}), falling back to {hip_root}")
     return str(Path(hip_root) / "clang")
 
 
@@ -127,11 +135,24 @@ def build_llamacpp() -> None:
         targets.append("ggml-cuda")
     elif env_is_set("XLLAMACPP_BUILD_HIP"):
         log("Building for AMD GPU")
+        # CI pipelines pin AMDGPU_TARGETS per ROCm version (see the
+        # build-wheel-cuda-hip.yaml matrix). When unset (local builds),
+        # fall back to RDNA2 + RDNA3 targets.
+        amdgpu_targets = os.environ.get("AMDGPU_TARGETS") or (
+            "gfx1100;gfx1101;gfx1102;gfx1030;gfx1031;gfx1032"
+        )
+        # ROCWMMA flash attention is beneficial on ROCm 6.x but
+        # counterproductive on ROCm 7.0.2+ (slower than the standard
+        # HIP path as context depth grows). CI sets this per version;
+        # local builds default to ON.
+        rocwmma = os.environ.get("GGML_HIP_ROCWMMA_FATTN", "ON")
+        log(f"Using AMDGPU targets: {amdgpu_targets}")
+        log(f"ROCWMMA flash attention: {rocwmma}")
         cmake_args.extend(
             [
-                "-DAMDGPU_TARGETS=gfx1100;gfx1101;gfx1102;gfx1030;gfx1031;gfx1032",
+                f"-DAMDGPU_TARGETS={amdgpu_targets}",
                 f"-DCMAKE_HIP_COMPILER={hip_compiler()}",
-                "-DGGML_HIP_ROCWMMA_FATTN=ON",
+                f"-DGGML_HIP_ROCWMMA_FATTN={rocwmma}",
                 "-DGGML_HIP=ON",
             ]
         )
