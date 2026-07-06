@@ -146,7 +146,7 @@ def build_llamacpp() -> None:
         # default to ON. gfx12 support requires ROCm 7.0+ (PR #14202),
         # and the warp mask compile issue is fixed in our submodule
         # (PR #15273).
-        rocwmma = os.environ.get("GGML_HIP_ROCWMMA_FATTN", "ON")
+        rocwmma = os.environ.get("GGML_HIP_ROCWMMA_FATTN") or "ON"
         log(f"Using AMDGPU targets: {amdgpu_targets}")
         log(f"ROCWMMA flash attention: {rocwmma}")
         cmake_args.extend(
