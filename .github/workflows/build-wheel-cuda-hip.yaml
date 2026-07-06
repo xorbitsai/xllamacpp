@@ -33,20 +33,15 @@ jobs:
           # Per-ROCm-version GPU architecture lists, mirroring how the
           # CUDA job pins CUDA_ARCHITECTURES per toolkit version.
           #
-          # ROCm 6.4.1: RDNA2 + RDNA3 only. ROCWMMA is ON (beneficial on 6.x).
+          # ROCm 6.4.1: RDNA2 + RDNA3 only.
           - hip: "6.4.1"
             amdgpu_targets: "gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102"
-            rocwmma: "ON"
           # ROCm 7.2.4: adds RDNA3.5 (Strix Halo gfx1150/51), RDNA4
-          # (gfx1200/01), CDNA4 (gfx950 / MI350X). ROCWMMA is OFF — on
-          # ROCm 7.0.2+ the rocWMMA path is slower than the standard HIP
-          # path as context depth grows and is not receiving updates.
+          # (gfx1200/01), CDNA4 (gfx950 / MI350X).
           - hip: "7.2.4"
             amdgpu_targets: "gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102;gfx1150;gfx1151;gfx1200;gfx1201;gfx950"
-            rocwmma: "OFF"
     env:
       AMDGPU_TARGETS: ${{ matrix.amdgpu_targets }}
-      GGML_HIP_ROCWMMA_FATTN: ${{ matrix.rocwmma }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # main
