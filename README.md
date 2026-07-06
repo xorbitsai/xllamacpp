@@ -81,9 +81,9 @@ pip install -U xllamacpp
 
 - From github pypi for `HIP` AMD GPU (use `--force-reinstall` to replace the installed CPU version):
 
-  - ROCm 6.3.4
+  - ROCm 7.2.4
     ```sh
-    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.3.4
+    pip install xllamacpp --force-reinstall --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4
     ```
 
   - ROCm 6.4.1
@@ -116,7 +116,8 @@ Before pip installing `xllamacpp`, please ensure your system meets the following
 - **ROCm (Linux)**:
   - Requires glibc 2.35 or later
   - Requires gcc 10 or later (ROCm libraries have this dependency)
-  - Compatible AMD GPU with ROCm support (ROCm 6.3.4 or 6.4.1)
+  - Compatible AMD GPU with ROCm support (ROCm 6.4.1 or 7.2.4)
+  - See [ROCm (HIP) GPU Architecture Coverage](#rocm-hip-gpu-architecture-coverage) below for the list of supported GPUs per ROCm version
 
 - **Vulkan (Linux/Windows, Intel/AMD/NVIDIA where supported)**:
   - Install the Vulkan SDK and GPU drivers with Vulkan support
@@ -171,6 +172,47 @@ Notes:
 
 The same architecture lists apply to both Linux (x86_64 and arm64) and Windows CUDA wheels,
 since the `sm_XX` value is the GPU architecture and is independent of the host CPU.
+
+## ROCm (HIP) GPU Architecture Coverage
+
+The prebuilt ROCm (HIP) wheels are compiled for a curated set of AMD GPU
+architectures. The set differs between ROCm versions because newer ROCm
+releases add support for newer GPU architectures.
+
+Each target is compiled as native GCN ISA (no PTX/JIT equivalent in the ROCm
+world) — the compiled code runs directly on the specified `gfxXXX` architecture
+and does not auto-upgrade to newer GPUs. This is why the ROCm 7.2.4 wheel ships
+a wider list, covering both older and newer architectures.
+
+| Target | Arch family | GPUs | ROCm 6.4.1 wheel | ROCm 7.2.4 wheel |
+|:-------|:------------|:-----|:-----------------:|:-----------------:|
+| `gfx1030` | RDNA2     | RX 6800 / 6900 XT              | ✅ | ✅ |
+| `gfx1031` | RDNA2     | RX 6700 / 6750 XT              | ✅ | ✅ |
+| `gfx1032` | RDNA2     | RX 6600 / 6650 XT              | ✅ | ✅ |
+| `gfx1100` | RDNA3     | RX 7900 XTX / XT               | ✅ | ✅ |
+| `gfx1101` | RDNA3     | RX 7800 / 7700 XT               | ✅ | ✅ |
+| `gfx1102` | RDNA3     | RX 7600 XT                     | ✅ | ✅ |
+| `gfx1150` | RDNA 3.5  | Strix Point (Ryzen AI 300)     | —  | ✅ |
+| `gfx1151` | RDNA 3.5  | Strix Halo (Ryzen AI Max 300)  | —  | ✅ |
+| `gfx1200` | RDNA4     | RX 9060 / 9070 XT              | —  | ✅ |
+| `gfx1201` | RDNA4     | RX 9070 variants               | —  | ✅ |
+| `gfx950`  | CDNA4     | Instinct MI350X / MI355X       | —  | ✅ |
+
+Notes:
+
+- **ROCm 6.4.1** covers RDNA2 + RDNA3 only. It is retained as the fallback for
+  users who cannot upgrade to ROCm 7.x.
+- **ROCm 7.2.4** adds RDNA 3.5 (Strix Halo / Strix Point APUs), RDNA4 (RX 9060 /
+  9070), and CDNA4 (MI350X datacenter). It is a superset — all GPUs supported by
+  the 6.4.1 wheel are also covered.
+- **ABI compatibility:** a binary built with ROCm 7.2.4 runs on any ROCm 7.x
+  runtime (including 7.13/7.14 from TheRock), since the major version is the
+  ABI boundary. It does **not** run on ROCm 6.x.
+- **rocWMMA flash attention** is enabled on all builds, providing faster
+  attention on supported architectures.
+- **Local source builds** (where `AMDGPU_TARGETS` is unset) default to RDNA2 +
+  RDNA3 targets — see `scripts/build.py`. Set `AMDGPU_TARGETS` explicitly to
+  target your specific GPU (e.g., `export AMDGPU_TARGETS=gfx1151`).
 
 ## Build from Source
 
