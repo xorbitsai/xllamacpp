@@ -141,10 +141,11 @@ def build_llamacpp() -> None:
         amdgpu_targets = os.environ.get("AMDGPU_TARGETS") or (
             "gfx1100;gfx1101;gfx1102;gfx1030;gfx1031;gfx1032"
         )
-        # ROCWMMA flash attention is beneficial on ROCm 6.x but
-        # counterproductive on ROCm 7.0.2+ (slower than the standard
-        # HIP path as context depth grows). CI sets this per version;
-        # local builds default to ON.
+        # ROCWMMA flash attention provides significant performance gains
+        # on supported archs. CI sets this per version; local builds
+        # default to ON. gfx12 support requires ROCm 7.0+ (PR #14202),
+        # and the warp mask compile issue is fixed in our submodule
+        # (PR #15273).
         rocwmma = os.environ.get("GGML_HIP_ROCWMMA_FATTN", "ON")
         log(f"Using AMDGPU targets: {amdgpu_targets}")
         log(f"ROCWMMA flash attention: {rocwmma}")
