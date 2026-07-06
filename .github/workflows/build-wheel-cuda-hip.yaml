@@ -28,7 +28,20 @@ jobs:
       matrix:
         # Build only with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
         pyver: ["3.10"]
-        hip: ["6.3.4", "6.4.1"]
+        hip: ["6.4.1", "7.2.4"]
+        include:
+          # Per-ROCm-version GPU architecture lists, mirroring how the
+          # CUDA job pins CUDA_ARCHITECTURES per toolkit version.
+          #
+          # ROCm 6.4.1: RDNA2 + RDNA3 only.
+          - hip: "6.4.1"
+            amdgpu_targets: "gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102"
+          # ROCm 7.2.4: adds RDNA3.5 (Strix Halo gfx1150/51), RDNA4
+          # (gfx1200/01), CDNA4 (gfx950 / MI350X).
+          - hip: "7.2.4"
+            amdgpu_targets: "gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102;gfx1150;gfx1151;gfx1200;gfx1201;gfx950"
+    env:
+      AMDGPU_TARGETS: ${{ matrix.amdgpu_targets }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # main
@@ -119,6 +132,8 @@ jobs:
                      -e XLLAMACPP_BUILD_HIP=$XLLAMACPP_BUILD_HIP \
                      -e VERSIONEER_CLOSEST_TAG_ONLY=$VERSIONEER_CLOSEST_TAG_ONLY \
                      -e VERBOSE=$VERBOSE \
+                     -e AMDGPU_TARGETS=$AMDGPU_TARGETS \
+                     -e GGML_HIP_ROCWMMA_FATTN=$GGML_HIP_ROCWMMA_FATTN \
                      rocm-container bash -l -c '
             python --version
             gcc -v
