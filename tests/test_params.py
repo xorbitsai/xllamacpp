@@ -79,7 +79,8 @@ def test_enum_values():
     assert xlc.GGML_ROPE_TYPE_VISION == 24
     assert xlc.ggml_sched_priority.GGML_SCHED_PRIO_REALTIME == 3
     assert xlc.ggml_numa_strategy.GGML_NUMA_STRATEGY_COUNT == 5
-    assert xlc.ggml_type.GGML_TYPE_COUNT == 42
+    assert xlc.ggml_type.GGML_TYPE_Q2_0 == 42
+    assert xlc.ggml_type.GGML_TYPE_COUNT == 43
     assert xlc.ggml_backend_dev_type.GGML_BACKEND_DEVICE_TYPE_ACCEL == 3
     assert xlc.llama_rope_scaling_type.LLAMA_ROPE_SCALING_TYPE_MAX_VALUE == 3
     assert xlc.llama_pooling_type.LLAMA_POOLING_TYPE_RANK == 4
