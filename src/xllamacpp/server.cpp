@@ -80,14 +80,26 @@ static void init(common_params &   params,
     SRV_INF("build_info: %s\n", llama_build_info());
 
     common_models_handler models_handler;
-    try {
-        models_handler = common_models_handler_init(params, LLAMA_EXAMPLE_SERVER);
-    } catch (const std::exception & e) {
-        SRV_ERR("failed to fetch model metadata: %s\n", e.what());
-        server_stream_session_manager_stop();
-        llama_backend_free();
-        out.set_value(1);
-        return;
+
+    // xllamacpp starts from already-populated common_params, not argc / argv,
+    // so keep the non-CLI server path active while mirroring llama.cpp's flow.
+    const bool is_run_by_cli = false;
+
+    // note: router mode also accepts -hf remote-preset, so we need to check that first
+    if (!is_run_by_cli && !params.model.hf_repo.empty()) {
+        try {
+            models_handler = common_models_handler_init(params, LLAMA_EXAMPLE_SERVER);
+            if (common_models_handler_is_preset_repo(models_handler)) {
+                // apply the preset and start the server in router mode
+                common_models_handler_apply(models_handler, params);
+            }
+        } catch (const std::exception & e) {
+            SRV_ERR("failed to fetch model metadata: %s\n", e.what());
+            server_stream_session_manager_stop();
+            llama_backend_free();
+            out.set_value(1);
+            return;
+        }
     }
 
     const bool is_router_server = false;
@@ -324,7 +336,9 @@ static void init(common_params &   params,
         llama_backend_free();
         out.set_value(result);
         return;
-    } else if (!is_router_server) {
+    } else if (!is_router_server && !is_run_by_cli) {
+        // single-model mode (NOT spawned by router)
+        // if this is invoked by CLI, model downloading should be already handled
         try {
             common_models_handler_apply(models_handler, params);
         } catch (const std::exception & e) {
@@ -343,7 +357,7 @@ static void init(common_params &   params,
     std::function<void()> clean_up;
 
     if (is_router_server) {
-        SRV_INF("%s", "starting router server, no model will be loaded in this process\n");
+        SRV_INF("%s", "starting server in router mode. models will be automatically loaded on-demand\n");
 
         clean_up = [&models_routes]() {
             SRV_INF("%s: cleaning up before exit...\n", __func__);
@@ -425,8 +439,6 @@ static void init(common_params &   params,
     SRV_INF("listening on %s\n", ctx_http.listening_address.c_str());
 
     if (is_router_server) {
-        SRV_WRN("%s", "NOTE: router mode is experimental\n");
-        SRV_WRN("%s", "      it is not recommended to use this mode in untrusted environments\n");
         if (!params.models_preset_hf.empty()) {
             SRV_WRN("NOTE: using preset.ini from HF repo '%s'\n", params.models_preset_hf.c_str());
             SRV_WRN("%s", "      please only use presets that you can trust! Unknown presets may be unsafe\n");
