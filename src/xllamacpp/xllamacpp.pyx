@@ -2464,6 +2464,46 @@ cdef class CommonParams:
         self.p.use_jinja = value
 
     @property
+    def cors_origins(self) -> str:
+        return self.p.cors_origins
+
+    @cors_origins.setter
+    def cors_origins(self, value: str):
+        self.p.cors_origins = value
+
+    @property
+    def cors_methods(self) -> str:
+        return self.p.cors_methods
+
+    @cors_methods.setter
+    def cors_methods(self, value: str):
+        self.p.cors_methods = value
+
+    @property
+    def cors_headers(self) -> str:
+        return self.p.cors_headers
+
+    @cors_headers.setter
+    def cors_headers(self, value: str):
+        self.p.cors_headers = value
+
+    @property
+    def cors_credentials(self) -> bool:
+        return self.p.cors_credentials
+
+    @cors_credentials.setter
+    def cors_credentials(self, value: bool):
+        self.p.cors_credentials = value
+
+    @property
+    def cors_origins_explicit(self) -> bool:
+        return self.p.cors_origins_explicit
+
+    @cors_origins_explicit.setter
+    def cors_origins_explicit(self, value: bool):
+        self.p.cors_origins_explicit = value
+
+    @property
     def enable_chat_template(self) -> bool:
         """enable chat template"""
         return self.p.enable_chat_template
@@ -2555,6 +2595,15 @@ cdef class CommonParams:
     @default_template_kwargs.setter
     def default_template_kwargs(self, value: dict):
         self.p.default_template_kwargs = value
+
+    @property
+    def server_base(self) -> str:
+        """connect to this server instead of starting a new one"""
+        return self.p.server_base
+
+    @server_base.setter
+    def server_base(self, value: str):
+        self.p.server_base = value
 
     @property
     def ui(self) -> bool:
@@ -2800,6 +2849,42 @@ cdef class CommonParams:
     @out_file.setter
     def out_file(self, value: str):
         self.p.out_file = value
+
+    @property
+    def tokenize_ids(self) -> bool:
+        """only print the token IDs"""
+        return self.p.tokenize_ids
+
+    @tokenize_ids.setter
+    def tokenize_ids(self, value: bool):
+        self.p.tokenize_ids = value
+
+    @property
+    def tokenize_stdin(self) -> bool:
+        """read the prompt from stdin"""
+        return self.p.tokenize_stdin
+
+    @tokenize_stdin.setter
+    def tokenize_stdin(self, value: bool):
+        self.p.tokenize_stdin = value
+
+    @property
+    def tokenize_no_bos(self) -> bool:
+        """do not add the BOS token"""
+        return self.p.tokenize_no_bos
+
+    @tokenize_no_bos.setter
+    def tokenize_no_bos(self, value: bool):
+        self.p.tokenize_no_bos = value
+
+    @property
+    def tokenize_show_count(self) -> bool:
+        """print the total token count"""
+        return self.p.tokenize_show_count
+
+    @tokenize_show_count.setter
+    def tokenize_show_count(self, value: bool):
+        self.p.tokenize_show_count = value
 
     @property
     def n_out_freq(self) -> int:

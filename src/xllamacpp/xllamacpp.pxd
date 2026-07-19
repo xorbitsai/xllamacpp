@@ -89,6 +89,7 @@ cdef extern from "ggml.h":
         GGML_TYPE_MXFP4 # MXFP4 (1 block)
         GGML_TYPE_NVFP4 # NVFP4 (4 blocks, E4M3 scale)
         GGML_TYPE_Q1_0
+        GGML_TYPE_Q2_0
         GGML_TYPE_COUNT
 
 
@@ -674,6 +675,13 @@ cdef extern from "common.h":
         std_string api_prefix
         std_string chat_template
         bint use_jinja
+
+        std_string cors_origins
+        std_string cors_methods
+        std_string cors_headers
+        bint cors_credentials
+        bint cors_origins_explicit
+
         bint enable_chat_template
         bint force_pure_content_parser
 
@@ -688,6 +696,8 @@ cdef extern from "common.h":
         std_string ssl_file_cert
 
         std_map[std_string, std_string] default_template_kwargs
+
+        std_string server_base
 
         # UI configs
         bint ui
@@ -757,6 +767,12 @@ cdef extern from "common.h":
 
         # batched-bench params
         bint batched_bench_output_jsonl
+
+        # tokenize params
+        bint tokenize_ids
+        bint tokenize_stdin
+        bint tokenize_no_bos
+        bint tokenize_show_count
     
         # common params
         std_string out_file      # output filename for all example programs
