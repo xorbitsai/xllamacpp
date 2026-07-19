@@ -294,6 +294,21 @@ def test_common_params():
     assert params.use_jinja is True
     params.use_jinja = False
     assert params.use_jinja is False
+    assert params.cors_origins == "*"
+    params.cors_origins = "https://example.com"
+    assert params.cors_origins == "https://example.com"
+    assert params.cors_methods == "GET, POST, DELETE, OPTIONS"
+    params.cors_methods = "GET, POST"
+    assert params.cors_methods == "GET, POST"
+    assert params.cors_headers == "*"
+    params.cors_headers = "Authorization, Content-Type"
+    assert params.cors_headers == "Authorization, Content-Type"
+    assert params.cors_credentials is True
+    params.cors_credentials = False
+    assert params.cors_credentials is False
+    assert params.cors_origins_explicit is False
+    params.cors_origins_explicit = True
+    assert params.cors_origins_explicit is True
     assert params.enable_chat_template is True
     assert params.force_pure_content_parser is False
     params.force_pure_content_parser = True
@@ -313,6 +328,10 @@ def test_common_params():
 
     params.default_template_kwargs = {"abc": "def"}
     assert params.default_template_kwargs == {"abc": "def"}
+
+    assert params.server_base == ""
+    params.server_base = "http://127.0.0.1:8080"
+    assert params.server_base == "http://127.0.0.1:8080"
 
     assert params.ui is True
     params.ui = False
@@ -355,6 +374,19 @@ def test_common_params():
     assert params.i_pos == -1
     assert params.out_file == ""
 
+    assert params.tokenize_ids is False
+    params.tokenize_ids = True
+    assert params.tokenize_ids is True
+    assert params.tokenize_stdin is False
+    params.tokenize_stdin = True
+    assert params.tokenize_stdin is True
+    assert params.tokenize_no_bos is False
+    params.tokenize_no_bos = True
+    assert params.tokenize_no_bos is True
+    assert params.tokenize_show_count is False
+    params.tokenize_show_count = True
+    assert params.tokenize_show_count is True
+
     assert params.n_out_freq == 10
     assert params.n_save_freq == 0
     assert params.i_chunk == 0
@@ -362,6 +394,9 @@ def test_common_params():
 
     assert params.process_output is False
     assert params.compute_ppl is True
+    assert params.show_statistics is False
+    params.show_statistics = True
+    assert params.show_statistics is True
     assert params.parse_special is False
 
     assert params.n_pca_batch == 100
