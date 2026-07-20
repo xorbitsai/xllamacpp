@@ -308,6 +308,11 @@ The central configuration object. Controls model loading, inference, sampling, s
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
 | `checkpoint_min_step` | int | `8192` | R/W | minimum spacing between context checkpoints |
+| `cors_credentials` | bool | `true` | R/W |  |
+| `cors_headers` | str | `"*"` | R/W |  |
+| `cors_methods` | str | `"GET, POST, DELETE, OPTIONS"` | R/W |  |
+| `cors_origins` | str | `"*"` | R/W |  |
+| `cors_origins_explicit` | bool | `false` | R/W | for --agent option |
 | `force_pure_content_parser` | bool | `false` | R/W | force pure content parser |
 | `models_preset_hf` | str | `""` | R/W | show a warning about remote presets on router loaded (if not empty) |
 | `mtmd_batch_max_tokens` | int | `1024` | R/W |  |
@@ -315,9 +320,14 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `no_alloc` | bool | `false` | R/W | Don't allocate model buffers |
 | `path_prompts_log_dir` | str | `""` | R/W | directory with logged prompts |
 | `reuse_port` | bool | `false` | R/W | allow multiple sockets to bind to the same port |
+| `server_base` | str | `` | R/W | if set, connect to this server instead of starting a new one |
 | `server_tools` | list[str] | `` | R/W | enable built-in tools |
 | `sse_ping_interval` | int | `30` | R/W | SSE ping interval in seconds |
 | `system_prompt` | str | `""` | R/W | the system prompt text |
+| `tokenize_ids` | bool | `false` | R/W | if true, only print the token IDs |
+| `tokenize_no_bos` | bool | `false` | R/W | if true, do not add the BOS token |
+| `tokenize_show_count` | bool | `false` | R/W | if true, print the total token count |
+| `tokenize_stdin` | bool | `false` | R/W | if true, read the prompt from stdin |
 | `ui` | bool | `true` | R/W | enable UI |
 | `ui_config_json` | str | `` | R/W | UI config json |
 | `ui_mcp_proxy` | bool | `false` | R/W | UI MCP proxy |
