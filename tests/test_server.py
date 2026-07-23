@@ -686,6 +686,10 @@ def test_llama_server_tensor_buft_overrides(model_path):
     # the original override string.
     assert params.tensor_buft_overrides == override_str
 
+    # Test clearing overrides with an empty string
+    params.tensor_buft_overrides = ""
+    assert params.tensor_buft_overrides == ""
+
     params.warmup = False
     params.n_predict = 32
     params.n_ctx = 256
