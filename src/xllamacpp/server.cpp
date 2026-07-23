@@ -726,7 +726,7 @@ void parse_tensor_buffer_overrides(const std::string &                          
         buft_overrides.push_back(tensor_name);
         overrides.push_back({ buft_overrides.back().c_str(), buft_list.at(buffer_type) });
     }
-    
+
     // llama expects a NULL-terminated overrides array (a trailing entry with a
     // null pattern). Without this sentinel, common_model_params_to_llama() trips
     // the GGML_ASSERT "Tensor buffer overrides not terminated with empty pattern".
