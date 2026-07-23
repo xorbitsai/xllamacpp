@@ -652,3 +652,64 @@ def test_llama_server_lora(model_path):
 
     # With Shakespeare LoRA, expect Shakespearean-style words
     assert len(content) > 0
+
+
+def test_llama_server_tensor_buft_overrides(model_path):
+    """Regression test for a crash when tensor_buft_overrides is set.
+
+    Setting ``params.tensor_buft_overrides`` produced an overrides vector without
+    a NULL-terminator sentinel, which tripped the GGML_ASSERT in
+    common_model_params_to_llama() during model loading:
+
+        GGML_ASSERT(params.tensor_buft_overrides.back().pattern == nullptr &&
+            "Tensor buffer overrides not terminated with empty pattern")
+
+    llama.cpp expects a NULL-terminated overrides array (a trailing entry whose
+    ``pattern`` is nullptr). The Python binding now appends that sentinel after
+    parsing (and skips it when serializing back). This test loads a MoE model
+    with the expert tensors pinned to the CPU buffer and ensures the server
+    starts and serves a completion without aborting.
+
+    The override pattern is the same regex llama.cpp uses for ``--cpu-moe``
+    (LLM_FFN_EXPS_REGEX in common.h). The crash fires in common_model_params_to_llama()
+    regardless of n_gpu_layers, so we keep n_gpu_layers at the CPU default for
+    portability across CI runners without a GPU.
+    """
+    params = xlc.CommonParams()
+
+    params.model.path = os.path.join(model_path, "stories15M_MOE-F16.gguf")
+    # Pin all MoE expert (ffn_*_exps) tensors to the CPU buffer type.
+    override_str = r"\.ffn_(up|down|gate|gate_up)_(ch|)exps=CPU"
+    params.tensor_buft_overrides = override_str
+
+    # Round-trip: the getter must skip the NULL-terminator sentinel and return
+    # the original override string.
+    assert params.tensor_buft_overrides == override_str
+
+    params.warmup = False
+    params.n_predict = 32
+    params.n_ctx = 256
+    params.n_parallel = 1
+    params.cpuparams.n_threads = 2
+    params.cpuparams_batch.n_threads = 2
+    params.sampling.seed = 42
+    params.sampling.temp = 0.0
+    params.sampling.top_k = 1
+
+    # Server construction triggers model loading and the previously-failing
+    # assertion in common_model_params_to_llama().
+    server = xlc.Server(params)
+
+    complete_prompt = {
+        "max_tokens": 16,
+        "prompt": "Once upon a time",
+        "seed": 42,
+        "temperature": 0.0,
+    }
+
+    result = server.handle_completions(complete_prompt)
+    assert isinstance(result, dict)
+    assert "code" not in result
+    assert "choices" in result
+    content = result["choices"][0]["text"]
+    assert len(content) > 0
