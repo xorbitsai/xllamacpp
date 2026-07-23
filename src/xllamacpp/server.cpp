@@ -702,6 +702,9 @@ void parse_tensor_buffer_overrides(const std::string &                          
         }
     }
 
+    // Assignment semantics: replace any previous overrides instead of appending.
+    overrides.clear();
+
     for (const auto & override : string_split<std::string>(value, ',')) {
         std::string::size_type pos = override.find('=');
         if (pos == std::string::npos) {
@@ -723,6 +726,15 @@ void parse_tensor_buffer_overrides(const std::string &                          
         buft_overrides.push_back(tensor_name);
         overrides.push_back({ buft_overrides.back().c_str(), buft_list.at(buffer_type) });
     }
+    
+    // llama expects a NULL-terminated overrides array (a trailing entry with a
+    // null pattern). Without this sentinel, common_model_params_to_llama() trips
+    // the GGML_ASSERT "Tensor buffer overrides not terminated with empty pattern".
+    // Only append the sentinel when at least one real override was provided so
+    // that an empty value keeps the vector empty (which maps to a NULL pointer).
+    if (!overrides.empty()) {
+        overrides.push_back({ nullptr, nullptr });
+    }
 }
 
 // Helper function to build tensor buffer override strings
@@ -739,6 +751,10 @@ void build_tensor_buffer_overrides(const std::vector<llama_model_tensor_buft_ove
 
     std::vector<std::string> parts;
     for (auto & override : overrides) {
+        // Skip the NULL-terminator sentinel entry added by parse_tensor_buffer_overrides().
+        if (override.pattern == nullptr) {
+            continue;
+        }
         std::string ov_str = std::string(override.pattern) + "=" + buft_list[override.buft];
         parts.emplace_back(ov_str);
     }
