@@ -705,6 +705,13 @@ void parse_tensor_buffer_overrides(const std::string &                          
     // Assignment semantics: replace any previous overrides instead of appending.
     overrides.clear();
 
+    // An empty value clears the overrides: keep the vector empty (which maps to
+    // a NULL pointer). string_split("") yields one empty token, which would
+    // otherwise fail the '=' check below.
+    if (value.empty()) {
+        return;
+    }
+
     for (const auto & override : string_split<std::string>(value, ',')) {
         std::string::size_type pos = override.find('=');
         if (pos == std::string::npos) {
