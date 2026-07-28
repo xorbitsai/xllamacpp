@@ -1,0 +1,67 @@
+diff --git a/ggml/src/ggml-metal/ggml-metal-device.m b/ggml/src/ggml-metal/ggml-metal-device.m
+index 80e47f2c2..c7831c3a2 100644
+--- a/ggml/src/ggml-metal/ggml-metal-device.m
++++ b/ggml/src/ggml-metal/ggml-metal-device.m
+@@ -103,6 +103,44 @@ struct ggml_metal_library {
+     NSLock * lock;
+ };
+ 
++// Pin the Metal Shading Language (MSL) version used for runtime shader compilation.
++//
++// When the language version is not set explicitly, the Metal compiler derives a
++// default from the LC_BUILD_VERSION of the host executable (e.g. the python
++// interpreter that loaded the library). Host executables built against old SDKs
++// get a default older than MSL 3.1, in which case the shaders silently drop the
++// bf16 kernels through the __METAL_VERSION__ < 310 guard in ggml-metal.metal,
++// while the device still reports bfloat support. This results in runtime
++// failures such as:
++//
++//   ggml_metal_library_compile_pipeline: ... "Function kernel_mul_mv_ext_bf16_f32_r1_2
++//   was not found in the library"
++//
++// ref: https://github.com/ggml-org/llama.cpp/issues/21381
++// ref: https://github.com/hybridgroup/yzma/issues/226
++static void ggml_metal_compile_options_set_language_version(ggml_metal_device_t dev, MTLCompileOptions * options) {
++    if (ggml_metal_device_get_props(dev)->has_bfloat) {
++        // bfloat requires MSL 3.1+
++        if (@available(macOS 14.0, iOS 17.0, *)) {
++            if (options.languageVersion < MTLLanguageVersion3_1) {
++                options.languageVersion = MTLLanguageVersion3_1;
++            }
++        }
++    }
++
++    if (ggml_metal_device_get_props(dev)->has_tensor) {
++        // the tensor API requires MSL 4.0+
++        // note: MTLLanguageVersion4_0 requires the macOS 26 SDK, so use the raw
++        //       value (major << 16 | minor) to stay compatible with older Xcode
++        if (@available(macOS 26.0, iOS 26.0, *)) {
++            const MTLLanguageVersion msl_4_0 = (MTLLanguageVersion) (4 << 16);
++            if (options.languageVersion < msl_4_0) {
++                options.languageVersion = msl_4_0;
++            }
++        }
++    }
++}
++
+ ggml_metal_library_t ggml_metal_library_init(ggml_metal_device_t dev) {
+     id<MTLLibrary> library = nil;
+     id<MTLDevice> device = ggml_metal_device_get_obj(dev);
+@@ -228,6 +266,8 @@ ggml_metal_library_t ggml_metal_library_init(ggml_metal_device_t dev) {
+                 MTLCompileOptions * options = [MTLCompileOptions new];
+                 options.preprocessorMacros = prep;
+ 
++                ggml_metal_compile_options_set_language_version(dev, options);
++
+                 //[options setFastMathEnabled:false];
+ 
+                 library = [device newLibraryWithSource:src options:options error:&error];
+@@ -285,6 +325,8 @@ ggml_metal_library_t ggml_metal_library_init_from_source(ggml_metal_device_t dev
+         MTLCompileOptions * options = [MTLCompileOptions new];
+         options.preprocessorMacros = prep;
+ 
++        ggml_metal_compile_options_set_language_version(dev, options);
++
+         library = [device newLibraryWithSource:src options:options error:&error];
+         if (error) {
+             if (verbose) {
