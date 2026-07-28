@@ -1,8 +1,8 @@
 diff --git a/ggml/src/ggml-metal/ggml-metal-device.m b/ggml/src/ggml-metal/ggml-metal-device.m
-index 80e47f2c2..c7831c3a2 100644
+index 80e47f2c2..0401e1d89 100644
 --- a/ggml/src/ggml-metal/ggml-metal-device.m
 +++ b/ggml/src/ggml-metal/ggml-metal-device.m
-@@ -103,6 +103,44 @@ struct ggml_metal_library {
+@@ -103,6 +103,51 @@ struct ggml_metal_library {
      NSLock * lock;
  };
  
@@ -19,27 +19,34 @@ index 80e47f2c2..c7831c3a2 100644
 +//   ggml_metal_library_compile_pipeline: ... "Function kernel_mul_mv_ext_bf16_f32_r1_2
 +//   was not found in the library"
 +//
++// The versions below are pinned unconditionally (no @available guard) so this
++// can never silently happen again: on macOS every GPU that reports bfloat
++// (M3 or newer) or tensor (M5 or newer) support also requires an OS that
++// supports the corresponding MSL version. In off-nominal environments (e.g.
++// an older macOS VM on newer hardware) the Metal compiler rejects the
++// unsupported version with an explicit error at library init instead of
++// silently building a library with the bf16 kernels stripped.
++//
++// note: MTLLanguageVersion3_1/MTLLanguageVersion4_0 require the macOS 14/26
++//       SDK, so use the raw values (major << 16 | minor) to stay compatible
++//       with older Xcode
++//
 +// ref: https://github.com/ggml-org/llama.cpp/issues/21381
 +// ref: https://github.com/hybridgroup/yzma/issues/226
 +static void ggml_metal_compile_options_set_language_version(ggml_metal_device_t dev, MTLCompileOptions * options) {
 +    if (ggml_metal_device_get_props(dev)->has_bfloat) {
 +        // bfloat requires MSL 3.1+
-+        if (@available(macOS 14.0, iOS 17.0, *)) {
-+            if (options.languageVersion < MTLLanguageVersion3_1) {
-+                options.languageVersion = MTLLanguageVersion3_1;
-+            }
++        const MTLLanguageVersion msl_3_1 = (MTLLanguageVersion) (3 << 16 | 1);
++        if (options.languageVersion < msl_3_1) {
++            options.languageVersion = msl_3_1;
 +        }
 +    }
 +
 +    if (ggml_metal_device_get_props(dev)->has_tensor) {
 +        // the tensor API requires MSL 4.0+
-+        // note: MTLLanguageVersion4_0 requires the macOS 26 SDK, so use the raw
-+        //       value (major << 16 | minor) to stay compatible with older Xcode
-+        if (@available(macOS 26.0, iOS 26.0, *)) {
-+            const MTLLanguageVersion msl_4_0 = (MTLLanguageVersion) (4 << 16);
-+            if (options.languageVersion < msl_4_0) {
-+                options.languageVersion = msl_4_0;
-+            }
++        const MTLLanguageVersion msl_4_0 = (MTLLanguageVersion) (4 << 16);
++        if (options.languageVersion < msl_4_0) {
++            options.languageVersion = msl_4_0;
 +        }
 +    }
 +}
@@ -47,7 +54,7 @@ index 80e47f2c2..c7831c3a2 100644
  ggml_metal_library_t ggml_metal_library_init(ggml_metal_device_t dev) {
      id<MTLLibrary> library = nil;
      id<MTLDevice> device = ggml_metal_device_get_obj(dev);
-@@ -228,6 +266,8 @@ ggml_metal_library_t ggml_metal_library_init(ggml_metal_device_t dev) {
+@@ -228,6 +273,8 @@ ggml_metal_library_t ggml_metal_library_init(ggml_metal_device_t dev) {
                  MTLCompileOptions * options = [MTLCompileOptions new];
                  options.preprocessorMacros = prep;
  
@@ -56,7 +63,7 @@ index 80e47f2c2..c7831c3a2 100644
                  //[options setFastMathEnabled:false];
  
                  library = [device newLibraryWithSource:src options:options error:&error];
-@@ -285,6 +325,8 @@ ggml_metal_library_t ggml_metal_library_init_from_source(ggml_metal_device_t dev
+@@ -285,6 +332,8 @@ ggml_metal_library_t ggml_metal_library_init_from_source(ggml_metal_device_t dev
          MTLCompileOptions * options = [MTLCompileOptions new];
          options.preprocessorMacros = prep;
  
@@ -65,3 +72,37 @@ index 80e47f2c2..c7831c3a2 100644
          library = [device newLibraryWithSource:src options:options error:&error];
          if (error) {
              if (verbose) {
+@@ -824,6 +873,33 @@ ggml_metal_device_t ggml_metal_device_init(int device) {
+                 }
+             }
+ 
++            // double-check that bfloat support compiles: the bf16 kernels require
++            // MSL 3.1+ (see ggml_metal_compile_options_set_language_version) - if the
++            // environment cannot provide it, disable bfloat so BF16 ops fall back to
++            // CPU instead of failing later with "Function kernel_..._bf16_... was not
++            // found in the library"
++            if (dev->props.has_bfloat && !dev->props.has_tensor) {
++                const char * src_bf16 = "\n"
++                    "#include <metal_stdlib> \n"
++                    "using namespace metal; \n"
++                    "kernel void dummy_kernel(device bfloat * dst [[buffer(0)]], device const bfloat * src [[buffer(1)]], uint i [[thread_position_in_grid]]) { dst[i] = src[i]; } \n";
++
++                GGML_LOG_INFO("%s: testing bfloat support\n", __func__);
++                ggml_metal_library_t lib = ggml_metal_library_init_from_source(dev, src_bf16, false);
++                if (lib == NULL) {
++                    GGML_LOG_WARN("%s: - bfloat is not supported in this environment - disabling bfloat support\n", __func__);
++                    dev->props.has_bfloat = false;
++                } else {
++                    struct ggml_metal_pipeline_with_params ppl = ggml_metal_library_compile_pipeline(lib, "dummy_kernel", "dummy_kernel", nil);
++                    if (!ppl.pipeline) {
++                        GGML_LOG_WARN("%s: - bfloat is not supported in this environment - disabling bfloat support\n", __func__);
++                        dev->props.has_bfloat = false;
++                    }
++
++                    ggml_metal_library_free(lib);
++                }
++            }
++
+             dev->props.use_residency_sets = true;
+ #if defined(GGML_METAL_HAS_RESIDENCY_SETS)
+             dev->props.use_residency_sets = getenv("GGML_METAL_NO_RESIDENCY") == nil;
