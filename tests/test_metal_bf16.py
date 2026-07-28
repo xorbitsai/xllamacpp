@@ -13,7 +13,9 @@ kernels and loading a model with BF16 tensors fails with:
 
 The fix (patches/llama.cpp/0001-metal-pin-msl-language-version.patch, applied
 at build time by scripts/build.py) pins the MSL version to >= 3.1 when the
-device supports bfloat.
+device reports bfloat support, and probes bf16 compilation at device init: if
+the environment cannot compile MSL 3.1, bfloat is disabled (with a warning) so
+BF16 ops fall back to CPU instead of failing model loads.
 
 These tests build a tiny llama GGUF whose weights are all BF16 and load it:
 1. in-process, and
@@ -22,6 +24,9 @@ These tests build a tiny llama GGUF whose weights are all BF16 and load it:
 
 On machines without bfloat support (M1/M2) llama.cpp falls back to CPU for
 BF16 ops, so the tests still pass but do not exercise the Metal bf16 kernels.
+On M3+ machines the tests additionally verify that the bf16 kernels were
+actually built: a silent fallback (bfloat disabled, model running on CPU)
+must fail the test, not pass it.
 """
 
 import os
@@ -41,6 +46,25 @@ pytestmark = pytest.mark.skipif(
     platform.system() != "Darwin" or platform.machine() != "arm64",
     reason="Metal bf16 kernels are only exercised on Apple Silicon",
 )
+
+
+def _apple_silicon_gen() -> int:
+    """SoC generation (3 for M3, 4 for M4, ...); 0 if unknown."""
+    try:
+        brand = subprocess.run(
+            ["sysctl", "-n", "machdep.cpu.brand_string"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return 0
+    m = re.search(r"Apple M(\d+)", brand)
+    return int(m.group(1)) if m else 0
+
+
+# bfloat (Metal3 GPU family) requires M3 or newer
+_EXPECT_BF16 = _apple_silicon_gen() >= 3
 
 
 def _f32_to_bf16(arr):
@@ -115,8 +139,12 @@ def _load_model(model_path: str) -> None:
     del server
 
 
-def test_metal_bf16_model_loads(bf16_model_path):
+def test_metal_bf16_model_loads(bf16_model_path, capfd):
     _load_model(bf16_model_path)
+    if _EXPECT_BF16:
+        # a silent fallback (bfloat disabled -> BF16 ops on CPU) would still
+        # load successfully - make sure that did not happen
+        assert "disabling bfloat support" not in capfd.readouterr().err
 
 
 _PYHOST_C = "#include <Python.h>\nint main(int argc, char **argv) { return Py_BytesMain(argc, argv); }\n"
@@ -196,3 +224,9 @@ def test_metal_bf16_model_loads_with_old_sdk_python(old_sdk_python, bf16_model_p
     )
     assert "was not found in the library" not in proc.stderr
     assert "MODEL_LOADED_OK" in proc.stdout
+    if _EXPECT_BF16:
+        # the bf16 kernels must have been built for real: bfloat must have
+        # stayed enabled - a silent disable would still load OK via CPU
+        # fallback (with bfloat enabled but no bf16 kernels in the library,
+        # the load above would have failed with "was not found")
+        assert "disabling bfloat support" not in proc.stderr
