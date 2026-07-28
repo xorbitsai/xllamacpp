@@ -89,6 +89,22 @@ def revert_llamacpp_patches(patches: list[Path]) -> None:
     for patch in reversed(patches):
         run(["git", "apply", "--reverse", str(patch)], cwd=PROJECT)
         log(f"reverted patch: {patch.name}")
+        # git apply --reverse restores the original content but with a fresh
+        # mtime that is still *older* than the objects just compiled from the
+        # patched sources. Bump the mtime of every file the patch touches so
+        # the next build recompiles them if the patch set has changed.
+        for line in subprocess.run(
+            ["git", "apply", "--numstat", str(patch)],
+            cwd=PROJECT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.splitlines():
+            parts = line.split("\t")
+            if len(parts) == 3:
+                touched = PROJECT / parts[2]
+                if touched.exists():
+                    os.utime(touched)
 
 
 def hip_compiler() -> str:
