@@ -262,8 +262,9 @@ def build_llamacpp() -> None:
     log("Running CMake with arguments: " + " ".join(cmake_args))
     log("Building targets: " + " ".join(targets))
 
-    applied = apply_llamacpp_patches(llamacpp_patches())
+    patches_to_revert: list[Path] = []
     try:
+        patches_to_revert = apply_llamacpp_patches(llamacpp_patches())
         run(["cmake", "..", *cmake_args], cwd=build_dir)
         run(
             [
@@ -280,7 +281,7 @@ def build_llamacpp() -> None:
             cwd=build_dir,
         )
     finally:
-        revert_llamacpp_patches(applied)
+        revert_llamacpp_patches(patches_to_revert)
 
     shutil.rmtree(PREFIX, ignore_errors=True)
     run([sys.executable, str(ROOT / "scripts" / "copy_libs.py")], cwd=ROOT)
