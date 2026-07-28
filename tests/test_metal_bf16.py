@@ -222,6 +222,7 @@ def test_metal_bf16_model_loads_with_old_sdk_python(old_sdk_python, bf16_model_p
         timeout=300,
         env=env,
     )
+    assert proc.returncode == 0, f"Process failed with code {proc.returncode}. Stderr: {proc.stderr}"
     assert "was not found in the library" not in proc.stderr
     assert "MODEL_LOADED_OK" in proc.stdout
     if _EXPECT_BF16:
