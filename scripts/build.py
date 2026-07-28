@@ -64,24 +64,35 @@ def apply_llamacpp_patches(patches: list[Path]) -> list[Path]:
     Patches that are already present in the working tree (e.g. left over from
     an interrupted build) are skipped and not returned, so they are not
     reverted either.
+
+    If applying a patch fails, every patch applied by this call is reverted
+    before the error propagates, so the checkout is never left half-patched.
     """
     applied: list[Path] = []
-    for patch in patches:
-        already_applied = (
-            subprocess.run(
-                ["git", "apply", "--reverse", "--check", str(patch)],
-                cwd=PROJECT,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            ).returncode
-            == 0
-        )
-        if already_applied:
-            log(f"patch already applied, skipping: {patch.name}")
-            continue
-        run(["git", "apply", str(patch)], cwd=PROJECT)
-        log(f"applied patch: {patch.name}")
-        applied.append(patch)
+    try:
+        for patch in patches:
+            already_applied = (
+                subprocess.run(
+                    ["git", "apply", "--reverse", "--check", str(patch)],
+                    cwd=PROJECT,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                ).returncode
+                == 0
+            )
+            if already_applied:
+                log(f"patch already applied, skipping: {patch.name}")
+                continue
+            run(["git", "apply", str(patch)], cwd=PROJECT)
+            log(f"applied patch: {patch.name}")
+            applied.append(patch)
+    except Exception:
+        log("patch application failed, reverting already-applied patches")
+        try:
+            revert_llamacpp_patches(applied)
+        except Exception as revert_exc:
+            log(f"failed to revert partially applied patches: {revert_exc}")
+        raise
     return applied
 
 
