@@ -90,5 +90,29 @@ jobs:
 
       - name: Test with pytest
         run: |
-            pytest --timeout=1500 -W ignore::PendingDeprecationWarning tests
+            pytest -s --timeout=1500 -W ignore::PendingDeprecationWarning tests
         working-directory: .
+
+      - name: Dump macOS crash reports (if pytest crashed)
+        if: always() && startsWith(matrix.os, 'macos')
+        run: |
+            # give the async ReportCrash daemon a moment to finish writing
+            sleep 10
+            FOUND=0
+            for REPORT_DIR in "$HOME/Library/Logs/DiagnosticReports" "/Library/Logs/DiagnosticReports"; do
+              echo "Looking for crash reports in $REPORT_DIR"
+              if [ -d "$REPORT_DIR" ]; then
+                # -mmin, not GNU find's -newermt, for BSD find compatibility on macOS
+                while IFS= read -r f; do
+                  FOUND=1
+                  echo "===== $f ====="
+                  cat "$f"
+                  echo "===== end $f ====="
+                done < <(find "$REPORT_DIR" \( -iname "*python*" -o -iname "*pytest*" \) \( -iname "*.ips" -o -iname "*.crash" \) -mmin -30 -print 2>/dev/null)
+              fi
+            done
+            if [ "$FOUND" -eq 0 ]; then
+              echo "no matching crash reports found"
+            fi
+        working-directory: .
+
