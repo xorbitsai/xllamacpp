@@ -1,8 +1,8 @@
 diff --git a/ggml/src/ggml-metal/ggml-metal-device.m b/ggml/src/ggml-metal/ggml-metal-device.m
-index 80e47f2c2..0401e1d89 100644
+index 80e47f2c2..b540e9a9e 100644
 --- a/ggml/src/ggml-metal/ggml-metal-device.m
 +++ b/ggml/src/ggml-metal/ggml-metal-device.m
-@@ -103,6 +103,51 @@ struct ggml_metal_library {
+@@ -103,6 +103,50 @@ struct ggml_metal_library {
      NSLock * lock;
  };
  
@@ -19,17 +19,24 @@ index 80e47f2c2..0401e1d89 100644
 +//   ggml_metal_library_compile_pipeline: ... "Function kernel_mul_mv_ext_bf16_f32_r1_2
 +//   was not found in the library"
 +//
-+// The versions below are pinned unconditionally (no @available guard) so this
-+// can never silently happen again: on macOS every GPU that reports bfloat
-+// (M3 or newer) or tensor (M5 or newer) support also requires an OS that
-+// supports the corresponding MSL version. In off-nominal environments (e.g.
-+// an older macOS VM on newer hardware) the Metal compiler rejects the
-+// unsupported version with an explicit error at library init instead of
-+// silently building a library with the bf16 kernels stripped.
++// The version is pinned unconditionally (no @available guard) so this can
++// never silently happen again: on macOS every GPU that reports bfloat support
++// (M3 or newer) also requires an OS that supports MSL 3.1. In off-nominal
++// environments (e.g. an older macOS VM on newer hardware) the Metal compiler
++// rejects the unsupported version with an explicit error at library init
++// instead of silently building a library with the bf16 kernels stripped.
 +//
-+// note: MTLLanguageVersion3_1/MTLLanguageVersion4_0 require the macOS 14/26
-+//       SDK, so use the raw values (major << 16 | minor) to stay compatible
-+//       with older Xcode
++// note: the version is deliberately *not* raised to MSL 4.0 for has_tensor
++//       (M5+) devices. The tensor API must stay gated by the upstream compile
++//       probes against the host's *native* default MSL: hosts with a modern
++//       toolchain already default to MSL 4.0+ and keep the tensor API, while
++//       old-SDK hosts (e.g. conda python) fall back to the proven non-tensor
++//       path. Forcing MSL 4.0 here enables the tensor code path in
++//       environments where upstream never exercises it, which aborts on M5
++//       during backend init.
++//
++// note: MTLLanguageVersion3_1 requires the macOS 14 SDK, so use the raw value
++//       (major << 16 | minor) to stay compatible with older Xcode
 +//
 +// ref: https://github.com/ggml-org/llama.cpp/issues/21381
 +// ref: https://github.com/hybridgroup/yzma/issues/226
@@ -41,38 +48,60 @@ index 80e47f2c2..0401e1d89 100644
 +            options.languageVersion = msl_3_1;
 +        }
 +    }
-+
-+    if (ggml_metal_device_get_props(dev)->has_tensor) {
-+        // the tensor API requires MSL 4.0+
-+        const MTLLanguageVersion msl_4_0 = (MTLLanguageVersion) (4 << 16);
-+        if (options.languageVersion < msl_4_0) {
-+            options.languageVersion = msl_4_0;
-+        }
-+    }
 +}
 +
  ggml_metal_library_t ggml_metal_library_init(ggml_metal_device_t dev) {
      id<MTLLibrary> library = nil;
      id<MTLDevice> device = ggml_metal_device_get_obj(dev);
-@@ -228,6 +273,8 @@ ggml_metal_library_t ggml_metal_library_init(ggml_metal_device_t dev) {
+@@ -228,9 +272,22 @@ ggml_metal_library_t ggml_metal_library_init(ggml_metal_device_t dev) {
                  MTLCompileOptions * options = [MTLCompileOptions new];
                  options.preprocessorMacros = prep;
  
-+                ggml_metal_compile_options_set_language_version(dev, options);
+-                //[options setFastMathEnabled:false];
++                // Setting an MSL version the linked Metal framework does not recognize
++                // (or that the compiler otherwise rejects outright) can raise an
++                // uncaught NSException instead of populating `error` - this would
++                // abort() the whole process, which is fatal for an embedded Python
++                // extension. Treat that the same as a normal compile failure.
++                @try {
++                    ggml_metal_compile_options_set_language_version(dev, options);
 +
-                 //[options setFastMathEnabled:false];
++                    //[options setFastMathEnabled:false];
  
-                 library = [device newLibraryWithSource:src options:options error:&error];
-@@ -285,6 +332,8 @@ ggml_metal_library_t ggml_metal_library_init_from_source(ggml_metal_device_t dev
+-                library = [device newLibraryWithSource:src options:options error:&error];
++                    library = [device newLibraryWithSource:src options:options error:&error];
++                } @catch (NSException * exception) {
++                    GGML_LOG_ERROR("%s: exception while compiling metal library: %s\n",
++                            __func__, [[exception reason] UTF8String]);
++                    return nil;
++                }
+                 if (error) {
+                     GGML_LOG_ERROR("%s: error: %s\n", __func__, [[error description] UTF8String]);
+                     return nil;
+@@ -285,7 +342,21 @@ ggml_metal_library_t ggml_metal_library_init_from_source(ggml_metal_device_t dev
          MTLCompileOptions * options = [MTLCompileOptions new];
          options.preprocessorMacros = prep;
  
-+        ggml_metal_compile_options_set_language_version(dev, options);
+-        library = [device newLibraryWithSource:src options:options error:&error];
++        // See the comment in ggml_metal_library_init: guard against an uncaught
++        // NSException from an MSL version the linked framework rejects outright.
++        @try {
++            ggml_metal_compile_options_set_language_version(dev, options);
 +
-         library = [device newLibraryWithSource:src options:options error:&error];
++            library = [device newLibraryWithSource:src options:options error:&error];
++        } @catch (NSException * exception) {
++            if (verbose) {
++                GGML_LOG_ERROR("%s: exception while compiling source: %s\n",
++                        __func__, [[exception reason] UTF8String]);
++            } else {
++                GGML_LOG_ERROR("%s: exception while compiling source\n", __func__);
++            }
++            library = nil;
++        }
          if (error) {
              if (verbose) {
-@@ -824,6 +873,33 @@ ggml_metal_device_t ggml_metal_device_init(int device) {
+                 GGML_LOG_ERROR("%s: error compiling source: %s\n", __func__, [[error description] UTF8String]);
+@@ -824,6 +895,33 @@ ggml_metal_device_t ggml_metal_device_init(int device) {
                  }
              }
  
