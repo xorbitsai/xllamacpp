@@ -1,13 +1,15 @@
-"""Regression tests for Metal bf16 kernel support on Apple Silicon (M3+).
+"""Regression tests for Metal bf16 kernel support on Apple Silicon (M1+).
 
 Background: the wheel embeds the Metal shader source and JIT-compiles it at
-runtime. llama.cpp injects GGML_METAL_HAS_BF16 when the GPU supports bfloat,
-but never pins MTLCompileOptions.languageVersion, so the Metal compiler
-derives the default shading language version from the *host executable's*
-LC_BUILD_VERSION (the python interpreter). Interpreters linked against old
-SDKs (conda, python.org) default to MSL 2.x, in which case the
-`__METAL_VERSION__ < 310` guard in ggml-metal.metal silently strips all bf16
-kernels and loading a model with BF16 tensors fails with:
+runtime. llama.cpp injects GGML_METAL_HAS_BF16 when the GPU supports bfloat
+(has_bfloat is true starting with MTLGPUFamilyApple6, i.e. A14/M1, not just
+M3+ as earlier drafts of this file assumed), but never pins
+MTLCompileOptions.languageVersion, so the Metal compiler derives the default
+shading language version from the *host executable's* LC_BUILD_VERSION (the
+python interpreter). Interpreters linked against old SDKs (conda,
+python.org) default to MSL 2.x, in which case the `__METAL_VERSION__ < 310`
+guard in ggml-metal.metal silently strips all bf16 kernels and loading a
+model with BF16 tensors fails with:
 
     Function kernel_mul_mv_ext_bf16_f32_r1_2 was not found in the library
 
@@ -17,16 +19,19 @@ device reports bfloat support, and probes bf16 compilation at device init: if
 the environment cannot compile MSL 3.1, bfloat is disabled (with a warning) so
 BF16 ops fall back to CPU instead of failing model loads.
 
-These tests build a tiny llama GGUF whose weights are all BF16 and load it:
+These tests build a tiny llama GGUF whose weight matrices are BF16 (norm/1D
+tensors stay F32, matching how real BF16 GGUF conversions work - see
+conversion/base.py in the llama.cpp submodule) and load it:
 1. in-process, and
 2. under a python host whose LC_BUILD_VERSION is rewritten to an old SDK,
    emulating conda/python.org interpreters (the failing scenario).
 
-On machines without bfloat support (M1/M2) llama.cpp falls back to CPU for
-BF16 ops, so the tests still pass but do not exercise the Metal bf16 kernels.
-On M3+ machines the tests additionally verify that the bf16 kernels were
-actually built: a silent fallback (bfloat disabled, model running on CPU)
-must fail the test, not pass it.
+On machines without bfloat support llama.cpp falls back to CPU for BF16 ops,
+so the tests still pass but do not exercise the Metal bf16 kernels. Where
+_EXPECT_BF16 is true (SoC generation >= 3, i.e. M3+ - kept conservative here
+even though has_bfloat itself is true starting at M1) the tests additionally
+verify that the bf16 kernels were actually built: a silent fallback (bfloat
+disabled, model running on CPU) must fail the test, not pass it.
 """
 
 import os
@@ -76,7 +81,16 @@ def _f32_to_bf16(arr):
 
 
 def _write_bf16_variant(src: Path, dst: Path) -> None:
-    """Copy a llama GGUF with every tensor rewritten as BF16 random weights."""
+    """Copy a llama GGUF with weight matrices rewritten as BF16 random weights.
+
+    Mirrors llama.cpp's own conversion invariant (conversion/base.py,
+    ModelBase.write_tensors): 1D tensors and *_norm.weight tensors are always
+    kept as F32 ("most of the codebase that takes in 1D tensors or norms only
+    handles F32 tensors") - no real BF16 GGUF file has BF16 norm weights.
+    Forcing them to BF16 here would create a tensor-type combination
+    (F32 activation x BF16 norm weight in ggml_mul) that no real model ever
+    produces and that isn't universally supported by every ggml backend.
+    """
     gguf = pytest.importorskip("gguf")
     import numpy as np
 
@@ -105,11 +119,14 @@ def _write_bf16_variant(src: Path, dst: Path) -> None:
         # numpy order and reverses them when writing the file.
         shape = tuple(int(d) for d in tensor.shape[::-1])
         data = rng.normal(0.0, 0.02, size=shape).astype(np.float32)
-        writer.add_tensor(
-            tensor.name,
-            _f32_to_bf16(data).reshape(shape),
-            raw_dtype=gguf.GGMLQuantizationType.BF16,
-        )
+        if len(shape) <= 1 or tensor.name.endswith("_norm.weight"):
+            writer.add_tensor(tensor.name, data, raw_dtype=gguf.GGMLQuantizationType.F32)
+        else:
+            writer.add_tensor(
+                tensor.name,
+                _f32_to_bf16(data).reshape(shape),
+                raw_dtype=gguf.GGMLQuantizationType.BF16,
+            )
 
     writer.write_header_to_file()
     writer.write_kv_data_to_file()
@@ -128,16 +145,26 @@ def bf16_model_path(tmp_path_factory):
 
 
 def _load_model(model_path: str) -> None:
+    import sys
+
     import xllamacpp as xlc
 
     params = xlc.CommonParams()
     params.model.path = model_path
     params.n_ctx = 512
     params.n_gpu_layers = 99
+    # GGML_LOG_INFO lines (e.g. ggml_metal_device_init's "has bfloat"/"has
+    # tensor"/GPU family diagnostics) are mapped by common_get_verbosity() to
+    # LOG_LEVEL_TRACE (4), while the default verbosity threshold is
+    # LOG_LEVEL_INFO (3) - i.e. they are silently dropped by default,
+    # regardless of any output capturing. Raise it so they are actually
+    # emitted; this matters most for diagnosing CI-only failures.
     params.verbosity = 999
     print("[test_metal_bf16] about to construct xlc.Server(...)", flush=True)
+    sys.stderr.flush()
     # default warmup=True: the warmup run is what compiles the bf16 pipelines
     server = xlc.Server(params)
+    print("[test_metal_bf16] xlc.Server(...) constructed successfully", flush=True)
     del server
 
 
