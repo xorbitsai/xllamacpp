@@ -134,6 +134,8 @@ def _load_model(model_path: str) -> None:
     params.model.path = model_path
     params.n_ctx = 512
     params.n_gpu_layers = 99
+    params.verbosity = 999
+    print("[test_metal_bf16] about to construct xlc.Server(...)", flush=True)
     # default warmup=True: the warmup run is what compiles the bf16 pipelines
     server = xlc.Server(params)
     del server
@@ -210,6 +212,8 @@ def test_metal_bf16_model_loads_with_old_sdk_python(old_sdk_python, bf16_model_p
         f"p.model.path = {bf16_model_path!r}\n"
         "p.n_ctx = 512\n"
         "p.n_gpu_layers = 99\n"
+        "p.verbosity = 999\n"
+        "print('about to construct xlc.Server(...)')\n"
         "xlc.Server(p)\n"
         "print('MODEL_LOADED_OK')\n"
     )
