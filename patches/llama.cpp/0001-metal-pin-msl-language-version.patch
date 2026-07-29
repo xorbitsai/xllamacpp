@@ -1,8 +1,8 @@
 diff --git a/ggml/src/ggml-metal/ggml-metal-device.m b/ggml/src/ggml-metal/ggml-metal-device.m
-index 80e47f2c2..b540e9a9e 100644
+index 80e47f2c2..91d1d8723 100644
 --- a/ggml/src/ggml-metal/ggml-metal-device.m
 +++ b/ggml/src/ggml-metal/ggml-metal-device.m
-@@ -103,6 +103,50 @@ struct ggml_metal_library {
+@@ -103,6 +103,54 @@ struct ggml_metal_library {
      NSLock * lock;
  };
  
@@ -26,14 +26,16 @@ index 80e47f2c2..b540e9a9e 100644
 +// rejects the unsupported version with an explicit error at library init
 +// instead of silently building a library with the bf16 kernels stripped.
 +//
-+// note: the version is deliberately *not* raised to MSL 4.0 for has_tensor
-+//       (M5+) devices. The tensor API must stay gated by the upstream compile
-+//       probes against the host's *native* default MSL: hosts with a modern
-+//       toolchain already default to MSL 4.0+ and keep the tensor API, while
-+//       old-SDK hosts (e.g. conda python) fall back to the proven non-tensor
-+//       path. Forcing MSL 4.0 here enables the tensor code path in
-+//       environments where upstream never exercises it, which aborts on M5
-+//       during backend init.
++// note: the pin is scoped to has_bfloat && !has_tensor. It must not apply
++//       when has_tensor is also true (M5+): ggml_metal_library_init_from_source
++//       is the same call site upstream uses for its own tensor-API compile
++//       probes (<metal_tensor>/MetalPerformancePrimitives, gated purely on
++//       has_tensor), which require MSL 4.0. Pinning 3.1 unconditionally on
++//       has_bfloat would downgrade those probes' language version on any M5+
++//       device (M5 reports both has_bfloat and has_tensor), breaking a code
++//       path upstream already handles correctly on its own. M5+ devices keep
++//       whatever native default MSL the host provides, exactly as upstream
++//       intends; only chips with bfloat but no tensor API (M3/M4) get the pin.
 +//
 +// note: MTLLanguageVersion3_1 requires the macOS 14 SDK, so use the raw value
 +//       (major << 16 | minor) to stay compatible with older Xcode
@@ -41,7 +43,9 @@ index 80e47f2c2..b540e9a9e 100644
 +// ref: https://github.com/ggml-org/llama.cpp/issues/21381
 +// ref: https://github.com/hybridgroup/yzma/issues/226
 +static void ggml_metal_compile_options_set_language_version(ggml_metal_device_t dev, MTLCompileOptions * options) {
-+    if (ggml_metal_device_get_props(dev)->has_bfloat) {
++    const struct ggml_metal_device_props * props = ggml_metal_device_get_props(dev);
++
++    if (props->has_bfloat && !props->has_tensor) {
 +        // bfloat requires MSL 3.1+
 +        const MTLLanguageVersion msl_3_1 = (MTLLanguageVersion) (3 << 16 | 1);
 +        if (options.languageVersion < msl_3_1) {
@@ -53,7 +57,7 @@ index 80e47f2c2..b540e9a9e 100644
  ggml_metal_library_t ggml_metal_library_init(ggml_metal_device_t dev) {
      id<MTLLibrary> library = nil;
      id<MTLDevice> device = ggml_metal_device_get_obj(dev);
-@@ -228,9 +272,22 @@ ggml_metal_library_t ggml_metal_library_init(ggml_metal_device_t dev) {
+@@ -228,9 +276,22 @@ ggml_metal_library_t ggml_metal_library_init(ggml_metal_device_t dev) {
                  MTLCompileOptions * options = [MTLCompileOptions new];
                  options.preprocessorMacros = prep;
  
@@ -78,7 +82,7 @@ index 80e47f2c2..b540e9a9e 100644
                  if (error) {
                      GGML_LOG_ERROR("%s: error: %s\n", __func__, [[error description] UTF8String]);
                      return nil;
-@@ -285,7 +342,21 @@ ggml_metal_library_t ggml_metal_library_init_from_source(ggml_metal_device_t dev
+@@ -285,7 +346,21 @@ ggml_metal_library_t ggml_metal_library_init_from_source(ggml_metal_device_t dev
          MTLCompileOptions * options = [MTLCompileOptions new];
          options.preprocessorMacros = prep;
  
@@ -101,7 +105,7 @@ index 80e47f2c2..b540e9a9e 100644
          if (error) {
              if (verbose) {
                  GGML_LOG_ERROR("%s: error compiling source: %s\n", __func__, [[error description] UTF8String]);
-@@ -824,6 +895,33 @@ ggml_metal_device_t ggml_metal_device_init(int device) {
+@@ -824,6 +899,33 @@ ggml_metal_device_t ggml_metal_device_init(int device) {
                  }
              }
  
