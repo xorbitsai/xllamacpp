@@ -34,8 +34,8 @@ def test_common_params_sampling():
     assert params.sampling.reasoning_budget_start == [1, 2, 3]
 
     assert params.sampling.reasoning_budget_end == []
-    params.sampling.reasoning_budget_end = [4, 5, 6]
-    assert params.sampling.reasoning_budget_end == [4, 5, 6]
+    params.sampling.reasoning_budget_end = [[4, 5, 6], [7, 8]]
+    assert params.sampling.reasoning_budget_end == [[4, 5, 6], [7, 8]]
 
     assert params.sampling.reasoning_budget_forced == []
     params.sampling.reasoning_budget_forced = [7, 8, 9]
@@ -99,6 +99,7 @@ def test_enum_values():
     assert xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE == 1
     assert xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3 == 2
     assert xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_MTP == 3
+    assert xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK == 5
 
 
 def test_common_params():
@@ -232,11 +233,9 @@ def test_common_params():
     assert params.swa_full is False
     assert params.kv_unified is False
     assert params.input_prefix_bos is False
-    assert params.use_mmap is True
-    assert params.use_direct_io is False
-    params.use_direct_io = False
-    assert params.use_direct_io is False
-    assert params.use_mlock is False
+    assert params.load_mode == xlc.llama_load_mode.LLAMA_LOAD_MODE_MMAP
+    params.load_mode = xlc.llama_load_mode.LLAMA_LOAD_MODE_DIRECT_IO
+    assert params.load_mode == xlc.llama_load_mode.LLAMA_LOAD_MODE_DIRECT_IO
     assert params.verbose_prompt is False
     assert params.display_prompt is True
     assert params.no_kv_offload is False
@@ -347,6 +346,13 @@ def test_common_params():
     assert params.server_tools == []
     params.server_tools = ["tool1", "tool2"]
     assert params.server_tools == ["tool1", "tool2"]
+
+    assert params.mcp_servers_config == ""
+    params.mcp_servers_config = "/tmp/mcp.json"
+    assert params.mcp_servers_config == "/tmp/mcp.json"
+    assert params.mcp_servers_json == ""
+    params.mcp_servers_json = '{"mcpServers": {}}'
+    assert params.mcp_servers_json == '{"mcpServers": {}}'
 
     assert params.models_preset_hf == ""
     params.models_preset_hf = "hf-org/presets"

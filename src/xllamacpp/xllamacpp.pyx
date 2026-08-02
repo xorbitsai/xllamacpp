@@ -516,18 +516,22 @@ cdef class CommonParamsSampling:
         self.p.reasoning_budget_start = vec
 
     @property
-    def reasoning_budget_end(self) -> list[int]:
-        """end tag token sequence"""
+    def reasoning_budget_end(self) -> list[list[int]]:
+        """end tag token sequences"""
         result = []
         for i in range(self.p.reasoning_budget_end.size()):
-            result.append(self.p.reasoning_budget_end[i])
+            result.append([token for token in self.p.reasoning_budget_end[i]])
         return result
 
     @reasoning_budget_end.setter
-    def reasoning_budget_end(self, value: list[int]):
-        cdef vector[xllamacpp.llama_token] vec
-        for token in value:
-            vec.push_back(token)
+    def reasoning_budget_end(self, value: list[list[int]]):
+        cdef vector[xllamacpp.llama_tokens] vec
+        cdef vector[xllamacpp.llama_token] tokens
+        for sequence in value:
+            tokens.clear()
+            for token in sequence:
+                tokens.push_back(token)
+            vec.push_back(tokens)
         self.p.reasoning_budget_end = vec
 
     @property
@@ -1471,6 +1475,15 @@ cdef class CommonParams:
         self.p.split_mode = value
 
     @property
+    def load_mode(self) -> llama_load_mode:
+        """how to load the model."""
+        return self.p.load_mode
+
+    @load_mode.setter
+    def load_mode(self, llama_load_mode value):
+        self.p.load_mode = value
+
+    @property
     def cpuparams(self) -> CpuParams:
         return CpuParams.from_ptr(&self.p.cpuparams, self)
 
@@ -2078,33 +2091,6 @@ cdef class CommonParams:
         self.p.input_prefix_bos = value
 
     @property
-    def use_mmap(self) -> bool:
-        """use mmap for faster loads"""
-        return self.p.use_mmap
-
-    @use_mmap.setter
-    def use_mmap(self, value: bool):
-        self.p.use_mmap = value
-
-    @property
-    def use_direct_io(self) -> bool:
-        """read from disk without buffering"""
-        return self.p.use_direct_io
-
-    @use_direct_io.setter
-    def use_direct_io(self, value: bool):
-        self.p.use_direct_io = value
-
-    @property
-    def use_mlock(self) -> bool:
-        """use mlock to keep model in memory"""
-        return self.p.use_mlock
-
-    @use_mlock.setter
-    def use_mlock(self, value: bool):
-        self.p.use_mlock = value
-
-    @property
     def verbose_prompt(self) -> bool:
         """print prompt tokens before generation"""
         return self.p.verbose_prompt
@@ -2672,6 +2658,24 @@ cdef class CommonParams:
         self.p.server_tools.clear()
         for i in values:
             self.p.server_tools.push_back(i)
+
+    @property
+    def mcp_servers_config(self) -> str:
+        """path to JSON file with MCP server definitions"""
+        return self.p.mcp_servers_config
+
+    @mcp_servers_config.setter
+    def mcp_servers_config(self, value: str):
+        self.p.mcp_servers_config = value
+
+    @property
+    def mcp_servers_json(self) -> str:
+        """inline JSON with MCP server definitions"""
+        return self.p.mcp_servers_json
+
+    @mcp_servers_json.setter
+    def mcp_servers_json(self, value: str):
+        self.p.mcp_servers_json = value
 
     @property
     def models_dir(self) -> str:
