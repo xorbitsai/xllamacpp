@@ -6,3 +6,4 @@ include scripts/copy_libs.py
 include requirements.txt
 include Makefile
 recursive-include thirdparty/llama.cpp *
+recursive-include patches *

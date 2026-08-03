@@ -1,0 +1,38 @@
+diff --git a/vendor/sheredom/subprocess.h b/vendor/sheredom/subprocess.h
+index 5e809023a..5932b8ccb 100644
+--- a/vendor/sheredom/subprocess.h
++++ b/vendor/sheredom/subprocess.h
+@@ -1212,7 +1212,33 @@ cleanup:
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ #endif
++#if defined(__GLIBC__)
++#ifndef __GLIBC_PREREQ
++/* __GLIBC_PREREQ may be undefined in some toolchains or cross-compile setups
++   even when __GLIBC__ is defined. Provide a fallback definition so the
++   preprocessor does not error out when it is missing. */
++#define __GLIBC_PREREQ(maj, min) \
++    ((__GLIBC__ << 16) + __GLIBC_MINOR__ >= ((maj) << 16) + (min))
++#endif
++#if __GLIBC_PREREQ(2, 29)
+     posix_error = posix_spawn_file_actions_addchdir_np(&actions, process_cwd);
++#else
++    /* glibc < 2.29 at build time lacks posix_spawn_file_actions_addchdir_np()
++       in the sysroot, but the built wheel may run on glibc >= 2.29 where the
++       symbol exists. Resolve it at runtime via a weak reference: call the real
++       function when the runtime libc provides it, otherwise fail with ENOSYS. */
++    extern int posix_spawn_file_actions_addchdir_np(posix_spawn_file_actions_t *,
++                                                     const char *)
++        SUBPROCESS_ATTRIBUTE(weak);
++    if (posix_spawn_file_actions_addchdir_np) {
++      posix_error = posix_spawn_file_actions_addchdir_np(&actions, process_cwd);
++    } else {
++      posix_error = ENOSYS;
++    }
++#endif
++#else
++    posix_error = posix_spawn_file_actions_addchdir_np(&actions, process_cwd);
++#endif
+ #if defined(__APPLE__) && defined(__clang__)
+ #pragma clang diagnostic pop
+ #endif

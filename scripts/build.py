@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT / "thirdparty" / "llama.cpp"
 PREFIX = ROOT / "src" / "llama.cpp"
+PATCH_DIR = ROOT / "patches" / "llama.cpp"
 
 
 def log(message: str) -> None:
@@ -41,6 +42,80 @@ def split_cmake_args(value: str) -> list[str]:
     if not posix:
         parts = [part.strip("\"'") for part in parts]
     return parts
+
+
+def llamacpp_patches() -> list[Path]:
+    """Local hotfix patches applied to the vendored llama.cpp at build time.
+
+    The submodule checkout itself is never modified permanently: patches from
+    patches/llama.cpp/*.patch are applied before building and reverted right
+    after, so the tree stays clean for submodule bumps. Once a patch lands
+    upstream, delete it (and bump the submodule) -- a patch that no longer
+    applies fails the build loudly instead of being silently skipped.
+    """
+    if not PATCH_DIR.is_dir():
+        return []
+    return sorted(PATCH_DIR.glob("*.patch"))
+
+
+def apply_llamacpp_patches(patches: list[Path]) -> list[Path]:
+    """Apply patches to the llama.cpp checkout; return the ones applied now.
+
+    Patches that are already present in the working tree (e.g. left over from
+    an interrupted build) are skipped and not returned, so they are not
+    reverted either.
+
+    If applying a patch fails, every patch applied by this call is reverted
+    before the error propagates, so the checkout is never left half-patched.
+    """
+    applied: list[Path] = []
+    try:
+        for patch in patches:
+            already_applied = (
+                subprocess.run(
+                    ["git", "apply", "--reverse", "--check", str(patch)],
+                    cwd=PROJECT,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                ).returncode
+                == 0
+            )
+            if already_applied:
+                log(f"patch already applied, skipping: {patch.name}")
+                continue
+            run(["git", "apply", str(patch)], cwd=PROJECT)
+            log(f"applied patch: {patch.name}")
+            applied.append(patch)
+    except Exception:
+        log("patch application failed, reverting already-applied patches")
+        try:
+            revert_llamacpp_patches(applied)
+        except Exception as revert_exc:
+            log(f"failed to revert partially applied patches: {revert_exc}")
+        raise
+    return applied
+
+
+def revert_llamacpp_patches(patches: list[Path]) -> None:
+    for patch in reversed(patches):
+        run(["git", "apply", "--reverse", str(patch)], cwd=PROJECT)
+        log(f"reverted patch: {patch.name}")
+        # git apply --reverse restores the original content but with a fresh
+        # mtime that is still *older* than the objects just compiled from the
+        # patched sources. Bump the mtime of every file the patch touches so
+        # the next build recompiles them if the patch set has changed.
+        for line in subprocess.run(
+            ["git", "apply", "--numstat", str(patch)],
+            cwd=PROJECT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.splitlines():
+            parts = line.split("\t")
+            if len(parts) == 3:
+                touched = PROJECT / parts[2]
+                if touched.exists():
+                    os.utime(touched)
 
 
 def hip_compiler() -> str:
@@ -198,21 +273,26 @@ def build_llamacpp() -> None:
     log("Running CMake with arguments: " + " ".join(cmake_args))
     log("Building targets: " + " ".join(targets))
 
-    run(["cmake", "..", *cmake_args], cwd=build_dir)
-    run(
-        [
-            "cmake",
-            "--build",
-            ".",
-            "--config",
-            "Release",
-            "--parallel",
-            nproc,
-            "--target",
-            *targets,
-        ],
-        cwd=build_dir,
-    )
+    patches_to_revert: list[Path] = []
+    try:
+        patches_to_revert = apply_llamacpp_patches(llamacpp_patches())
+        run(["cmake", "..", *cmake_args], cwd=build_dir)
+        run(
+            [
+                "cmake",
+                "--build",
+                ".",
+                "--config",
+                "Release",
+                "--parallel",
+                nproc,
+                "--target",
+                *targets,
+            ],
+            cwd=build_dir,
+        )
+    finally:
+        revert_llamacpp_patches(patches_to_revert)
 
     shutil.rmtree(PREFIX, ignore_errors=True)
     run([sys.executable, str(ROOT / "scripts" / "copy_libs.py")], cwd=ROOT)
