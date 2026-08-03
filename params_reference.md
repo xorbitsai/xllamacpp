@@ -76,9 +76,6 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `special` | bool | `false` | R/W | enable special token output |
 | `usage` | bool | `false` | R/W | print usage |
 | `use_color` | bool | `false` | R/W | use color to distinguish generations and inputs |
-| `use_direct_io` | bool | `false` | R/W | read from disk without buffering |
-| `use_mlock` | bool | `false` | R/W | use mlock to keep model in memory |
-| `use_mmap` | bool | `true` | R/W | enable mmap to use filesystem cache |
 | `verbose_prompt` | bool | `false` | R/W | print prompt tokens before generation |
 | `warmup` | bool | `true` | R/W | warmup run |
 
@@ -314,6 +311,9 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `cors_origins` | str | `"*"` | R/W |  |
 | `cors_origins_explicit` | bool | `false` | R/W | for --agent option |
 | `force_pure_content_parser` | bool | `false` | R/W | force pure content parser |
+| `load_mode` | llama_load_mode | `LLAMA_LOAD_MODE_MMAP` | R/W | how to load the model. |
+| `mcp_servers_config` | str | `` | R/W | path to JSON file with MCP server definitions |
+| `mcp_servers_json` | str | `` | R/W | inline JSON with MCP server definitions |
 | `models_preset_hf` | str | `""` | R/W | show a warning about remote presets on router loaded (if not empty) |
 | `mtmd_batch_max_tokens` | int | `1024` | R/W |  |
 | `n_outputs_max` | int | `0` | R/W | max outputs in a batch (0 = n_batch). |
@@ -397,7 +397,7 @@ Sampling parameters that control token generation strategy. Access via `params.s
 | `penalty_last_n` | int | `64` | R/W | last n tokens to penalize (0 = disable penalty, -1 = context size) |
 | `penalty_present` | float | `0.00` | R/W | 0.0 = disabled |
 | `penalty_repeat` | float | `1.00` | R/W | 1.0 = disabled |
-| `reasoning_budget_end` | list[int] | `` | R/W | end tag token sequence |
+| `reasoning_budget_end` | list[list[int]] | `` | R/W | end tag token sequences |
 | `reasoning_budget_forced` | list[int] | `` | R/W | forced sequence (message + end tag) |
 | `reasoning_budget_message` | str | `` | R/W | message injected before end tag when budget exhausted |
 | `reasoning_budget_start` | list[int] | `` | R/W | start tag token sequence |
