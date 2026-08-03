@@ -203,6 +203,13 @@ cdef extern from "llama.h":
         LLAMA_SPLIT_MODE_ROW    # split layers and KV across GPUs, use tensor parallelism if supported
         LLAMA_SPLIT_MODE_TENSOR
 
+    cpdef enum llama_load_mode:
+        LLAMA_LOAD_MODE_NONE
+        LLAMA_LOAD_MODE_MMAP
+        LLAMA_LOAD_MODE_MLOCK
+        LLAMA_LOAD_MODE_MMAP_MLOCK
+        LLAMA_LOAD_MODE_DIRECT_IO
+
     cpdef enum llama_context_type:
         LLAMA_CONTEXT_TYPE_DEFAULT
         LLAMA_CONTEXT_TYPE_MTP
@@ -386,7 +393,7 @@ cdef extern from "common.h":
         # these are populated by the server/CLI based on chat template params
         int32_t  reasoning_budget_tokens   # -1 = disabled, >= 0 = token budget
         std_vector[llama_token] reasoning_budget_start  # start tag token sequence
-        std_vector[llama_token] reasoning_budget_end    # end tag token sequence
+        std_vector[llama_tokens] reasoning_budget_end   # end tag token sequences
         std_vector[llama_token] reasoning_budget_forced # forced sequence (message + end tag)
         std_string              reasoning_budget_message  # message injected before end tag when budget exhausted
         bint                    reasoning_control # create the budget sampler on demand
@@ -400,6 +407,7 @@ cdef extern from "common.h":
         COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3  # Eagle3 speculative decoding
         COMMON_SPECULATIVE_TYPE_DRAFT_MTP     # Multi-token prediction
         COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH  # DFlash speculative decoding
+        COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK  # DSpark speculative decoding
         COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE  # simple self-speculative decoding based on n-grams
         COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K   # self-speculative decoding with n-gram keys only
         COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V # self-speculative decoding with n-gram keys and 4 m-gram values
@@ -528,7 +536,8 @@ cdef extern from "common.h":
         # margin per device in bytes for fitting parameters to free memory:
         std_vector[size_t] fit_params_target
 
-        llama_split_mode        split_mode         # how to split the model across GPUs
+        llama_split_mode split_mode # how to split the model across GPUs
+        llama_load_mode  load_mode  # how to load the model
 
         common_cpu_params cpuparams
         common_cpu_params cpuparams_batch
@@ -618,9 +627,6 @@ cdef extern from "common.h":
         bint kv_unified             # enable unified KV cache
 
         bint input_prefix_bos       # prefix BOS to user inputs, preceding input_prefix
-        bint use_mmap               # use mmap for faster loads
-        bint use_direct_io          # read from disk without buffering
-        bint use_mlock              # use mlock to keep model in memory
         bint verbose_prompt         # print prompt tokens before generation
         bint display_prompt         # print prompt before generation
         bint no_kv_offload          # disable KV offloading
@@ -711,6 +717,10 @@ cdef extern from "common.h":
 
         # enable built-in tools
         std_vector[std_string] server_tools
+
+        # MCP server configs (Cursor-compatible JSON)
+        std_string mcp_servers_config
+        std_string mcp_servers_json
 
         # router server configs
         std_string models_dir    # directory containing models for the router server

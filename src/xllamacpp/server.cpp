@@ -1,6 +1,7 @@
 #include "json-schema-to-grammar.h"
 #include "server-context.h"
 #include "server-http.h"
+#include "server-mcp.h"
 #include "server-models.h"
 #include "server-cors-proxy.h"
 #include "server-stream.h"
@@ -128,6 +129,9 @@ static void init(common_params &   params,
         params.model_alias.insert(params.model.get_name());
     }
 
+    // This must outlive ctx_http and tools because their handlers can refer to it.
+    server_mcp mcp_mgr;
+
     server_http_context ctx_http;
     if (!ctx_http.init(params)) {
         SRV_ERR("%s", "failed to initialize HTTP server\n");
@@ -239,8 +243,9 @@ static void init(common_params &   params,
     ctx_http.get("/slots", ex_wrapper(routes.get_slots));
     ctx_http.post("/slots/:id_slot", ex_wrapper(routes.post_slots));
 
-    // Resumable streaming uses the conversation ID as the session identity end to end. Router
-    // and child wire different handlers under the same paths.
+    // Resumable streaming: a child binds the local session factories, the router binds
+    // proxies that resolve the owning child. The conversation ID is a query parameter so
+    // model names containing slashes remain intact.
     server_http_context::handler_t stream_get_h;
     server_http_context::handler_t streams_lookup_h;
     server_http_context::handler_t stream_delete_h;
@@ -253,9 +258,9 @@ static void init(common_params &   params,
         streams_lookup_h = server_stream_make_lookup_handler();
         stream_delete_h  = server_stream_make_delete_handler();
     }
-    ctx_http.get("/v1/stream/:conv_id", ex_wrapper(stream_get_h));
+    ctx_http.get("/v1/stream", ex_wrapper(stream_get_h));
     ctx_http.post("/v1/streams/lookup", ex_wrapper(streams_lookup_h));
-    ctx_http.del("/v1/stream/:conv_id", ex_wrapper(stream_delete_h));
+    ctx_http.del("/v1/stream", ex_wrapper(stream_delete_h));
 
     // Google Cloud Platform (Vertex AI) compat
     ctx_http.register_gcp_compat();
@@ -297,12 +302,22 @@ static void init(common_params &   params,
         ctx_http.post("/cors-proxy", ex_wrapper(res_403));
     }
 
-    // EXPERIMENTAL built-in tools
-    if (!params.server_tools.empty()) {
+    try {
+        mcp_mgr.start(params);
+    } catch (const std::exception & e) {
+        SRV_ERR("MCP starting failed: %s\n", e.what());
+        server_stream_session_manager_stop();
+        llama_backend_free();
+        out.set_value(1);
+        return;
+    }
+
+    if (!params.server_tools.empty() || !mcp_mgr.empty()) {
         try {
-            tools.setup(params.server_tools);
+            tools.setup(params.server_tools, mcp_mgr);
         } catch (const std::exception & e) {
             SRV_ERR("tools setup failed: %s\n", e.what());
+            mcp_mgr.shutdown();
             server_stream_session_manager_stop();
             llama_backend_free();
             out.set_value(1);
@@ -310,7 +325,12 @@ static void init(common_params &   params,
         }
         ctx_http.get("/tools", ex_wrapper(tools.handle_get));
         ctx_http.post("/tools", ex_wrapper(tools.handle_post));
-        warn_names.push_back("built-in tools (experimental)");
+        if (!params.server_tools.empty()) {
+            warn_names.push_back("built-in tools (experimental)");
+        }
+        if (!mcp_mgr.empty()) {
+            warn_names.push_back("MCP servers (experimental)");
+        }
     } else {
         ctx_http.get("/tools", ex_wrapper(res_403));
         ctx_http.post("/tools", ex_wrapper(res_403));
@@ -332,6 +352,7 @@ static void init(common_params &   params,
 
     if (child.is_child() && child.get_mode() == SERVER_CHILD_MODE_DOWNLOAD) {
         const int result = child.run_download(params);
+        mcp_mgr.shutdown();
         server_stream_session_manager_stop();
         llama_backend_free();
         out.set_value(result);
@@ -343,6 +364,7 @@ static void init(common_params &   params,
             common_models_handler_apply(models_handler, params);
         } catch (const std::exception & e) {
             SRV_ERR("failed to download model: %s\n", e.what());
+            mcp_mgr.shutdown();
             server_stream_session_manager_stop();
             llama_backend_free();
             out.set_value(1);
@@ -359,7 +381,7 @@ static void init(common_params &   params,
     if (is_router_server) {
         SRV_INF("%s", "starting server in router mode. models will be automatically loaded on-demand\n");
 
-        clean_up = [&models_routes]() {
+        clean_up = [&models_routes, &mcp_mgr]() {
             SRV_INF("%s: cleaning up before exit...\n", __func__);
             // Stop the session GC first so live readers are finalized before backend teardown.
             server_stream_session_manager_stop();
@@ -367,6 +389,7 @@ static void init(common_params &   params,
                 models_routes->stopping.store(true);  // maybe redundant, but just to be safe
                 models_routes->models.unload_all();
             }
+            mcp_mgr.shutdown();
             llama_backend_free();
         };
 
@@ -383,17 +406,19 @@ static void init(common_params &   params,
                 // important to disconnect any SSE clients
                 models_routes->stopping.store(true);
             }
+            mcp_mgr.shutdown();
             ctx_http.stop();
         };
 
     } else {
         // setup clean up function, to be called before exit
-        clean_up = [&ctx_http, &ctx_server]() {
+        clean_up = [&ctx_http, &ctx_server, &mcp_mgr]() {
             SRV_INF("%s: cleaning up before exit...\n", __func__);
             // Stop the session GC first so live readers are finalized before backend teardown.
             server_stream_session_manager_stop();
             ctx_http.stop();
             ctx_server.terminate();
+            mcp_mgr.shutdown();
             llama_backend_free();
         };
 
@@ -429,6 +454,7 @@ static void init(common_params &   params,
         SRV_INF("%s", "model loaded\n");
 
         shutdown_handler = [&](int) {
+            mcp_mgr.shutdown();
             // this will unblock start_loop()
             ctx_server.terminate();
         };
