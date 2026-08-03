@@ -2,7 +2,7 @@ diff --git a/vendor/sheredom/subprocess.h b/vendor/sheredom/subprocess.h
 index 5e809023a..5932b8ccb 100644
 --- a/vendor/sheredom/subprocess.h
 +++ b/vendor/sheredom/subprocess.h
-@@ -1212,7 +1212,26 @@ cleanup:
+@@ -1212,7 +1212,33 @@ cleanup:
  #pragma clang diagnostic push
  #pragma clang diagnostic ignored "-Wdeprecated-declarations"
  #endif
