@@ -1015,38 +1015,6 @@ cdef class CommonParamsSpeculative:
 
 
 
-cdef class CommonParamsVocoder:
-    cdef xllamacpp.common_params_vocoder *p
-    cdef object owner
-
-    @staticmethod
-    cdef CommonParamsVocoder from_ptr(xllamacpp.common_params_vocoder *params, owner):
-        cdef CommonParamsVocoder wrapper = CommonParamsVocoder.__new__(CommonParamsVocoder)
-        wrapper.p = params
-        wrapper.owner = owner
-        return wrapper
-
-    def __init__(self):
-        raise Exception(f"Can't construct an instance of {type(self).__name__}")
-
-    @property
-    def model(self) -> CommonParamsModel:
-        return CommonParamsModel.from_ptr(&self.p.model, self)
-
-    @model.setter
-    def model(self, value: CommonParamsModel):
-        self.p.model = deref(value.p)
-
-    @property
-    def speaker_file(self) -> str:
-        """speaker file path"""
-        return self.p.speaker_file
-
-    @speaker_file.setter
-    def speaker_file(self, value: str):
-        self.p.speaker_file = value
-
-
 cdef class CommonParamsDiffusion:
     cdef xllamacpp.common_params_diffusion *p
     cdef object owner
@@ -1344,6 +1312,15 @@ cdef class CommonParams:
         self.p.n_outputs_max = value
 
     @property
+    def n_outputs_max_per_seq(self) -> int:
+        """max outputs per sequence."""
+        return self.p.n_outputs_max_per_seq
+
+    @n_outputs_max_per_seq.setter
+    def n_outputs_max_per_seq(self, value: int):
+        self.p.n_outputs_max_per_seq = value
+
+    @property
     def grp_attn_n(self) -> int:
         """group-attention factor."""
         return self.p.grp_attn_n
@@ -1570,15 +1547,6 @@ cdef class CommonParams:
     @speculative.setter
     def speculative(self, value: CommonParamsSpeculative):
         self.p.speculative = deref(value.p)
-
-    @property
-    def vocoder(self) -> CommonParamsVocoder:
-        """common params vocoder."""
-        return CommonParamsVocoder.from_ptr(&self.p.vocoder, self)
-
-    @vocoder.setter
-    def vocoder(self, value: CommonParamsVocoder):
-        self.p.vocoder = deref(value.p)
 
     @property
     def diffusion(self) -> CommonParamsDiffusion:
@@ -2660,6 +2628,15 @@ cdef class CommonParams:
             self.p.server_tools.push_back(i)
 
     @property
+    def server_tools_runtime(self) -> str:
+        """runtime used for built-in server tools."""
+        return self.p.server_tools_runtime
+
+    @server_tools_runtime.setter
+    def server_tools_runtime(self, value: str):
+        self.p.server_tools_runtime = value
+
+    @property
     def mcp_servers_config(self) -> str:
         """path to JSON file with MCP server definitions"""
         return self.p.mcp_servers_config
@@ -3024,6 +3001,30 @@ cdef class CommonParams:
     @no_alloc.setter
     def no_alloc(self, value: bool):
         self.p.no_alloc = value
+
+    @property
+    def tts_lang(self) -> str:
+        return self.p.tts_lang
+
+    @tts_lang.setter
+    def tts_lang(self, value: str):
+        self.p.tts_lang = value
+
+    @property
+    def tts_speaker_file(self) -> str:
+        return self.p.tts_speaker_file
+
+    @tts_speaker_file.setter
+    def tts_speaker_file(self, value: str):
+        self.p.tts_speaker_file = value
+
+    @property
+    def is_gen_docs(self) -> bool:
+        return self.p.is_gen_docs
+
+    @is_gen_docs.setter
+    def is_gen_docs(self, value: bool):
+        self.p.is_gen_docs = value
 
     # // cvector-generator params
     # dimre_method cvector_dimre_method = DIMRE_METHOD_PCA;

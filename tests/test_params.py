@@ -88,6 +88,7 @@ def test_enum_values():
     assert xlc.llama_flash_attn_type.LLAMA_FLASH_ATTN_TYPE_ENABLED == 1
     assert xlc.llama_split_mode.LLAMA_SPLIT_MODE_ROW == 2
     assert xlc.llama_split_mode.LLAMA_SPLIT_MODE_TENSOR == 3
+    assert xlc.llama_load_mode.LLAMA_LOAD_MODE_AUTO == -1
     assert xlc.llama_context_type.LLAMA_CONTEXT_TYPE_DEFAULT == 0
     assert xlc.llama_context_type.LLAMA_CONTEXT_TYPE_MTP == 1
     assert xlc.llama_model_kv_override_type.LLAMA_KV_OVERRIDE_TYPE_STR == 3
@@ -115,6 +116,9 @@ def test_common_params():
     assert params.n_outputs_max == 0
     params.n_outputs_max = 2
     assert params.n_outputs_max == 2
+    assert params.n_outputs_max_per_seq == 1
+    params.n_outputs_max_per_seq = 2
+    assert params.n_outputs_max_per_seq == 2
     # assert params.p_split              ==   approx(0.1)
     assert params.n_gpu_layers == -1
     assert params.main_gpu == 0
@@ -233,7 +237,7 @@ def test_common_params():
     assert params.swa_full is False
     assert params.kv_unified is False
     assert params.input_prefix_bos is False
-    assert params.load_mode == xlc.llama_load_mode.LLAMA_LOAD_MODE_MMAP
+    assert params.load_mode == xlc.llama_load_mode.LLAMA_LOAD_MODE_AUTO
     params.load_mode = xlc.llama_load_mode.LLAMA_LOAD_MODE_DIRECT_IO
     assert params.load_mode == xlc.llama_load_mode.LLAMA_LOAD_MODE_DIRECT_IO
     assert params.verbose_prompt is False
@@ -346,6 +350,9 @@ def test_common_params():
     assert params.server_tools == []
     params.server_tools = ["tool1", "tool2"]
     assert params.server_tools == ["tool1", "tool2"]
+    assert params.server_tools_runtime == ""
+    params.server_tools_runtime = "docker"
+    assert params.server_tools_runtime == "docker"
 
     assert params.mcp_servers_config == ""
     params.mcp_servers_config = "/tmp/mcp.json"
@@ -429,6 +436,16 @@ def test_common_params():
     assert params.no_alloc is False
     params.no_alloc = True
     assert params.no_alloc is True
+
+    assert params.tts_lang == ""
+    params.tts_lang = "en"
+    assert params.tts_lang == "en"
+    assert params.tts_speaker_file == ""
+    params.tts_speaker_file = "/tmp/speaker.wav"
+    assert params.tts_speaker_file == "/tmp/speaker.wav"
+    assert params.is_gen_docs is False
+    params.is_gen_docs = True
+    assert params.is_gen_docs is True
 
     # Test new sleep_idle_seconds field
     assert params.sleep_idle_seconds == -1

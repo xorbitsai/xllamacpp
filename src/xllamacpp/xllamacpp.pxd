@@ -135,6 +135,8 @@ cdef extern from "ggml-backend.h":
         bint buffer_from_host_ptr
         # event synchronization
         bint events
+        # mmap is supported for loading
+        bint mmap_support
 
     # all the device properties
     ctypedef struct ggml_backend_dev_props:
@@ -204,6 +206,7 @@ cdef extern from "llama.h":
         LLAMA_SPLIT_MODE_TENSOR
 
     cpdef enum llama_load_mode:
+        LLAMA_LOAD_MODE_AUTO
         LLAMA_LOAD_MODE_NONE
         LLAMA_LOAD_MODE_MMAP
         LLAMA_LOAD_MODE_MLOCK
@@ -240,7 +243,8 @@ cdef extern from "llama.h":
 
     ctypedef struct llama_sampler_seq_config: pass
 
-    ctypedef struct llama_context_params: pass
+    ctypedef struct llama_context_params:
+        uint32_t n_outputs_max_per_seq
 
 
 #------------------------------------------------------------------------------
@@ -474,12 +478,6 @@ cdef extern from "common.h":
         common_params_speculative_ngram_cache ngram_cache
 
 
-    ctypedef struct common_params_vocoder:
-        common_params_model model
-        std_string speaker_file # speaker file path                                      // NOLINT
-        bint use_guide_tokens  # enable guide tokens to improve TTS accuracy            // NOLINT
-
-
     ctypedef struct common_params_diffusion:
         int32_t steps        # number of diffusion steps
         bint    visual_mode  # show progressive diffusion on screen
@@ -514,6 +512,7 @@ cdef extern from "common.h":
         int32_t n_parallel         # number of parallel sequences to decode
         int32_t n_sequences        # number of sequences to decode
         int32_t n_outputs_max      # max outputs in a batch (0 = n_batch)
+        int32_t n_outputs_max_per_seq # max outputs per sequence
         int32_t grp_attn_n         # group-attention factor
         int32_t grp_attn_w         # group-attention width
         int32_t n_print            # print token count every n tokens (-1 = disabled)
@@ -554,7 +553,6 @@ cdef extern from "common.h":
 
         common_params_sampling sampling
         common_params_speculative speculative
-        common_params_vocoder     vocoder
         common_params_diffusion   diffusion
         common_params_model model
 
@@ -717,6 +715,7 @@ cdef extern from "common.h":
 
         # enable built-in tools
         std_vector[std_string] server_tools
+        std_string server_tools_runtime
 
         # MCP server configs (Cursor-compatible JSON)
         std_string mcp_servers_config
@@ -793,6 +792,12 @@ cdef extern from "common.h":
         llama_progress_callback load_progress_callback
         void *                  load_progress_callback_user_data
         bint no_alloc # Don't allocate model buffers
+
+        # TTS params
+        std_string tts_lang
+        std_string tts_speaker_file
+
+        bint is_gen_docs
 
 
     
