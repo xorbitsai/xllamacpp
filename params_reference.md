@@ -13,7 +13,6 @@ It lists **all Python-accessible properties** of each configuration class, along
 - [CommonParamsModel](#commonparamsmodel)
 - [CommonParamsSampling](#commonparamssampling)
 - [CommonParamsSpeculative](#commonparamsspeculative)
-- [CommonParamsVocoder](#commonparamsvocoder)
 - [CpuParams](#cpuparams)
 
 ---
@@ -292,7 +291,6 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `diffusion` | [CommonParamsDiffusion](#commonparamsdiffusion) | `` | R/W | common params diffusion. |
 | `sampling` | [CommonParamsSampling](#commonparamssampling) | `` | R/W | common params sampling. |
 | `speculative` | [CommonParamsSpeculative](#commonparamsspeculative) | `` | R/W | common params speculative. |
-| `vocoder` | [CommonParamsVocoder](#commonparamsvocoder) | `` | R/W | common params vocoder. |
 
 ### Tensor Buffer Overrides
 
@@ -311,23 +309,28 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `cors_origins` | str | `"*"` | R/W |  |
 | `cors_origins_explicit` | bool | `false` | R/W | for --agent option |
 | `force_pure_content_parser` | bool | `false` | R/W | force pure content parser |
-| `load_mode` | llama_load_mode | `LLAMA_LOAD_MODE_MMAP` | R/W | how to load the model. |
+| `is_gen_docs` | bool | `false` | R/W | whether we are running inside llama-gen-docs |
+| `load_mode` | llama_load_mode | `LLAMA_LOAD_MODE_AUTO` | R/W | how to load the model. |
 | `mcp_servers_config` | str | `` | R/W | path to JSON file with MCP server definitions |
 | `mcp_servers_json` | str | `` | R/W | inline JSON with MCP server definitions |
 | `models_preset_hf` | str | `""` | R/W | show a warning about remote presets on router loaded (if not empty) |
 | `mtmd_batch_max_tokens` | int | `1024` | R/W |  |
 | `n_outputs_max` | int | `0` | R/W | max outputs in a batch (0 = n_batch). |
+| `n_outputs_max_per_seq` | int | `1` | R/W | max outputs per sequence. |
 | `no_alloc` | bool | `false` | R/W | Don't allocate model buffers |
 | `path_prompts_log_dir` | str | `""` | R/W | directory with logged prompts |
 | `reuse_port` | bool | `false` | R/W | allow multiple sockets to bind to the same port |
 | `server_base` | str | `` | R/W | if set, connect to this server instead of starting a new one |
 | `server_tools` | list[str] | `` | R/W | enable built-in tools |
+| `server_tools_runtime` | str | `` | R/W | runtime used for built-in server tools. |
 | `sse_ping_interval` | int | `30` | R/W | SSE ping interval in seconds |
 | `system_prompt` | str | `""` | R/W | the system prompt text |
 | `tokenize_ids` | bool | `false` | R/W | if true, only print the token IDs |
 | `tokenize_no_bos` | bool | `false` | R/W | if true, do not add the BOS token |
 | `tokenize_show_count` | bool | `false` | R/W | if true, print the total token count |
 | `tokenize_stdin` | bool | `false` | R/W | if true, read the prompt from stdin |
+| `tts_lang` | str | `""` | R/W |  |
+| `tts_speaker_file` | str | `""` | R/W |  |
 | `ui` | bool | `true` | R/W | enable UI |
 | `ui_config_json` | str | `` | R/W | UI config json |
 | `ui_mcp_proxy` | bool | `false` | R/W | UI MCP proxy |
@@ -377,7 +380,7 @@ Sampling parameters that control token generation strategy. Access via `params.s
 | `dry_allowed_length` | int | `2` | R/W | tokens extending repetitions beyond this receive penalty |
 | `dry_base` | float | `1.75` | R/W | 0.0 = disabled;      multiplier * base ^ (length of sequence before token - allowed length) |
 | `dry_multiplier` | float | `0.0` | R/W | 0.0 = disabled;      DRY repetition penalty for tokens extending repetition: |
-| `dry_penalty_last_n` | int | `-1` | R/W | how many tokens to scan for repetitions (0 = disable penalty, -1 = context size) |
+| `dry_penalty_last_n` | int | `64` | R/W | how many tokens to scan for repetitions (0 = disable penalty, -1 = context size) |
 | `dynatemp_exponent` | float | `1.00` | R/W | controls how entropy maps to temperature in dynamic temperature sampler |
 | `dynatemp_range` | float | `0.00` | R/W | 0.0 = disabled |
 | `generation_prompt` | str | `` | R/W | The assistant generation prompt already prefilled into the prompt. |
@@ -429,17 +432,6 @@ Speculative decoding parameters. Access via `params.speculative`.
 | `ngram_mod` | [CommonParamsSpeculative](#commonparamsspeculative)NgramMod | `` | R | ngram mod parameters. |
 | `ngram_simple` | [CommonParamsSpeculative](#commonparamsspeculative)NgramMap | `` | R | ngram simple map parameters. |
 | `types` | list[common_speculative_type] | `{ COMMON_SPECULATIVE_TYPE_NONE }` | R/W | types of speculative decoding. |
-
----
-
-## CommonParamsVocoder
-
-Text-to-speech (vocoder) parameters. Access via `params.vocoder`.
-
-| Property | Type | Default | R/W | Description |
-|:---------|:-----|:--------|:---:|:------------|
-| `model` | [CommonParamsModel](#commonparamsmodel) | `` | R/W |  |
-| `speaker_file` | str | `` | R/W | speaker file path |
 
 ---
 
