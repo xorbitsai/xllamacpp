@@ -314,7 +314,7 @@ static void init(common_params &   params,
 
     if (!params.server_tools.empty() || !mcp_mgr.empty()) {
         try {
-            tools.setup(params.server_tools, mcp_mgr);
+            tools.setup(params.server_tools, mcp_mgr, params.server_tools_runtime);
         } catch (const std::exception & e) {
             SRV_ERR("tools setup failed: %s\n", e.what());
             mcp_mgr.shutdown();
@@ -327,6 +327,9 @@ static void init(common_params &   params,
         ctx_http.post("/tools", ex_wrapper(tools.handle_post));
         if (!params.server_tools.empty()) {
             warn_names.push_back("built-in tools (experimental)");
+        }
+        if (!params.server_tools_runtime.empty()) {
+            warn_names.push_back("tools runtime (experimental)");
         }
         if (!mcp_mgr.empty()) {
             warn_names.push_back("MCP servers (experimental)");
@@ -463,6 +466,13 @@ static void init(common_params &   params,
     // Do not install process-wide signal handlers in this Python extension module.
 
     SRV_INF("listening on %s\n", ctx_http.listening_address.c_str());
+
+    // TODO: remove this in the future
+    // check the string to also handle the .sock case
+    if (string_ends_with(ctx_http.listening_address, ":8080")) {
+        SRV_WRN("%s", "NOTICE: server default port will be changed to :9931 in a future release\n");
+        SRV_WRN("%s", "        ref: https://github.com/ggml-org/llama.cpp/pull/26508\n");
+    }
 
     if (is_router_server) {
         if (!params.models_preset_hf.empty()) {
