@@ -2173,6 +2173,10 @@ cdef class CommonParams:
     @mmproj_use_gpu.setter
     def mmproj_use_gpu(self, value: bool):
         self.p.mmproj_use_gpu = value
+        if not value:
+            # keep the views consistent: disabled offload means no device,
+            # so a stale mmproj_device must not survive re-enabling
+            self.p.mmproj_device = NULL
 
     @property
     def mmproj_device(self) -> str:
@@ -2198,6 +2202,8 @@ cdef class CommonParams:
             self.p.mmproj_device = NULL
             return
         devices = c_parse_device_list(value)
+        # parse_device_list appends a trailing nullptr, so one device yields
+        # a vector of size 2; anything larger means multiple devices
         if devices.size() > 2:
             raise ValueError("only one device may be specified for mmproj")
         self.p.mmproj_use_gpu = True
