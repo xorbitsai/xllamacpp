@@ -16,18 +16,22 @@ echo "  ${remote_url}"
 echo
 
 before_count="$(git -C "${llama_dir}" tag --list | wc -l | tr -d '[:space:]')"
-before_latest="$(git -C "${llama_dir}" tag --list --sort=-creatordate | sed -n '1p' || true)"
-
 git -C "${llama_dir}" fetch origin --tags --force --prune --prune-tags
 
 after_count="$(git -C "${llama_dir}" tag --list | wc -l | tr -d '[:space:]')"
-after_latest="$(git -C "${llama_dir}" tag --list --sort=-creatordate | sed -n '1p' || true)"
+latest_stable="$(
+  git -C "${llama_dir}" tag --list --sort=-version:refname |
+    awk '!found && $0 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print; found = 1 }'
+)"
+latest_nightly="$(
+  git -C "${llama_dir}" tag --list --sort=-version:refname |
+    awk '!found && $0 ~ /^b[0-9]+$/ { print; found = 1 }'
+)"
 
 echo
 echo "Tag count: ${before_count} -> ${after_count}"
-if [[ -n "${before_latest}" || -n "${after_latest}" ]]; then
-  echo "Latest tag by creator date: ${before_latest:-<none>} -> ${after_latest:-<none>}"
-fi
+echo "Latest stable release: ${latest_stable:-<none>}"
+echo "Latest nightly build:  ${latest_nightly:-<none>}"
 echo
 echo "Most recent tags:"
 git -C "${llama_dir}" tag --list --sort=-creatordate | sed -n '1,10p'

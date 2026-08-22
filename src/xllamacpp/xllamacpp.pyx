@@ -2173,6 +2173,41 @@ cdef class CommonParams:
     @mmproj_use_gpu.setter
     def mmproj_use_gpu(self, value: bool):
         self.p.mmproj_use_gpu = value
+        if not value:
+            # keep the views consistent: disabled offload means no device,
+            # so a stale mmproj_device must not survive re-enabling
+            self.p.mmproj_device = NULL
+
+    @property
+    def mmproj_device(self) -> str:
+        """GPU device for the multimodal projector (empty means auto, 'none' disables offload)."""
+        cdef vector[xllamacpp.ggml_backend_dev_t] devices
+        if not self.p.mmproj_use_gpu:
+            return "none"
+        if self.p.mmproj_device == NULL:
+            return ""
+        devices.push_back(self.p.mmproj_device)
+        devices.push_back(NULL)
+        return c_build_device_string(devices)
+
+    @mmproj_device.setter
+    def mmproj_device(self, value: str):
+        cdef vector[xllamacpp.ggml_backend_dev_t] devices
+        if value == "":
+            self.p.mmproj_use_gpu = True
+            self.p.mmproj_device = NULL
+            return
+        if value == "none":
+            self.p.mmproj_use_gpu = False
+            self.p.mmproj_device = NULL
+            return
+        devices = c_parse_device_list(value)
+        # parse_device_list appends a trailing nullptr, so one device yields
+        # a vector of size 2; anything larger means multiple devices
+        if devices.size() > 2:
+            raise ValueError("only one device may be specified for mmproj")
+        self.p.mmproj_use_gpu = True
+        self.p.mmproj_device = devices.front()
 
     @property
     def no_mmproj(self) -> bool:

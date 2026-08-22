@@ -254,7 +254,19 @@ def test_common_params():
 
     assert params.mmproj.path == ""
     assert params.mmproj_use_gpu is True
+    assert params.mmproj_device == ""
+    params.mmproj_device = "none"
+    assert params.mmproj_device == "none"
+    assert params.mmproj_use_gpu is False
+    params.mmproj_device = ""
+    assert params.mmproj_device == ""
+    assert params.mmproj_use_gpu is True
     assert params.no_mmproj is False
+    # disabling offload clears any configured device; re-enabling means auto
+    params.mmproj_use_gpu = False
+    assert params.mmproj_device == "none"
+    params.mmproj_use_gpu = True
+    assert params.mmproj_device == ""
     assert params.image == []
     assert params.image_min_tokens == -1
     assert params.image_max_tokens == -1
