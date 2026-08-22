@@ -3111,6 +3111,15 @@ cdef class Server:
     cdef shared_ptr[CServer] svr
 
     def __cinit__(self, CommonParams common_params):
+        # Mirror the CPU-params postprocessing that common_params_parser_init
+        # performs for the CLI (common/arg.cpp): params built from Python skip
+        # CLI parsing, so resolve n_threads < 0 to the number of math cores
+        # here, before the C++ server creates its threadpools (a negative
+        # count is otherwise fatal).
+        xllamacpp.postprocess_cpu_params(common_params.p.cpuparams, NULL)
+        xllamacpp.postprocess_cpu_params(common_params.p.cpuparams_batch, &common_params.p.cpuparams)
+        xllamacpp.postprocess_cpu_params(common_params.p.speculative.draft.cpuparams, &common_params.p.cpuparams)
+        xllamacpp.postprocess_cpu_params(common_params.p.speculative.draft.cpuparams_batch, &common_params.p.cpuparams_batch)
         self.svr = make_shared[CServer](common_params.p)
 
     @property
