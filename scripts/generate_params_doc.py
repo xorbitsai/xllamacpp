@@ -65,6 +65,10 @@ TARGET_CLASSES = [
     "CommonParamsSampling",
     "CommonParamsModel",
     "CommonParamsSpeculative",
+    "CommonParamsSpeculativeDraft",
+    "CommonParamsSpeculativeNgramMod",
+    "CommonParamsSpeculativeNgramMap",
+    "CommonParamsSpeculativeNgramCache",
     "CommonParamsVocoder",
     "CommonParamsDiffusion",
     "CpuParams",
@@ -77,10 +81,90 @@ CLASS_DESCRIPTIONS = {
     "CommonParamsSampling": "Sampling parameters that control token generation strategy. Access via `params.sampling`.",
     "CommonParamsModel": "Model path and source parameters. Access via `params.model`.",
     "CommonParamsSpeculative": "Speculative decoding parameters. Access via `params.speculative`.",
+    "CommonParamsSpeculativeDraft": "Draft-model speculative decoding parameters. Access via `params.speculative.draft`.",
+    "CommonParamsSpeculativeNgramMod": "Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MOD` speculative method. Access via `params.speculative.ngram_mod`.",
+    "CommonParamsSpeculativeNgramMap": "N-gram lookup parameters shared by the `NGRAM_SIMPLE`, `NGRAM_MAP_K`, and `NGRAM_MAP_K4V` speculative methods. Access via `params.speculative.ngram_simple`, `params.speculative.ngram_map_k`, or `params.speculative.ngram_map_k4v`.",
+    "CommonParamsSpeculativeNgramCache": "N-gram cache file parameters for lookup decoding. Access via `params.speculative.ngram_cache`.",
     "CommonParamsVocoder": "Text-to-speech (vocoder) parameters. Access via `params.vocoder`.",
     "CommonParamsDiffusion": "Diffusion model parameters. Access via `params.diffusion`.",
     "CpuParams": "CPU threading and scheduling parameters. Access via `params.cpuparams` or `params.cpuparams_batch`.",
     "CommonAdapterLoraInfo": "LoRA adapter info. Create via `xlc.CommonAdapterLoraInfo(path, scale)`.",
+}
+
+# Detailed per-field descriptions, keyed by ``(class_name, property_name)``.
+# These take precedence over both the .pyx docstring and the common.h comment,
+# and are used where the sources are missing or too terse to explain behavior
+# (see https://github.com/xorbitsai/xllamacpp/issues/177).
+FIELD_DESCRIPTIONS: dict[tuple[str, str], str] = {
+    # -- CommonParamsSpeculative ------------------------------------------------
+    ("CommonParamsSpeculative", "types"):
+        "List of speculative decoding methods to enable. Draft-model-free methods: "
+        "`COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE`, `NGRAM_MAP_K`, `NGRAM_MAP_K4V`, `NGRAM_MOD`, `NGRAM_CACHE`. "
+        "Draft-model methods: `COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE`, `DRAFT_MTP`, `DRAFT_EAGLE3`, `DRAFT_DFLASH`, `DRAFT_DSPARK`. "
+        "Not required when only a draft model path is set — draft decoding is enabled automatically.",
+    ("CommonParamsSpeculative", "draft"):
+        "Draft-model speculative decoding configuration (draft model path, draft window, acceptance thresholds). "
+        "See CommonParamsSpeculativeDraft.",
+    ("CommonParamsSpeculative", "ngram_mod"):
+        "Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MOD` method. See CommonParamsSpeculativeNgramMod.",
+    ("CommonParamsSpeculative", "ngram_simple"):
+        "Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE` method. See CommonParamsSpeculativeNgramMap.",
+    ("CommonParamsSpeculative", "ngram_map_k"):
+        "Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K` method (n-gram keys only). See CommonParamsSpeculativeNgramMap.",
+    ("CommonParamsSpeculative", "ngram_map_k4v"):
+        "Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V` method (n-gram keys with up to 4 m-gram values). "
+        "See CommonParamsSpeculativeNgramMap.",
+    ("CommonParamsSpeculative", "ngram_cache"):
+        "Static/dynamic n-gram cache file paths for lookup decoding. See CommonParamsSpeculativeNgramCache.",
+    # -- CommonParamsSpeculativeDraft -------------------------------------------
+    ("CommonParamsSpeculativeDraft", "n_max"):
+        "Maximum number of tokens the draft model proposes per step. Larger windows accept more tokens per "
+        "target-model pass but waste compute when drafts are rejected.",
+    ("CommonParamsSpeculativeDraft", "n_min"):
+        "Minimum number of draft tokens to propose before verification; adaptive drafting does not stop below this count.",
+    ("CommonParamsSpeculativeDraft", "p_split"):
+        "Probability threshold used to split the draft sequence during adaptive drafting.",
+    ("CommonParamsSpeculativeDraft", "p_min"):
+        "Minimum probability for a drafted token to be accepted (greedy verification); tokens below it are rejected.",
+    ("CommonParamsSpeculativeDraft", "backend_sampling"):
+        "Offload draft-model sampling to the backend (default: on).",
+    ("CommonParamsSpeculativeDraft", "mparams"):
+        "Draft model location. Set `mparams.path` to a smaller, same-family GGUF — draft and target models must share "
+        "the same tokenizer/vocabulary. Setting a path automatically enables draft-model speculative decoding. "
+        "See CommonParamsModel.",
+    ("CommonParamsSpeculativeDraft", "n_gpu_layers"):
+        "Number of draft-model layers to store in VRAM (-1 = use default).",
+    ("CommonParamsSpeculativeDraft", "cache_type_k"):
+        "KV cache data type for K in the draft model.",
+    ("CommonParamsSpeculativeDraft", "cache_type_v"):
+        "KV cache data type for V in the draft model.",
+    ("CommonParamsSpeculativeDraft", "cpuparams"):
+        "CPU threading/scheduling parameters for the draft model's non-batch path. See CpuParams.",
+    ("CommonParamsSpeculativeDraft", "cpuparams_batch"):
+        "CPU threading/scheduling parameters for the draft model's batch path. See CpuParams.",
+    ("CommonParamsSpeculativeDraft", "devices"):
+        "Devices to use for draft-model offloading (comma-separated device names, or 'none' to disable).",
+    ("CommonParamsSpeculativeDraft", "tensor_buft_overrides"):
+        "Tensor buffer-type overrides for the draft model.",
+    # -- CommonParamsSpeculativeNgramMod ----------------------------------------
+    ("CommonParamsSpeculativeNgramMod", "n_match"):
+        "Number of tokens that must match in the n-gram lookup for the mod method to propose a continuation.",
+    ("CommonParamsSpeculativeNgramMod", "n_max"):
+        "Maximum number of tokens to draft per step for the mod method.",
+    ("CommonParamsSpeculativeNgramMod", "n_min"):
+        "Minimum number of tokens to draft per step for the mod method.",
+    # -- CommonParamsSpeculativeNgramMap ----------------------------------------
+    ("CommonParamsSpeculativeNgramMap", "size_n"):
+        "N-gram size used when looking up candidate continuations in the prompt/generation history.",
+    ("CommonParamsSpeculativeNgramMap", "size_m"):
+        "M-gram size of the speculative token sequence proposed on a successful lookup.",
+    ("CommonParamsSpeculativeNgramMap", "min_hits"):
+        "Minimum number of n-gram/m-gram lookup hits required for an m-gram to be proposed.",
+    # -- CommonParamsSpeculativeNgramCache --------------------------------------
+    ("CommonParamsSpeculativeNgramCache", "lookup_cache_static"):
+        "Path to a static (pre-built, read-only) n-gram cache file for lookup decoding.",
+    ("CommonParamsSpeculativeNgramCache", "lookup_cache_dynamic"):
+        "Path to a dynamic n-gram cache file that is updated during generation for lookup decoding.",
 }
 
 
@@ -223,6 +307,10 @@ def parse_common_h(h_path: Path) -> dict[str, dict[str, CppFieldInfo]]:
         "common_params_sampling": "CommonParamsSampling",
         "common_params_model": "CommonParamsModel",
         "common_params_speculative": "CommonParamsSpeculative",
+        "common_params_speculative_draft": "CommonParamsSpeculativeDraft",
+        "common_params_speculative_ngram_mod": "CommonParamsSpeculativeNgramMod",
+        "common_params_speculative_ngram_map": "CommonParamsSpeculativeNgramMap",
+        "common_params_speculative_ngram_cache": "CommonParamsSpeculativeNgramCache",
         "common_params_vocoder": "CommonParamsVocoder",
         "common_params_diffusion": "CommonParamsDiffusion",
         "cpu_params": "CpuParams",
@@ -350,6 +438,10 @@ CLASS_ORDER = [
     "CommonParamsModel",
     "CommonParamsSampling",
     "CommonParamsSpeculative",
+    "CommonParamsSpeculativeDraft",
+    "CommonParamsSpeculativeNgramCache",
+    "CommonParamsSpeculativeNgramMap",
+    "CommonParamsSpeculativeNgramMod",
     "CommonParamsVocoder",
     "CpuParams",
 ]
@@ -490,7 +582,10 @@ def _build_linkify_pattern(linkable_classes: set[str]) -> re.Pattern | None:
         return None
     # Sort by length descending so longer names match first
     sorted_names = sorted(linkable_classes, key=len, reverse=True)
-    return re.compile("|".join(re.escape(n) for n in sorted_names))
+    # Word boundaries prevent matching a class name as a substring of a longer
+    # identifier (e.g. "CommonParamsSpeculative" inside "CommonParamsSpeculativeDraft"),
+    # which previously produced broken links like "[CommonParamsSpeculative](#...)Draft".
+    return re.compile(r"\b(?:" + "|".join(re.escape(n) for n in sorted_names) + r")\b")
 
 
 def _linkify_type(text: str, pattern: re.Pattern | None) -> str:
@@ -575,7 +670,7 @@ def generate_markdown(
                 for prop_name in existing:
                     prop = next(p for p in cls.properties if p.name == prop_name)
                     cpp = cpp_fields.get(prop_name)
-                    _write_prop_row(out, prop, cpp, linkify_pattern)
+                    _write_prop_row(out, prop, cpp, linkify_pattern, cls_name)
 
                 out.append("")
 
@@ -589,7 +684,7 @@ def generate_markdown(
                 out.append("|:---------|:-----|:--------|:---:|:------------|")
                 for prop in ungrouped:
                     cpp = cpp_fields.get(prop.name)
-                    _write_prop_row(out, prop, cpp, linkify_pattern)
+                    _write_prop_row(out, prop, cpp, linkify_pattern, cls_name)
                 out.append("")
         else:
             # Non-CommonParams classes: flat table
@@ -600,7 +695,7 @@ def generate_markdown(
             out.append("|:---------|:-----|:--------|:---:|:------------|")
             for prop in props:
                 cpp = cpp_fields.get(prop.name)
-                _write_prop_row(out, prop, cpp, linkify_pattern)
+                _write_prop_row(out, prop, cpp, linkify_pattern, cls_name)
             out.append("")
 
     return "\n".join(out)
@@ -611,6 +706,7 @@ def _write_prop_row(
     prop: PropertyInfo,
     cpp: CppFieldInfo | None,
     linkify_pattern: re.Pattern | None = None,
+    cls_name: str = "",
 ):
     """Append a single property row to the Markdown table."""
     ptype = _format_type(prop.python_type)
@@ -622,6 +718,11 @@ def _write_prop_row(
         # If the .pyx docstring is empty or shorter, prefer the C++ comment
         if cpp.comment and (not desc or len(desc) < len(cpp.comment)):
             desc = cpp.comment
+
+    # Manually curated descriptions take precedence over both sources
+    override = FIELD_DESCRIPTIONS.get((cls_name, prop.name))
+    if override:
+        desc = override
 
     rw = "R/W" if prop.has_setter else "R"
     # Escape pipe characters for Markdown tables
@@ -696,6 +797,8 @@ def main():
         cpp_fields = cpp_structs.get(cls_name, {})
         for p in cls.properties:
             cpp = cpp_fields.get(p.name)
+            if (cls_name, p.name) in FIELD_DESCRIPTIONS:
+                continue
             if not p.docstring and (not cpp or not cpp.comment):
                 print(f"  Warning: no description for {cls_name}.{p.name}", file=sys.stderr)
 
