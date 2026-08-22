@@ -313,6 +313,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `load_mode` | llama_load_mode | `LLAMA_LOAD_MODE_AUTO` | R/W | how to load the model. |
 | `mcp_servers_config` | str | `` | R/W | path to JSON file with MCP server definitions |
 | `mcp_servers_json` | str | `` | R/W | inline JSON with MCP server definitions |
+| `mmproj_device` | str | `nullptr` | R/W | GPU device for the multimodal projector (empty means auto, 'none' disables offload). |
 | `models_preset_hf` | str | `""` | R/W | show a warning about remote presets on router loaded (if not empty) |
 | `mtmd_batch_max_tokens` | int | `1024` | R/W |  |
 | `n_outputs_max` | int | `0` | R/W | max outputs in a batch (0 = n_batch). |
