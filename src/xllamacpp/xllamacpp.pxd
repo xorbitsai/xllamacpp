@@ -135,6 +135,8 @@ cdef extern from "ggml-backend.h":
         bint buffer_from_host_ptr
         # event synchronization
         bint events
+        # mmap is supported for loading
+        bint mmap_support
 
     # all the device properties
     ctypedef struct ggml_backend_dev_props:
@@ -203,6 +205,14 @@ cdef extern from "llama.h":
         LLAMA_SPLIT_MODE_ROW    # split layers and KV across GPUs, use tensor parallelism if supported
         LLAMA_SPLIT_MODE_TENSOR
 
+    cpdef enum llama_load_mode:
+        LLAMA_LOAD_MODE_AUTO
+        LLAMA_LOAD_MODE_NONE
+        LLAMA_LOAD_MODE_MMAP
+        LLAMA_LOAD_MODE_MLOCK
+        LLAMA_LOAD_MODE_MMAP_MLOCK
+        LLAMA_LOAD_MODE_DIRECT_IO
+
     cpdef enum llama_context_type:
         LLAMA_CONTEXT_TYPE_DEFAULT
         LLAMA_CONTEXT_TYPE_MTP
@@ -233,7 +243,8 @@ cdef extern from "llama.h":
 
     ctypedef struct llama_sampler_seq_config: pass
 
-    ctypedef struct llama_context_params: pass
+    ctypedef struct llama_context_params:
+        uint32_t n_outputs_max_per_seq
 
 
 #------------------------------------------------------------------------------
@@ -274,6 +285,8 @@ cdef extern from "common.h":
         bint     strict_cpu             # Use strict CPU placement
         uint32_t poll                   # Polling (busywait) level (0 - no polling, 100 - mostly polling)
 
+    void postprocess_cpu_params(common_cpu_params & cpuparams, const common_cpu_params * role_model)
+    
     # -------------------------------------------------------------------------
     # Common params
 
@@ -386,7 +399,7 @@ cdef extern from "common.h":
         # these are populated by the server/CLI based on chat template params
         int32_t  reasoning_budget_tokens   # -1 = disabled, >= 0 = token budget
         std_vector[llama_token] reasoning_budget_start  # start tag token sequence
-        std_vector[llama_token] reasoning_budget_end    # end tag token sequence
+        std_vector[llama_tokens] reasoning_budget_end   # end tag token sequences
         std_vector[llama_token] reasoning_budget_forced # forced sequence (message + end tag)
         std_string              reasoning_budget_message  # message injected before end tag when budget exhausted
         bint                    reasoning_control # create the budget sampler on demand
@@ -400,6 +413,7 @@ cdef extern from "common.h":
         COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3  # Eagle3 speculative decoding
         COMMON_SPECULATIVE_TYPE_DRAFT_MTP     # Multi-token prediction
         COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH  # DFlash speculative decoding
+        COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK  # DSpark speculative decoding
         COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE  # simple self-speculative decoding based on n-grams
         COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K   # self-speculative decoding with n-gram keys only
         COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V # self-speculative decoding with n-gram keys and 4 m-gram values
@@ -466,12 +480,6 @@ cdef extern from "common.h":
         common_params_speculative_ngram_cache ngram_cache
 
 
-    ctypedef struct common_params_vocoder:
-        common_params_model model
-        std_string speaker_file # speaker file path                                      // NOLINT
-        bint use_guide_tokens  # enable guide tokens to improve TTS accuracy            // NOLINT
-
-
     ctypedef struct common_params_diffusion:
         int32_t steps        # number of diffusion steps
         bint    visual_mode  # show progressive diffusion on screen
@@ -506,6 +514,7 @@ cdef extern from "common.h":
         int32_t n_parallel         # number of parallel sequences to decode
         int32_t n_sequences        # number of sequences to decode
         int32_t n_outputs_max      # max outputs in a batch (0 = n_batch)
+        int32_t n_outputs_max_per_seq # max outputs per sequence
         int32_t grp_attn_n         # group-attention factor
         int32_t grp_attn_w         # group-attention width
         int32_t n_print            # print token count every n tokens (-1 = disabled)
@@ -528,7 +537,8 @@ cdef extern from "common.h":
         # margin per device in bytes for fitting parameters to free memory:
         std_vector[size_t] fit_params_target
 
-        llama_split_mode        split_mode         # how to split the model across GPUs
+        llama_split_mode split_mode # how to split the model across GPUs
+        llama_load_mode  load_mode  # how to load the model
 
         common_cpu_params cpuparams
         common_cpu_params cpuparams_batch
@@ -545,7 +555,6 @@ cdef extern from "common.h":
 
         common_params_sampling sampling
         common_params_speculative speculative
-        common_params_vocoder     vocoder
         common_params_diffusion   diffusion
         common_params_model model
 
@@ -618,9 +627,6 @@ cdef extern from "common.h":
         bint kv_unified             # enable unified KV cache
 
         bint input_prefix_bos       # prefix BOS to user inputs, preceding input_prefix
-        bint use_mmap               # use mmap for faster loads
-        bint use_direct_io          # read from disk without buffering
-        bint use_mlock              # use mlock to keep model in memory
         bint verbose_prompt         # print prompt tokens before generation
         bint display_prompt         # print prompt before generation
         bint no_kv_offload          # disable KV offloading
@@ -711,6 +717,11 @@ cdef extern from "common.h":
 
         # enable built-in tools
         std_vector[std_string] server_tools
+        std_string server_tools_runtime
+
+        # MCP server configs (Cursor-compatible JSON)
+        std_string mcp_servers_config
+        std_string mcp_servers_json
 
         # router server configs
         std_string models_dir    # directory containing models for the router server
@@ -783,6 +794,12 @@ cdef extern from "common.h":
         llama_progress_callback load_progress_callback
         void *                  load_progress_callback_user_data
         bint no_alloc # Don't allocate model buffers
+
+        # TTS params
+        std_string tts_lang
+        std_string tts_speaker_file
+
+        bint is_gen_docs
 
 
     

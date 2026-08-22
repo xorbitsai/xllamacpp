@@ -516,18 +516,22 @@ cdef class CommonParamsSampling:
         self.p.reasoning_budget_start = vec
 
     @property
-    def reasoning_budget_end(self) -> list[int]:
-        """end tag token sequence"""
+    def reasoning_budget_end(self) -> list[list[int]]:
+        """end tag token sequences"""
         result = []
         for i in range(self.p.reasoning_budget_end.size()):
-            result.append(self.p.reasoning_budget_end[i])
+            result.append([token for token in self.p.reasoning_budget_end[i]])
         return result
 
     @reasoning_budget_end.setter
-    def reasoning_budget_end(self, value: list[int]):
-        cdef vector[xllamacpp.llama_token] vec
-        for token in value:
-            vec.push_back(token)
+    def reasoning_budget_end(self, value: list[list[int]]):
+        cdef vector[xllamacpp.llama_tokens] vec
+        cdef vector[xllamacpp.llama_token] tokens
+        for sequence in value:
+            tokens.clear()
+            for token in sequence:
+                tokens.push_back(token)
+            vec.push_back(tokens)
         self.p.reasoning_budget_end = vec
 
     @property
@@ -1011,38 +1015,6 @@ cdef class CommonParamsSpeculative:
 
 
 
-cdef class CommonParamsVocoder:
-    cdef xllamacpp.common_params_vocoder *p
-    cdef object owner
-
-    @staticmethod
-    cdef CommonParamsVocoder from_ptr(xllamacpp.common_params_vocoder *params, owner):
-        cdef CommonParamsVocoder wrapper = CommonParamsVocoder.__new__(CommonParamsVocoder)
-        wrapper.p = params
-        wrapper.owner = owner
-        return wrapper
-
-    def __init__(self):
-        raise Exception(f"Can't construct an instance of {type(self).__name__}")
-
-    @property
-    def model(self) -> CommonParamsModel:
-        return CommonParamsModel.from_ptr(&self.p.model, self)
-
-    @model.setter
-    def model(self, value: CommonParamsModel):
-        self.p.model = deref(value.p)
-
-    @property
-    def speaker_file(self) -> str:
-        """speaker file path"""
-        return self.p.speaker_file
-
-    @speaker_file.setter
-    def speaker_file(self, value: str):
-        self.p.speaker_file = value
-
-
 cdef class CommonParamsDiffusion:
     cdef xllamacpp.common_params_diffusion *p
     cdef object owner
@@ -1340,6 +1312,15 @@ cdef class CommonParams:
         self.p.n_outputs_max = value
 
     @property
+    def n_outputs_max_per_seq(self) -> int:
+        """max outputs per sequence."""
+        return self.p.n_outputs_max_per_seq
+
+    @n_outputs_max_per_seq.setter
+    def n_outputs_max_per_seq(self, value: int):
+        self.p.n_outputs_max_per_seq = value
+
+    @property
     def grp_attn_n(self) -> int:
         """group-attention factor."""
         return self.p.grp_attn_n
@@ -1471,6 +1452,15 @@ cdef class CommonParams:
         self.p.split_mode = value
 
     @property
+    def load_mode(self) -> llama_load_mode:
+        """how to load the model."""
+        return self.p.load_mode
+
+    @load_mode.setter
+    def load_mode(self, llama_load_mode value):
+        self.p.load_mode = value
+
+    @property
     def cpuparams(self) -> CpuParams:
         return CpuParams.from_ptr(&self.p.cpuparams, self)
 
@@ -1557,15 +1547,6 @@ cdef class CommonParams:
     @speculative.setter
     def speculative(self, value: CommonParamsSpeculative):
         self.p.speculative = deref(value.p)
-
-    @property
-    def vocoder(self) -> CommonParamsVocoder:
-        """common params vocoder."""
-        return CommonParamsVocoder.from_ptr(&self.p.vocoder, self)
-
-    @vocoder.setter
-    def vocoder(self, value: CommonParamsVocoder):
-        self.p.vocoder = deref(value.p)
 
     @property
     def diffusion(self) -> CommonParamsDiffusion:
@@ -2076,33 +2057,6 @@ cdef class CommonParams:
     @input_prefix_bos.setter
     def input_prefix_bos(self, value: bool):
         self.p.input_prefix_bos = value
-
-    @property
-    def use_mmap(self) -> bool:
-        """use mmap for faster loads"""
-        return self.p.use_mmap
-
-    @use_mmap.setter
-    def use_mmap(self, value: bool):
-        self.p.use_mmap = value
-
-    @property
-    def use_direct_io(self) -> bool:
-        """read from disk without buffering"""
-        return self.p.use_direct_io
-
-    @use_direct_io.setter
-    def use_direct_io(self, value: bool):
-        self.p.use_direct_io = value
-
-    @property
-    def use_mlock(self) -> bool:
-        """use mlock to keep model in memory"""
-        return self.p.use_mlock
-
-    @use_mlock.setter
-    def use_mlock(self, value: bool):
-        self.p.use_mlock = value
 
     @property
     def verbose_prompt(self) -> bool:
@@ -2674,6 +2628,33 @@ cdef class CommonParams:
             self.p.server_tools.push_back(i)
 
     @property
+    def server_tools_runtime(self) -> str:
+        """runtime used for built-in server tools."""
+        return self.p.server_tools_runtime
+
+    @server_tools_runtime.setter
+    def server_tools_runtime(self, value: str):
+        self.p.server_tools_runtime = value
+
+    @property
+    def mcp_servers_config(self) -> str:
+        """path to JSON file with MCP server definitions"""
+        return self.p.mcp_servers_config
+
+    @mcp_servers_config.setter
+    def mcp_servers_config(self, value: str):
+        self.p.mcp_servers_config = value
+
+    @property
+    def mcp_servers_json(self) -> str:
+        """inline JSON with MCP server definitions"""
+        return self.p.mcp_servers_json
+
+    @mcp_servers_json.setter
+    def mcp_servers_json(self, value: str):
+        self.p.mcp_servers_json = value
+
+    @property
     def models_dir(self) -> str:
         """directory containing models for the router server"""
         return self.p.models_dir
@@ -3021,6 +3002,30 @@ cdef class CommonParams:
     def no_alloc(self, value: bool):
         self.p.no_alloc = value
 
+    @property
+    def tts_lang(self) -> str:
+        return self.p.tts_lang
+
+    @tts_lang.setter
+    def tts_lang(self, value: str):
+        self.p.tts_lang = value
+
+    @property
+    def tts_speaker_file(self) -> str:
+        return self.p.tts_speaker_file
+
+    @tts_speaker_file.setter
+    def tts_speaker_file(self, value: str):
+        self.p.tts_speaker_file = value
+
+    @property
+    def is_gen_docs(self) -> bool:
+        return self.p.is_gen_docs
+
+    @is_gen_docs.setter
+    def is_gen_docs(self, value: bool):
+        self.p.is_gen_docs = value
+
     # // cvector-generator params
     # dimre_method cvector_dimre_method = DIMRE_METHOD_PCA;
     # std::string cvector_outfile       =
@@ -3106,6 +3111,15 @@ cdef class Server:
     cdef shared_ptr[CServer] svr
 
     def __cinit__(self, CommonParams common_params):
+        # Mirror the CPU-params postprocessing that common_params_parser_init
+        # performs for the CLI (common/arg.cpp): params built from Python skip
+        # CLI parsing, so resolve n_threads < 0 to the number of math cores
+        # here, before the C++ server creates its threadpools (a negative
+        # count is otherwise fatal).
+        xllamacpp.postprocess_cpu_params(common_params.p.cpuparams, NULL)
+        xllamacpp.postprocess_cpu_params(common_params.p.cpuparams_batch, &common_params.p.cpuparams)
+        xllamacpp.postprocess_cpu_params(common_params.p.speculative.draft.cpuparams, &common_params.p.cpuparams)
+        xllamacpp.postprocess_cpu_params(common_params.p.speculative.draft.cpuparams_batch, &common_params.p.cpuparams_batch)
         self.svr = make_shared[CServer](common_params.p)
 
     @property

@@ -28,6 +28,49 @@ def test_llama_server_requires_model_path():
         xlc.Server(params)
 
 
+def test_llama_server_resolves_default_n_threads():
+    # Params built from Python skip CLI parsing, so Server.__cinit__ applies
+    # the same postprocess_cpu_params that common_params_parser_init performs
+    # for the CLI: n_threads < 0 resolves to the number of math cores (a
+    # negative count is fatal when the C++ side creates its threadpools).
+    params = xlc.CommonParams()
+
+    # upstream default is -1 (auto) for all four CPU param sets
+    assert params.cpuparams.n_threads == -1
+    assert params.cpuparams_batch.n_threads == -1
+    assert params.speculative.draft.cpuparams.n_threads == -1
+    assert params.speculative.draft.cpuparams_batch.n_threads == -1
+
+    # an empty model path raises before any model is loaded, but the CPU
+    # params postprocessing has already run by then
+    with pytest.raises(ValueError, match="router server feature"):
+        xlc.Server(params)
+
+    n_threads = params.cpuparams.n_threads
+    assert n_threads > 0
+    # batch / draft params inherit from their role model
+    assert params.cpuparams_batch.n_threads == n_threads
+    assert params.speculative.draft.cpuparams.n_threads == n_threads
+    assert params.speculative.draft.cpuparams_batch.n_threads == n_threads
+
+
+def test_llama_server_keeps_explicit_n_threads():
+    # explicitly set thread counts must survive Server construction
+    params = xlc.CommonParams()
+    params.cpuparams.n_threads = 2
+    params.cpuparams_batch.n_threads = 3
+    params.speculative.draft.cpuparams.n_threads = 4
+    params.speculative.draft.cpuparams_batch.n_threads = 5
+
+    with pytest.raises(ValueError, match="router server feature"):
+        xlc.Server(params)
+
+    assert params.cpuparams.n_threads == 2
+    assert params.cpuparams_batch.n_threads == 3
+    assert params.speculative.draft.cpuparams.n_threads == 4
+    assert params.speculative.draft.cpuparams_batch.n_threads == 5
+
+
 def test_llama_server(model_path):
     params = xlc.CommonParams()
 

@@ -187,10 +187,12 @@ class TestServerHTTP:
         assert response.status_code == 200
         assert response.json() == []
 
-        response = requests.get(f"{server_url}/v1/stream/unknown")
+        response = requests.get(f"{server_url}/v1/stream", params={"conv_id": "unknown"})
         assert response.status_code == 404
 
-        response = requests.delete(f"{server_url}/v1/stream/unknown")
+        response = requests.delete(
+            f"{server_url}/v1/stream", params={"conv_id": "unknown"}
+        )
         assert response.status_code == 204
 
     def test_disabled_feature_endpoints(self, server_url):
