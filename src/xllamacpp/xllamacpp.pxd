@@ -285,6 +285,8 @@ cdef extern from "common.h":
         bint     strict_cpu             # Use strict CPU placement
         uint32_t poll                   # Polling (busywait) level (0 - no polling, 100 - mostly polling)
 
+    void postprocess_cpu_params(common_cpu_params & cpuparams, const common_cpu_params * role_model)
+    
     # -------------------------------------------------------------------------
     # Common params
 
