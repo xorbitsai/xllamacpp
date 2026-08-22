@@ -25,7 +25,9 @@ if [ ! -d "$LLAMACPP_DIR/.git" ] && [ ! -f "$LLAMACPP_DIR/.git" ]; then
     exit 1
 fi
 
-LLAMACPP_TAG=$(cd "$LLAMACPP_DIR" && git describe --tags --abbrev=0 2>/dev/null)
+# llama.cpp now also creates semver release tags (e.g. v0.2.0) alongside the
+# bNNNN build tags, so restrict the match to bNNNN tags only.
+LLAMACPP_TAG=$(cd "$LLAMACPP_DIR" && git describe --tags --match 'b[0-9]*' --abbrev=0 2>/dev/null)
 if [ -z "$LLAMACPP_TAG" ]; then
     echo "ERROR: Could not determine llama.cpp version tag." >&2
     exit 1
