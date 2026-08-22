@@ -13,6 +13,10 @@ It lists **all Python-accessible properties** of each configuration class, along
 - [CommonParamsModel](#commonparamsmodel)
 - [CommonParamsSampling](#commonparamssampling)
 - [CommonParamsSpeculative](#commonparamsspeculative)
+- [CommonParamsSpeculativeDraft](#commonparamsspeculativedraft)
+- [CommonParamsSpeculativeNgramCache](#commonparamsspeculativengramcache)
+- [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap)
+- [CommonParamsSpeculativeNgramMod](#commonparamsspeculativengrammod)
 - [CpuParams](#cpuparams)
 
 ---
@@ -426,13 +430,70 @@ Speculative decoding parameters. Access via `params.speculative`.
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
-| `draft` | [CommonParamsSpeculative](#commonparamsspeculative)Draft | `` | R | draft-model-based speculative decoding parameters. |
-| `ngram_cache` | [CommonParamsSpeculative](#commonparamsspeculative)NgramCache | `` | R | ngram cache parameters. |
-| `ngram_map_k` | [CommonParamsSpeculative](#commonparamsspeculative)NgramMap | `` | R | ngram map k parameters. |
-| `ngram_map_k4v` | [CommonParamsSpeculative](#commonparamsspeculative)NgramMap | `` | R | ngram map k4v parameters. |
-| `ngram_mod` | [CommonParamsSpeculative](#commonparamsspeculative)NgramMod | `` | R | ngram mod parameters. |
-| `ngram_simple` | [CommonParamsSpeculative](#commonparamsspeculative)NgramMap | `` | R | ngram simple map parameters. |
-| `types` | list[common_speculative_type] | `{ COMMON_SPECULATIVE_TYPE_NONE }` | R/W | types of speculative decoding. |
+| `draft` | [CommonParamsSpeculativeDraft](#commonparamsspeculativedraft) | `` | R | Draft-model speculative decoding configuration (draft model path, draft window, acceptance thresholds). See [CommonParamsSpeculativeDraft](#commonparamsspeculativedraft). |
+| `ngram_cache` | [CommonParamsSpeculativeNgramCache](#commonparamsspeculativengramcache) | `` | R | Static/dynamic n-gram cache file paths for lookup decoding. See [CommonParamsSpeculativeNgramCache](#commonparamsspeculativengramcache). |
+| `ngram_map_k` | [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap) | `` | R | Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K` method (n-gram keys only). See [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap). |
+| `ngram_map_k4v` | [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap) | `` | R | Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V` method (n-gram keys with up to 4 m-gram values). See [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap). |
+| `ngram_mod` | [CommonParamsSpeculativeNgramMod](#commonparamsspeculativengrammod) | `` | R | Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MOD` method. See [CommonParamsSpeculativeNgramMod](#commonparamsspeculativengrammod). |
+| `ngram_simple` | [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap) | `` | R | Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE` method. See [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap). |
+| `types` | list[common_speculative_type] | `{ COMMON_SPECULATIVE_TYPE_NONE }` | R/W | List of speculative decoding methods to enable. Draft-model-free methods: `COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE`, `NGRAM_MAP_K`, `NGRAM_MAP_K4V`, `NGRAM_MOD`, `NGRAM_CACHE`. Draft-model methods: `COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE`, `DRAFT_MTP`, `DRAFT_EAGLE3`, `DRAFT_DFLASH`, `DRAFT_DSPARK`. Not required when only a draft model path is set — draft decoding is enabled automatically. |
+
+---
+
+## CommonParamsSpeculativeDraft
+
+Draft-model speculative decoding parameters. Access via `params.speculative.draft`.
+
+| Property | Type | Default | R/W | Description |
+|:---------|:-----|:--------|:---:|:------------|
+| `backend_sampling` | bool | `true` | R/W | Offload draft-model sampling to the backend (default: on). |
+| `cache_type_k` | ggml_type | `GGML_TYPE_F16` | R/W | KV cache data type for K in the draft model. |
+| `cache_type_v` | ggml_type | `GGML_TYPE_F16` | R/W | KV cache data type for V in the draft model. |
+| `cpuparams` | [CpuParams](#cpuparams) | `` | R/W | CPU threading/scheduling parameters for the draft model's non-batch path. See [CpuParams](#cpuparams). |
+| `cpuparams_batch` | [CpuParams](#cpuparams) | `` | R/W | CPU threading/scheduling parameters for the draft model's batch path. See [CpuParams](#cpuparams). |
+| `devices` | str | `` | R/W | Devices to use for draft-model offloading (comma-separated device names, or 'none' to disable). |
+| `mparams` | [CommonParamsModel](#commonparamsmodel) | `` | R/W | Draft model location. Set `mparams.path` to a smaller, same-family GGUF — draft and target models must share the same tokenizer/vocabulary. Setting a path automatically enables draft-model speculative decoding. See [CommonParamsModel](#commonparamsmodel). |
+| `n_gpu_layers` | int | `-1` | R/W | Number of draft-model layers to store in VRAM (-1 = use default). |
+| `n_max` | int | `3` | R/W | Maximum number of tokens the draft model proposes per step. Larger windows accept more tokens per target-model pass but waste compute when drafts are rejected. |
+| `n_min` | int | `0` | R/W | Minimum number of draft tokens to propose before verification; adaptive drafting does not stop below this count. |
+| `p_min` | float | `0.0` | R/W | Minimum probability for a drafted token to be accepted (greedy verification); tokens below it are rejected. |
+| `p_split` | float | `0.1` | R/W | Probability threshold used to split the draft sequence during adaptive drafting. |
+| `tensor_buft_overrides` | str | `` | R/W | Tensor buffer-type overrides for the draft model. |
+
+---
+
+## CommonParamsSpeculativeNgramCache
+
+N-gram cache file parameters for lookup decoding. Access via `params.speculative.ngram_cache`.
+
+| Property | Type | Default | R/W | Description |
+|:---------|:-----|:--------|:---:|:------------|
+| `lookup_cache_dynamic` | str | `` | R/W | Path to a dynamic n-gram cache file that is updated during generation for lookup decoding. |
+| `lookup_cache_static` | str | `` | R/W | Path to a static (pre-built, read-only) n-gram cache file for lookup decoding. |
+
+---
+
+## CommonParamsSpeculativeNgramMap
+
+N-gram lookup parameters shared by the `NGRAM_SIMPLE`, `NGRAM_MAP_K`, and `NGRAM_MAP_K4V` speculative methods. Access via `params.speculative.ngram_simple`, `params.speculative.ngram_map_k`, or `params.speculative.ngram_map_k4v`.
+
+| Property | Type | Default | R/W | Description |
+|:---------|:-----|:--------|:---:|:------------|
+| `min_hits` | int | `1` | R/W | Minimum number of n-gram/m-gram lookup hits required for an m-gram to be proposed. |
+| `size_m` | int | `48` | R/W | M-gram size of the speculative token sequence proposed on a successful lookup. |
+| `size_n` | int | `12` | R/W | N-gram size used when looking up candidate continuations in the prompt/generation history. |
+
+---
+
+## CommonParamsSpeculativeNgramMod
+
+Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MOD` speculative method. Access via `params.speculative.ngram_mod`.
+
+| Property | Type | Default | R/W | Description |
+|:---------|:-----|:--------|:---:|:------------|
+| `n_match` | int | `24` | R/W | Number of tokens that must match in the n-gram lookup for the mod method to propose a continuation. |
+| `n_max` | int | `64` | R/W | Maximum number of tokens to draft per step for the mod method. |
+| `n_min` | int | `48` | R/W | Minimum number of tokens to draft per step for the mod method. |
 
 ---
 
