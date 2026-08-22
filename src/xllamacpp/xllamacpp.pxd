@@ -645,6 +645,7 @@ cdef extern from "common.h":
         # multimodal models (see tools/mtmd)
         common_params_model mmproj
         bint mmproj_use_gpu         # use GPU for multimodal model
+        ggml_backend_dev_t mmproj_device # GPU device to use for multimodal model
         bint no_mmproj              # explicitly disable multimodal model
 
         std_vector[std_string] image # path to image file(s)

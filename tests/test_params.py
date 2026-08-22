@@ -254,6 +254,13 @@ def test_common_params():
 
     assert params.mmproj.path == ""
     assert params.mmproj_use_gpu is True
+    assert params.mmproj_device == ""
+    params.mmproj_device = "none"
+    assert params.mmproj_device == "none"
+    assert params.mmproj_use_gpu is False
+    params.mmproj_device = ""
+    assert params.mmproj_device == ""
+    assert params.mmproj_use_gpu is True
     assert params.no_mmproj is False
     assert params.image == []
     assert params.image_min_tokens == -1
