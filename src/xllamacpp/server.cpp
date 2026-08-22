@@ -413,6 +413,19 @@ static void init(common_params &   params,
             ctx_http.stop();
         };
 
+        try {
+            models_routes->models.load_startup_models();
+        } catch (const std::exception & e) {
+            SRV_ERR("failed to load models on startup: %s\n", e.what());
+            ctx_http.stop();
+            if (ctx_http.thread.joinable()) {
+                ctx_http.thread.join();
+            }
+            clean_up();
+            out.set_value(1);
+            return;
+        }
+
     } else {
         // setup clean up function, to be called before exit
         clean_up = [&ctx_http, &ctx_server, &mcp_mgr]() {
