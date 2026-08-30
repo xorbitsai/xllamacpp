@@ -260,7 +260,7 @@ cmdclass["build_ext"] = build_ext
 common = {
     "name": NAME,
     "version": VERSION,
-    "description": "A cython wrapper of the llama.cpp inference engine.",
+    "description": "Python bindings for llama.cpp with native server APIs and prebuilt CPU and GPU wheels",
     "python_requires": ">=3.10",
     "cmdclass": cmdclass,
     "license": "MIT",

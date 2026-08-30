@@ -1,13 +1,47 @@
 [project]
 name = "xllamacpp"
 dynamic = ["version", "license"]
-description = "A Python wrapper of llama.cpp"
+description = "Python bindings for llama.cpp with native server APIs and prebuilt CPU and GPU wheels"
 readme = "README.md"
 authors = [
     { name = "codingl2k1", email = "codingl2k1@outlook.com" }
 ]
 requires-python = ">=3.10"
 dependencies = []
+keywords = [
+    "llama.cpp",
+    "llama-cpp",
+    "llm",
+    "gguf",
+    "local-llm",
+    "inference",
+    "cython",
+    "openai-api",
+    "cuda",
+    "rocm",
+    "vulkan",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: C++",
+    "Programming Language :: Cython",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/xorbitsai/xllamacpp"
+Documentation = "https://github.com/xorbitsai/xllamacpp#readme"
+Repository = "https://github.com/xorbitsai/xllamacpp.git"
+Issues = "https://github.com/xorbitsai/xllamacpp/issues"
+Changelog = "https://github.com/xorbitsai/xllamacpp/releases"
 
 [project.optional-dependencies]
 test = ['pytest', 'pytest-cov']

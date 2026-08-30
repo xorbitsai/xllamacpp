@@ -1,30 +1,81 @@
 <div align="center">
-<img src="./assets/logo.png" width="400px" alt="xorbits" />
+<img src="./assets/logo.png" width="400px" alt="xllamacpp Python bindings for llama.cpp" />
 
-# xllamacpp - a Python wrapper of llama.cpp
+# xllamacpp — Python bindings for llama.cpp
 
 [![PyPI Latest Release](https://img.shields.io/pypi/v/xllamacpp.svg?style=for-the-badge)](https://pypi.org/project/xllamacpp/)
-[![License](https://img.shields.io/pypi/l/xllamacpp.svg?style=for-the-badge)](https://github.com/xorbitsai/inference/blob/main/LICENSE)
+[![Python Versions](https://img.shields.io/pypi/pyversions/xllamacpp.svg?style=for-the-badge)](https://pypi.org/project/xllamacpp/)
+[![License](https://img.shields.io/pypi/l/xllamacpp.svg?style=for-the-badge)](https://github.com/xorbitsai/xllamacpp/blob/main/LICENSE)
 [![Discord](https://img.shields.io/badge/join_Discord-5462eb.svg?logo=discord&style=for-the-badge&logoColor=%23f5f5f5)](https://discord.gg/Xw9tszSkr5)
 [![Twitter](https://img.shields.io/twitter/follow/xorbitsio?logo=x&style=for-the-badge)](https://twitter.com/xorbitsio)
 
 </div>
 <br />
 
-This project forks from [cyllama](https://github.com/shakfu/cyllama) and provides a Python wrapper for @ggerganov's [llama.cpp](https://github.com/ggerganov/llama.cpp) which is likely the most active open-source compiled LLM inference engine.
+**xllamacpp** is a fast, Cython-based Python binding for
+[llama.cpp](https://github.com/ggml-org/llama.cpp). It runs GGUF large language
+models locally and exposes llama.cpp's native server and parameter APIs directly
+to Python, including OpenAI-compatible chat completions, continuous batching,
+embeddings, reranking, multimodal input, and structured output.
 
-## Compare to llama-cpp-python 
+Prebuilt Python wheels are available for CPU, Metal, CUDA, ROCm, and Vulkan, so
+you can run local LLM inference on Linux, macOS, or Windows without compiling
+llama.cpp yourself.
 
-The following table provide an overview of the current implementations / features:
+## Why xllamacpp?
+
+- **Thin native bindings:** Cython extension types stay close to llama.cpp's C/C++ APIs.
+- **Production server engine:** llama.cpp's native C++ server provides continuous batching, parallel decoding, prompt caching, and thread-safe inference.
+- **OpenAI-compatible API:** use chat completions, text completions, embeddings, reranking, and the Responses API from Python or over HTTP.
+- **Broad hardware support:** install prebuilt CPU, Metal, NVIDIA CUDA, AMD ROCm, or Vulkan wheels.
+- **Modern model features:** GGUF models, multimodal inference, LoRA adapters, speculative decoding, reasoning models, and JSON Schema-constrained output with LLGuidance.
+
+## Quick start
+
+Install the CPU or macOS wheel from PyPI:
+
+```sh
+pip install -U xllamacpp
+```
+
+Run a local GGUF model from Python:
+
+```python
+import xllamacpp as xlc
+
+params = xlc.CommonParams()
+params.model.path = "models/Llama-3.2-1B-Instruct-Q8_0.gguf"
+params.n_ctx = 2048
+
+server = xlc.Server(params)
+result = server.handle_chat_completions({
+    "messages": [{"role": "user", "content": "Why is the sky blue?"}],
+    "max_tokens": 128,
+})
+
+print(result["choices"][0]["message"]["content"])
+```
+
+Need a model? Download a [GGUF model from Hugging Face](#download-models).
+For GPU-specific wheels, see [Installation](#installation). For the complete
+Python API, continue to [Usage](#usage).
+
+This project was originally forked from
+[cyllama](https://github.com/shakfu/cyllama) and has since evolved into the
+llama.cpp backend used by [Xinference](https://github.com/xorbitsai/inference).
+
+## xllamacpp vs. llama-cpp-python
+
+The following table provides an overview of the two Python bindings:
 
 | implementations / features |      xllamacpp      |         llama-cpp-python         |
 |:---------------------------|:-------------------:|:--------------------------------:|
-| Wrapper-type               |       cython        |              ctypes              |
+| Wrapper type               |       Cython        |              ctypes              |
 | API                        | Server & Params API |            Llama API             |
-| Server implementation      |         C++         | Python through wrapped LLama API |
-| Continuous batching        |         yes         |                no                |
-| Thread safe                |         yes         |                no                |
-| Release package            |      prebuilt       |    build during installation     |
+| Server implementation      |         C++         | Python through wrapped Llama API |
+| Continuous batching        |         Yes         |                No                |
+| Thread safe                |         Yes         |                No                |
+| Release package            |    Prebuilt wheels  |    Build during installation     |
 | Structured outputs         | C++ / [LLGuidance](https://github.com/guidance-ai/llguidance) (Rust) |  Python (`SchemaConverter`)    |
 
 It goes without saying that any help / collaboration / contributions to accelerate the above would be welcome!
@@ -40,7 +91,7 @@ As the intent is to provide a very thin wrapping layer and play to the strengths
 - Minimize non-wrapper python code.
 
 
-## Install
+## Installation
 
 **Note on Performance and Compatibility**
 
@@ -388,7 +439,7 @@ recorded by the parent repository.
 
 ## Usage
 
-All examples below assume you have `xllamacpp` installed and a GGUF model file available. See [Install](#install) for installation instructions and [Testing](#testing) for how to download models.
+All examples below assume you have `xllamacpp` installed and a GGUF model file available. See [Installation](#installation) for installation instructions and [Testing](#testing) for how to download models.
 
 ### Configuring Parameters
 
