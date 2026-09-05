@@ -23,7 +23,8 @@ class TestServerHTTP:
             os.path.dirname(__file__), "../models/Llama-3.2-1B-Instruct-Q8_0.gguf"
         )
         params.n_parallel = 1
-        params.n_ctx = 256
+        params.n_ctx = 0
+        params.kv_unified_per_slot = 256
         params.cpuparams.n_threads = 2
         params.cpuparams_batch.n_threads = 2
         params.endpoint_metrics = True
@@ -179,6 +180,8 @@ class TestServerHTTP:
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["n_ctx"] == 256
 
     def test_resumable_stream_endpoints(self, server_url):
         response = requests.post(
