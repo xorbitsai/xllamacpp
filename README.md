@@ -4,10 +4,12 @@
 # xllamacpp — Python bindings for llama.cpp
 
 [![PyPI Latest Release](https://img.shields.io/pypi/v/xllamacpp.svg?style=for-the-badge)](https://pypi.org/project/xllamacpp/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/xllamacpp.svg?style=for-the-badge)](https://pypi.org/project/xllamacpp/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB.svg?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/xllamacpp/)
 [![License](https://img.shields.io/pypi/l/xllamacpp.svg?style=for-the-badge)](https://github.com/xorbitsai/xllamacpp/blob/main/LICENSE)
-[![Discord](https://img.shields.io/badge/join_Discord-5462eb.svg?logo=discord&style=for-the-badge&logoColor=%23f5f5f5)](https://discord.gg/Xw9tszSkr5)
-[![Twitter](https://img.shields.io/twitter/follow/xorbitsio?logo=x&style=for-the-badge)](https://twitter.com/xorbitsio)
+[![CUDA](https://img.shields.io/badge/CUDA-76B900.svg?style=for-the-badge&logo=nvidia&logoColor=white)](#cuda-gpu-architecture-coverage)
+[![ROCm](https://img.shields.io/badge/ROCm-ED1C24.svg?style=for-the-badge&logo=amd&logoColor=white)](#rocm-hip-gpu-architecture-coverage)
+[![Vulkan](https://img.shields.io/badge/Vulkan-AC162C.svg?style=for-the-badge&logo=vulkan&logoColor=white)](#installation)
+[![Apple Metal](https://img.shields.io/badge/Apple_Metal-000000.svg?style=for-the-badge&logo=apple&logoColor=white)](#installation)
 
 </div>
 <br />
@@ -30,7 +32,7 @@ llama.cpp yourself.
 - **Broad hardware support:** install prebuilt CPU, Metal, NVIDIA CUDA, AMD ROCm, or Vulkan wheels.
 - **Modern model features:** GGUF models, multimodal inference, LoRA adapters, speculative decoding, reasoning models, and JSON Schema-constrained output with LLGuidance.
 
-## Quick start
+## Quick start: run llama.cpp from Python
 
 Install the CPU or macOS wheel from PyPI:
 
@@ -79,6 +81,27 @@ The following table provides an overview of the two Python bindings:
 | Structured outputs         | C++ / [LLGuidance](https://github.com/guidance-ai/llguidance) (Rust) |  Python (`SchemaConverter`)    |
 
 It goes without saying that any help / collaboration / contributions to accelerate the above would be welcome!
+
+## llama.cpp Python FAQ
+
+### Is xllamacpp a Python binding for llama.cpp?
+
+Yes. xllamacpp packages llama.cpp as a Cython extension and exposes its native
+server and parameter APIs to Python. You can embed local GGUF inference in a
+Python application without launching a separate `llama-server` process.
+
+### Can I install llama.cpp for Python with pip?
+
+Yes. `pip install xllamacpp` installs a prebuilt wheel for CPU or macOS. Prebuilt
+CUDA, ROCm, and Vulkan wheels are also available from the project package
+indexes, while source builds remain available for custom hardware tuning.
+
+### Does the Python API support OpenAI-compatible requests?
+
+Yes. The embedded llama.cpp server supports OpenAI-compatible chat completions,
+text completions, embeddings, reranking, and Responses API requests. You can
+call it directly from Python or use its local HTTP endpoints with the OpenAI
+Python client.
 
 ## Wrapping Guidelines
 
