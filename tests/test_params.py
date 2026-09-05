@@ -89,6 +89,9 @@ def test_enum_values():
     assert xlc.llama_split_mode.LLAMA_SPLIT_MODE_ROW == 2
     assert xlc.llama_split_mode.LLAMA_SPLIT_MODE_TENSOR == 3
     assert xlc.llama_load_mode.LLAMA_LOAD_MODE_AUTO == -1
+    assert xlc.llama_lazy_mode.LLAMA_LAZY_MODE_OFF == 0
+    assert xlc.llama_lazy_mode.LLAMA_LAZY_MODE_AUTO == 1
+    assert xlc.llama_lazy_mode.LLAMA_LAZY_MODE_ON == 2
     assert xlc.llama_context_type.LLAMA_CONTEXT_TYPE_DEFAULT == 0
     assert xlc.llama_context_type.LLAMA_CONTEXT_TYPE_MTP == 1
     assert xlc.llama_model_kv_override_type.LLAMA_KV_OVERRIDE_TYPE_STR == 3
@@ -240,6 +243,9 @@ def test_common_params():
     assert params.load_mode == xlc.llama_load_mode.LLAMA_LOAD_MODE_AUTO
     params.load_mode = xlc.llama_load_mode.LLAMA_LOAD_MODE_DIRECT_IO
     assert params.load_mode == xlc.llama_load_mode.LLAMA_LOAD_MODE_DIRECT_IO
+    assert params.lazy_mode == xlc.llama_lazy_mode.LLAMA_LAZY_MODE_AUTO
+    params.lazy_mode = xlc.llama_lazy_mode.LLAMA_LAZY_MODE_ON
+    assert params.lazy_mode == xlc.llama_lazy_mode.LLAMA_LAZY_MODE_ON
     assert params.verbose_prompt is False
     assert params.display_prompt is True
     assert params.no_kv_offload is False
@@ -273,6 +279,15 @@ def test_common_params():
     assert params.mtmd_batch_max_tokens == 1024
     params.mtmd_batch_max_tokens = 2048
     assert params.mtmd_batch_max_tokens == 2048
+    assert params.video_fps == approx(4.0)
+    params.video_fps = 8.0
+    assert params.video_fps == approx(8.0)
+    assert params.video_timestamp_interval_ms == 5000
+    params.video_timestamp_interval_ms = 2500
+    assert params.video_timestamp_interval_ms == 2500
+    assert params.video_ffmpeg_bin_dir == ""
+    params.video_ffmpeg_bin_dir = "/opt/ffmpeg/bin"
+    assert params.video_ffmpeg_bin_dir == "/opt/ffmpeg/bin"
 
     assert params.embedding is False
     assert params.embd_normalize == 2
@@ -297,6 +312,9 @@ def test_common_params():
     params.cache_idle_slots = False
     assert params.cache_idle_slots is False
     assert params.n_ctx_checkpoints == 32
+    assert params.kv_unified_per_slot == 0
+    params.kv_unified_per_slot = 256
+    assert params.kv_unified_per_slot == 256
     assert params.checkpoint_min_step == 8192
     params.checkpoint_min_step = 100
     assert params.checkpoint_min_step == 100
@@ -343,6 +361,9 @@ def test_common_params():
 
     params.default_template_kwargs = {"abc": "def"}
     assert params.default_template_kwargs == {"abc": "def"}
+    assert params.preserve_reasoning_specified is False
+    params.preserve_reasoning_specified = True
+    assert params.preserve_reasoning_specified is True
 
     assert params.server_base == ""
     params.server_base = "http://127.0.0.1:8080"
@@ -501,6 +522,12 @@ def test_common_params():
         params.speculative.types
         == [xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_NONE]
     )
+    assert params.speculative.synth_len == approx(-1.0)
+    params.speculative.synth_len = 3.5
+    assert params.speculative.synth_len == approx(3.5)
+    assert params.speculative.synth_rates == []
+    params.speculative.synth_rates = [0.9, 0.75]
+    assert params.speculative.synth_rates == [approx(0.9), approx(0.75)]
     params.speculative.types = [
         xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE,
         xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_MTP,

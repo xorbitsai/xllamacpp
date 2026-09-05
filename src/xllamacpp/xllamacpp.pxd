@@ -213,6 +213,11 @@ cdef extern from "llama.h":
         LLAMA_LOAD_MODE_MMAP_MLOCK
         LLAMA_LOAD_MODE_DIRECT_IO
 
+    cpdef enum llama_lazy_mode:
+        LLAMA_LAZY_MODE_OFF
+        LLAMA_LAZY_MODE_AUTO
+        LLAMA_LAZY_MODE_ON
+
     cpdef enum llama_context_type:
         LLAMA_CONTEXT_TYPE_DEFAULT
         LLAMA_CONTEXT_TYPE_MTP
@@ -470,6 +475,9 @@ cdef extern from "common.h":
     ctypedef struct common_params_speculative:
         std_vector[common_speculative_type] types  # types of speculative decoding
 
+        double synth_len
+        std_vector[double] synth_rates
+
         common_params_speculative_draft draft
 
         common_params_speculative_ngram_mod ngram_mod
@@ -539,6 +547,7 @@ cdef extern from "common.h":
 
         llama_split_mode split_mode # how to split the model across GPUs
         llama_load_mode  load_mode  # how to load the model
+        llama_lazy_mode  lazy_mode  # on-demand reading of tensors marked by the arch
 
         common_cpu_params cpuparams
         common_cpu_params cpuparams_batch
@@ -653,6 +662,10 @@ cdef extern from "common.h":
         int32_t image_max_tokens
         int32_t mtmd_batch_max_tokens
 
+        float   video_fps
+        int64_t video_timestamp_interval_ms
+        std_string video_ffmpeg_bin_dir
+
         # finetune
         # We do not need to export finetune fields to Python
 
@@ -674,6 +687,7 @@ cdef extern from "common.h":
         bint    cache_prompt        # whether to enable prompt caching
         bint    cache_idle_slots    # save and clear idle slots upon starting a new task
         int32_t n_ctx_checkpoints   # max number of context checkpoints per slot
+        int32_t kv_unified_per_slot # max context per parallel slot; 0 = unset
         int32_t checkpoint_min_step # minimum spacing between context checkpoints
         int32_t cache_ram_mib       # -1 = no limit, 0 - disable, 1 = 1 MiB, etc.
 
@@ -703,6 +717,7 @@ cdef extern from "common.h":
         std_string ssl_file_cert
 
         std_map[std_string, std_string] default_template_kwargs
+        bint preserve_reasoning_specified
 
         std_string server_base
 

@@ -984,6 +984,29 @@ cdef class CommonParamsSpeculative:
             self.p.types.push_back(value)
 
     @property
+    def synth_len(self) -> float:
+        """synthetic speculative acceptance length; -1 disables it."""
+        return self.p.synth_len
+
+    @synth_len.setter
+    def synth_len(self, value: float):
+        self.p.synth_len = value
+
+    @property
+    def synth_rates(self) -> list[float]:
+        """synthetic speculative acceptance rates."""
+        result = []
+        for i in range(self.p.synth_rates.size()):
+            result.append(self.p.synth_rates[i])
+        return result
+
+    @synth_rates.setter
+    def synth_rates(self, values: list[float]):
+        self.p.synth_rates.clear()
+        for value in values:
+            self.p.synth_rates.push_back(value)
+
+    @property
     def draft(self) -> CommonParamsSpeculativeDraft:
         """draft-model-based speculative decoding parameters."""
         return CommonParamsSpeculativeDraft.from_ptr(&self.p.draft, self)
@@ -1459,6 +1482,15 @@ cdef class CommonParams:
     @load_mode.setter
     def load_mode(self, llama_load_mode value):
         self.p.load_mode = value
+
+    @property
+    def lazy_mode(self) -> llama_lazy_mode:
+        """on-demand reading mode for tensors marked by the architecture."""
+        return self.p.lazy_mode
+
+    @lazy_mode.setter
+    def lazy_mode(self, llama_lazy_mode value):
+        self.p.lazy_mode = value
 
     @property
     def cpuparams(self) -> CpuParams:
@@ -2257,6 +2289,30 @@ cdef class CommonParams:
         self.p.mtmd_batch_max_tokens = value
 
     @property
+    def video_fps(self) -> float:
+        return self.p.video_fps
+
+    @video_fps.setter
+    def video_fps(self, value: float):
+        self.p.video_fps = value
+
+    @property
+    def video_timestamp_interval_ms(self) -> int:
+        return self.p.video_timestamp_interval_ms
+
+    @video_timestamp_interval_ms.setter
+    def video_timestamp_interval_ms(self, value: int):
+        self.p.video_timestamp_interval_ms = value
+
+    @property
+    def video_ffmpeg_bin_dir(self) -> str:
+        return self.p.video_ffmpeg_bin_dir
+
+    @video_ffmpeg_bin_dir.setter
+    def video_ffmpeg_bin_dir(self, value: str):
+        self.p.video_ffmpeg_bin_dir = value
+
+    @property
     def embedding(self) -> bool:
         """get only sentence embedding"""
         return self.p.embedding
@@ -2390,6 +2446,15 @@ cdef class CommonParams:
     @n_ctx_checkpoints.setter
     def n_ctx_checkpoints(self, value: int):
         self.p.n_ctx_checkpoints = value
+
+    @property
+    def kv_unified_per_slot(self) -> int:
+        """maximum context per parallel slot; 0 leaves it unset."""
+        return self.p.kv_unified_per_slot
+
+    @kv_unified_per_slot.setter
+    def kv_unified_per_slot(self, value: int):
+        self.p.kv_unified_per_slot = value
 
     @property
     def checkpoint_min_step(self) -> int:
@@ -2584,6 +2649,14 @@ cdef class CommonParams:
     @default_template_kwargs.setter
     def default_template_kwargs(self, value: dict):
         self.p.default_template_kwargs = value
+
+    @property
+    def preserve_reasoning_specified(self) -> bool:
+        return self.p.preserve_reasoning_specified
+
+    @preserve_reasoning_specified.setter
+    def preserve_reasoning_specified(self, value: bool):
+        self.p.preserve_reasoning_specified = value
 
     @property
     def server_base(self) -> str:
