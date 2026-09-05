@@ -126,14 +126,13 @@ static void init(common_params &   params,
 
     // size the KV pool from --kv-unified-per-slot, unless the user pinned it with -c
     // or with -c 0 for max context
-    const bool ctx_pool_auto_sized = params.kv_unified_per_slot > 0 &&
-                                     params.n_ctx == 0 &&
-                                     (uint32_t) params.fit_params_min_ctx != UINT32_MAX;
+    const bool ctx_pool_auto_sized =
+        params.kv_unified_per_slot > 0 && params.n_ctx == 0 && (uint32_t) params.fit_params_min_ctx != UINT32_MAX;
 
     if (ctx_pool_auto_sized) {
         params.n_ctx = params.n_parallel * params.kv_unified_per_slot;
-        SRV_INF("--kv-unified-per-slot: sizing KV pool to n_parallel * kv_unified_per_slot = %d * %d = %d\n", params.n_parallel,
-                params.kv_unified_per_slot, params.n_ctx);
+        SRV_INF("--kv-unified-per-slot: sizing KV pool to n_parallel * kv_unified_per_slot = %d * %d = %d\n",
+                params.n_parallel, params.kv_unified_per_slot, params.n_ctx);
     }
 
     // for consistency between server router mode and single-model mode, we set the same model name as alias
