@@ -314,6 +314,8 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `cors_origins_explicit` | bool | `false` | R/W | for --agent option |
 | `force_pure_content_parser` | bool | `false` | R/W | force pure content parser |
 | `is_gen_docs` | bool | `false` | R/W | whether we are running inside llama-gen-docs |
+| `kv_unified_per_slot` | int | `0` | R/W | maximum context per parallel slot; 0 leaves it unset. |
+| `lazy_mode` | llama_lazy_mode | `LLAMA_LAZY_MODE_AUTO` | R/W | on-demand reading mode for tensors marked by the architecture. |
 | `load_mode` | llama_load_mode | `LLAMA_LOAD_MODE_AUTO` | R/W | how to load the model. |
 | `mcp_servers_config` | str | `` | R/W | path to JSON file with MCP server definitions |
 | `mcp_servers_json` | str | `` | R/W | inline JSON with MCP server definitions |
@@ -324,6 +326,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `n_outputs_max_per_seq` | int | `1` | R/W | max outputs per sequence. |
 | `no_alloc` | bool | `false` | R/W | Don't allocate model buffers |
 | `path_prompts_log_dir` | str | `""` | R/W | directory with logged prompts |
+| `preserve_reasoning_specified` | bool | `false` | R/W |  |
 | `reuse_port` | bool | `false` | R/W | allow multiple sockets to bind to the same port |
 | `server_base` | str | `` | R/W | if set, connect to this server instead of starting a new one |
 | `server_tools` | list[str] | `` | R/W | enable built-in tools |
@@ -339,6 +342,9 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `ui` | bool | `true` | R/W | enable UI |
 | `ui_config_json` | str | `` | R/W | UI config json |
 | `ui_mcp_proxy` | bool | `false` | R/W | UI MCP proxy |
+| `video_ffmpeg_bin_dir` | str | `""` | R/W |  |
+| `video_fps` | float | `4.0` | R/W |  |
+| `video_timestamp_interval_ms` | int | `5000` | R/W |  |
 
 ---
 
@@ -436,6 +442,8 @@ Speculative decoding parameters. Access via `params.speculative`.
 | `ngram_map_k4v` | [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap) | `` | R | Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V` method (n-gram keys with up to 4 m-gram values). See [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap). |
 | `ngram_mod` | [CommonParamsSpeculativeNgramMod](#commonparamsspeculativengrammod) | `` | R | Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MOD` method. See [CommonParamsSpeculativeNgramMod](#commonparamsspeculativengrammod). |
 | `ngram_simple` | [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap) | `` | R | Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE` method. See [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap). |
+| `synth_len` | float | `-1.0` | R/W | synthetic speculative acceptance length; -1 disables it. |
+| `synth_rates` | list[float] | `` | R/W | synthetic speculative acceptance rates. |
 | `types` | list[common_speculative_type] | `{ COMMON_SPECULATIVE_TYPE_NONE }` | R/W | List of speculative decoding methods to enable. Draft-model-free methods: `COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE`, `NGRAM_MAP_K`, `NGRAM_MAP_K4V`, `NGRAM_MOD`, `NGRAM_CACHE`. Draft-model methods: `COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE`, `DRAFT_MTP`, `DRAFT_EAGLE3`, `DRAFT_DFLASH`, `DRAFT_DSPARK`. Not required when only a draft model path is set — draft decoding is enabled automatically. |
 
 ---
