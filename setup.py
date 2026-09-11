@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
 import os
-import sys
 import platform
 import subprocess
+import sys
+import sysconfig
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext as setuptools_build_ext
 
@@ -28,16 +29,23 @@ PLATFORM = platform.system()
 
 LLAMACPP_LIBS_DIR = os.path.join(CWD, "src/llama.cpp/lib")
 DEFAULT_MACOSX_DEPLOYMENT_TARGET = "13.3"
-MACOSX_DEPLOYMENT_TARGET = os.environ.get(
-    "MACOSX_DEPLOYMENT_TARGET"
-) or DEFAULT_MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = (
+    os.environ.get("MACOSX_DEPLOYMENT_TARGET") or DEFAULT_MACOSX_DEPLOYMENT_TARGET
+)
 if PLATFORM == "Darwin":
     os.environ["MACOSX_DEPLOYMENT_TARGET"] = MACOSX_DEPLOYMENT_TARGET
 
-# ABI3+ (Limited API) support for Python 3.10+
+# ABI3 (Limited API) support for GIL-enabled Python 3.10+.
+# Python 3.14 free-threaded builds do not support the Limited API, so they need
+# a dedicated cp314t extension instead.
 PY_LIMITED_API_VERSION = 0x030A0000  # Python 3.10
+FREE_THREADED = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
 
-DEFINE_MACROS = [("Py_LIMITED_API", PY_LIMITED_API_VERSION)]
+if FREE_THREADED:
+    # Py_GIL_DISABLED is not defined automatically by the Windows headers.
+    DEFINE_MACROS = [("Py_GIL_DISABLED", "1")]
+else:
+    DEFINE_MACROS = [("Py_LIMITED_API", PY_LIMITED_API_VERSION)]
 if PLATFORM == "Windows":
     EXTRA_COMPILE_ARGS = ["/std:c++17"]
 else:
@@ -207,7 +215,7 @@ def mk_extension(name, sources, define_macros=None):
         extra_compile_args=EXTRA_COMPILE_ARGS,
         extra_link_args=EXTRA_LINK_ARGS,
         language="c++",
-        py_limited_api=True,
+        py_limited_api=not FREE_THREADED,
     )
 
 
@@ -288,13 +296,14 @@ extensions = [
     ),
 ]
 
+bdist_wheel_options = {}
+if not FREE_THREADED:
+    bdist_wheel_options["py_limited_api"] = "cp310"
+
+
 setup(
     **common,
     ext_modules=extensions,
     package_dir={"": "src"},
-    options={
-        "bdist_wheel": {
-            "py_limited_api": "cp310",
-        }
-    },
+    options={"bdist_wheel": bdist_wheel_options},
 )
