@@ -122,7 +122,9 @@ jobs:
     needs: lint
     defaults:
       run:
-        shell: bash -l {0}
+        # A login shell on macOS rebuilds PATH and can put the runner's
+        # GIL-enabled Python ahead of the 3.14t interpreter set up below.
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
