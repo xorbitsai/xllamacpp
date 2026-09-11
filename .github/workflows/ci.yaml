@@ -144,7 +144,9 @@ jobs:
 
       - name: Verify free-threaded interpreter
         run: |
-          python -c "import sys, sysconfig; assert sys.abiflags == 't'; assert sysconfig.get_config_var('Py_GIL_DISABLED') == 1; print(sys.version)"
+          # sys.abiflags is not exposed by CPython on Windows.  The build
+          # configuration variable is available on every supported platform.
+          python -c "import sys, sysconfig; assert sysconfig.get_config_var('Py_GIL_DISABLED') == 1; print(sys.version)"
 
       - name: Install dependencies
         env:
