@@ -7,7 +7,21 @@ import concurrent.futures
 import threading
 import pytest
 import json
-import orjson
+
+try:
+    import orjson
+except ImportError:
+
+    class _StdlibOrjson:
+        """Subset used below, preserving orjson.dumps' bytes result."""
+
+        @staticmethod
+        def dumps(value):
+            return json.dumps(value).encode()
+
+        loads = staticmethod(json.loads)
+
+    orjson = _StdlibOrjson()
 
 import xllamacpp as xlc
 
