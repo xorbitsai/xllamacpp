@@ -82,10 +82,7 @@ jobs:
           OS: ${{ matrix.os }}
         run: |
           pip install -r requirements.txt
-          # orjson has no free-threaded (cp314t) build and deliberately
-          # rejects source builds. xllamacpp falls back to the stdlib json
-          # module when it is unavailable.
-          pip install pytest pytest-timeout requests gguf
+          pip install pytest pytest-timeout requests gguf orjson
           make clean
           make
           make download
@@ -154,7 +151,10 @@ jobs:
           OS: ${{ matrix.os }}
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-timeout requests gguf orjson
+          # orjson has no free-threaded (cp314t) build and deliberately
+          # rejects source builds. xllamacpp falls back to the stdlib json
+          # module when it is unavailable.
+          pip install pytest pytest-timeout requests gguf
           make clean
           make
           make download

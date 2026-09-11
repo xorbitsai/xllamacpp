@@ -51,7 +51,9 @@ Changelog = "https://github.com/xorbitsai/xllamacpp/releases"
 
 [project.optional-dependencies]
 test = ['pytest', 'pytest-cov']
-all = ['gguf', 'orjson']
+# orjson cannot support CPython free-threaded builds, and packaging markers
+# cannot distinguish a free-threaded interpreter from regular CPython 3.14.
+all = ['gguf']
 
 [build-system]
 requires = ["setuptools >= 61", "cython >= 3.1", "versioneer[toml]"]
