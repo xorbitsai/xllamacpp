@@ -22,12 +22,13 @@ permissions:
 
 jobs:
   build_wheels_hip_linux:
-    name: Build Wheel HIP Linux (abi3) ${{matrix.hip}}
+    name: Build Wheel HIP Linux ${{ matrix.pyver }} ${{matrix.hip}}
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        # Build only with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
-        pyver: ["3.10"]
+        # Python 3.10 produces the abi3 wheel; 3.14t produces the dedicated
+        # free-threaded wheel.
+        pyver: ["3.10", "3.14t"]
         hip: ["6.4.1", "7.2.4"]
         include:
           # Per-ROCm-version GPU architecture lists, mirroring how the
@@ -185,13 +186,14 @@ jobs:
 
 
   build_wheels_vulkan:
-    name: Build Wheel Vulkan ${{ matrix.os }} (abi3)
+    name: Build Wheel Vulkan ${{ matrix.os }} ${{ matrix.pyver }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: ["ubuntu-22.04", "macos-15-intel", "windows-2022", "windows-11-arm"]
-        # Build with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
-        pyver: ["3.10"]
+        # Python 3.10 produces the abi3 wheel; 3.14t produces the dedicated
+        # free-threaded wheel.
+        pyver: ["3.10", "3.14t"]
         vulkan: ["1.4.313.2"]
         exclude:
           # Python 3.10 is not available for Windows ARM64
@@ -378,13 +380,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_wheels_cuda_linux:
-    name: Build Wheel CUDA Linux ${{ matrix.platform }} (abi3) ${{ matrix.cuda }}
+    name: Build Wheel CUDA Linux ${{ matrix.platform }} ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: ${{ matrix.platform }}
     strategy:
       matrix:
         platform: ["ubuntu-22.04", "ubuntu-22.04-arm"]
-        # Build only with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
-        pyver: ["3.10"]
+        # Python 3.10 produces the abi3 wheel; 3.14t produces the dedicated
+        # free-threaded wheel.
+        pyver: ["3.10", "3.14t"]
         cuda: ["12.8.1", "13.2.0"]
         include:
           # Per-CUDA-version GPU architecture lists, mirroring the upstream
@@ -422,7 +425,8 @@ jobs:
           submodules: "recursive"
           fetch-depth: 0
 
-      - name: Setup Python
+      - name: Setup Python ${{ matrix.pyver }}
+        id: setup-python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ matrix.pyver }}
@@ -432,7 +436,10 @@ jobs:
         uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830 # v3.1.1
         with:
           activate-environment: "llamacpp"
-          python-version: ${{ matrix.pyver }}
+          # Conda supplies CUDA and is not the Python build environment. Keep
+          # its established Python 3.10 environment and invoke setup-python's
+          # selected interpreter below, including for Python 3.14t.
+          python-version: "3.10"
           miniforge-version: latest
           add-pip-as-python-dependency: true
           auto-activate-base: false
@@ -475,10 +482,13 @@ jobs:
             exit 1
           fi
           
-          # Install build dependencies
-          python -m pip install --upgrade cmake
-          python -m pip install build wheel
-          python -m pip install -r requirements.txt
+          # Install build dependencies into the selected setup-python runtime,
+          # rather than Conda's regular-Python environment.
+          BUILD_PYTHON="${{ steps.setup-python.outputs.python-path }}"
+          export PATH="$(dirname "$BUILD_PYTHON"):$PATH"
+          "$BUILD_PYTHON" -m pip install --upgrade cmake
+          "$BUILD_PYTHON" -m pip install build wheel
+          "$BUILD_PYTHON" -m pip install -r requirements.txt
 
           # Verify CMake version
           echo "=== CMake Version ==="
@@ -512,6 +522,9 @@ jobs:
         run: |
           source $CONDA/etc/profile.d/conda.sh
           conda activate llamacpp
+
+          BUILD_PYTHON="${{ steps.setup-python.outputs.python-path }}"
+          export PATH="$(dirname "$BUILD_PYTHON"):$PATH"
           nvcc --version | grep "release $(echo ${{ matrix.cuda }} | cut -d. -f1,2)"
 
       - name: Build Wheel
@@ -522,12 +535,14 @@ jobs:
           # Initialize conda for shell
           source $CONDA/etc/profile.d/conda.sh
           conda activate llamacpp
+
+          BUILD_PYTHON="${{ steps.setup-python.outputs.python-path }}"
+          export PATH="$(dirname "$BUILD_PYTHON"):$PATH"
           
           echo "=== Build Environment ==="
           echo "System: ${{ matrix.platform }}"
-          echo "Python: $(which python)"
-          echo "Pip: $(which pip)"
-          pip list
+          echo "Python: $BUILD_PYTHON"
+          "$BUILD_PYTHON" -m pip list
           echo "CUDA_HOME: $CUDA_HOME"
           echo "PATH: $PATH"
           echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
@@ -564,7 +579,7 @@ jobs:
           echo "CMAKE_ARGS=$CMAKE_ARGS"
           $CXX --version
           
-          python -m build --wheel
+          "$BUILD_PYTHON" -m build --wheel
           
           echo "CUDA_VERSION=$cuda_version" >> $GITHUB_ENV
 
@@ -617,12 +632,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_wheels_cuda_windows:
-    name: Build Wheel CUDA Windows (abi3) ${{ matrix.cuda }}
+    name: Build Wheel CUDA Windows ${{ matrix.pyver }} ${{ matrix.cuda }}
     runs-on: windows-2022
     strategy:
       matrix:
-        # Build only with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
-        pyver: ["3.10"]
+        # Python 3.10 produces the abi3 wheel; 3.14t produces the dedicated
+        # free-threaded wheel.
+        pyver: ["3.10", "3.14t"]
         cuda: ["12.8.1", "13.2.0"]
         include:
           # Per-CUDA-version GPU architecture lists, mirroring the upstream

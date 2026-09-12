@@ -1,12 +1,32 @@
 import pprint
 import os
 import sys
+import sysconfig
 import base64
+import concurrent.futures
+import threading
 import pytest
 import json
-import orjson
+
+try:
+    import orjson
+except ImportError:
+
+    class _StdlibOrjson:
+        """Subset used below, preserving orjson.dumps' bytes result."""
+
+        @staticmethod
+        def dumps(value):
+            return json.dumps(value).encode()
+
+        loads = staticmethod(json.loads)
+
+    orjson = _StdlibOrjson()
 
 import xllamacpp as xlc
+
+
+IS_FREE_THREADED = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
 
 
 def test_get_system_info():
@@ -214,6 +234,55 @@ def test_llama_server(model_path):
     result = server.handle_metrics()
     assert type(result) is str
     assert "llamacpp:prompt_seconds_total" in result
+
+
+@pytest.mark.skipif(
+    not IS_FREE_THREADED,
+    reason="exercises the free-threaded Python 3.14t server callback path",
+)
+def test_llama_server_free_threaded_concurrent_stream_callbacks(model_path):
+    """Serve concurrent streaming requests and callbacks from Python threads."""
+    assert IS_FREE_THREADED
+
+    worker_count = 4
+    params = xlc.CommonParams()
+    params.model.path = os.path.join(model_path, "Llama-3.2-1B-Instruct-Q8_0.gguf")
+    params.warmup = False
+    params.n_predict = 16
+    params.n_ctx = 256
+    params.n_parallel = worker_count
+    params.cpuparams.n_threads = 2
+    params.cpuparams_batch.n_threads = 2
+    params.endpoint_metrics = True
+
+    server = xlc.Server(params)
+    start = threading.Barrier(worker_count)
+
+    def request_completion(request_id):
+        chunks = []
+        start.wait(timeout=30)
+        server.handle_completions(
+            {
+                "prompt": f"Reply with one word: {request_id}",
+                "max_tokens": 16,
+                "stream": True,
+            },
+            chunks.append,
+        )
+        return chunks
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = [
+            executor.submit(request_completion, request_id)
+            for request_id in range(worker_count)
+        ]
+        request_chunks = [future.result(timeout=180) for future in futures]
+
+    assert all(chunks for chunks in request_chunks)
+    assert all(isinstance(chunks[0], dict) for chunks in request_chunks)
+
+    metrics = server.handle_metrics()
+    assert "llamacpp:prompt_seconds_total" in metrics
 
 
 def test_llama_server_stream_callback_stop(model_path):

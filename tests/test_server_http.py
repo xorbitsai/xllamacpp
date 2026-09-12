@@ -15,7 +15,8 @@ class TestServerHTTP:
     """Test suite for xllamacpp HTTP server endpoints"""
 
     @pytest.fixture(scope="class")
-    def server_url(self):
+    @classmethod
+    def server_url(cls):
         """Start HTTP server using xllamacpp.Server and return base URL"""
         # Configure server parameters
         params = xlc.CommonParams()
@@ -250,8 +251,15 @@ class TestServerHTTP:
     def test_error_handling(self, server_url):
         """Test error handling for invalid requests"""
         # Test invalid JSON
-        response = requests.post(f"{server_url}/completions", data="invalid json")
-        assert response.status_code == 500
+        response = requests.post(
+            f"{server_url}/completions",
+            data="invalid json",
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 400
+        error = response.json()["error"]
+        assert error["code"] == 400
+        assert error["type"] == "invalid_request_error"
 
         # Test missing required fields
         response = requests.post(f"{server_url}/completions", json={})
@@ -375,7 +383,8 @@ class TestServerHTTPEmbedding:
     """Test suite for embedding-specific HTTP endpoints"""
 
     @pytest.fixture(scope="class")
-    def embedding_server_url(self):
+    @classmethod
+    def embedding_server_url(cls):
         """Start HTTP server using xllamacpp.Server with embedding model"""
         # Configure server parameters for embedding model
         params = xlc.CommonParams()
@@ -442,7 +451,8 @@ class TestServerHTTPRerank:
     """Test suite for rerank-specific HTTP endpoints"""
 
     @pytest.fixture(scope="class")
-    def rerank_server_url(self):
+    @classmethod
+    def rerank_server_url(cls):
         """Start HTTP server using xllamacpp.Server with rerank model"""
         # Configure server parameters for rerank model
         params = xlc.CommonParams()

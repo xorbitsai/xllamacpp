@@ -29,6 +29,10 @@ static server_http_context::handler_t ex_wrapper(server_http_context::handler_t 
         error_type  error;
         try {
             return func(req);
+        } catch (const common_json_error & e) {
+            // JSON parsing and request-shape errors are client errors, not internal failures.
+            error   = ERROR_TYPE_INVALID_REQUEST;
+            message = e.what();
         } catch (const std::invalid_argument & e) {
             // treat invalid_argument as invalid request (400)
             error   = ERROR_TYPE_INVALID_REQUEST;

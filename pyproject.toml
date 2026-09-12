@@ -54,7 +54,7 @@ test = ['pytest', 'pytest-cov']
 all = ['gguf', 'orjson']
 
 [build-system]
-requires = ["setuptools >= 61", "cython", "versioneer[toml]"]
+requires = ["setuptools >= 61", "cython >= 3.1", "versioneer[toml]"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]

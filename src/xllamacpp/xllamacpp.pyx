@@ -4,6 +4,7 @@
 # cython: language_level = 3
 # cython: c_string_encoding = utf8
 # cython: c_string_type=unicode
+# cython: freethreading_compatible = True
 
 """
 xllamacpp: a thin cython wrapper of llama.cpp
