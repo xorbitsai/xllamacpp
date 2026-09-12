@@ -250,8 +250,15 @@ class TestServerHTTP:
     def test_error_handling(self, server_url):
         """Test error handling for invalid requests"""
         # Test invalid JSON
-        response = requests.post(f"{server_url}/completions", data="invalid json")
-        assert response.status_code == 500
+        response = requests.post(
+            f"{server_url}/completions",
+            data="invalid json",
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 400
+        error = response.json()["error"]
+        assert error["code"] == 400
+        assert error["type"] == "invalid_request_error"
 
         # Test missing required fields
         response = requests.post(f"{server_url}/completions", json={})
