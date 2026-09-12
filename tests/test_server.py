@@ -242,7 +242,7 @@ def test_llama_server(model_path):
 )
 def test_llama_server_free_threaded_concurrent_stream_callbacks(model_path):
     """Serve concurrent streaming requests and callbacks from Python threads."""
-    assert sys.abiflags == "t"
+    assert IS_FREE_THREADED
 
     worker_count = 4
     params = xlc.CommonParams()
@@ -253,6 +253,7 @@ def test_llama_server_free_threaded_concurrent_stream_callbacks(model_path):
     params.n_parallel = worker_count
     params.cpuparams.n_threads = 2
     params.cpuparams_batch.n_threads = 2
+    params.endpoint_metrics = True
 
     server = xlc.Server(params)
     start = threading.Barrier(worker_count)
