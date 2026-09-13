@@ -1,4 +1,4 @@
-"""Unit tests for the build-time llama.cpp patch machinery in scripts/build.py.
+"""Unit tests for the llama.cpp build helpers in scripts/build.py.
 
 The wheel build applies hotfix patches from patches/llama.cpp/*.patch to the
 vendored submodule before the CMake build and reverts them right after, so
@@ -127,3 +127,41 @@ def test_inapplicable_patch_fails_loudly(fake_llamacpp, tmp_path):
     )
     with pytest.raises(subprocess.CalledProcessError):
         build.apply_llamacpp_patches(build.llamacpp_patches())
+
+
+def test_hip_compiler_finds_hipconfig_below_rocm_path(tmp_path, monkeypatch):
+    rocm_path = tmp_path / "rocm"
+    hipconfig = rocm_path / "bin" / "hipconfig"
+    hipconfig.parent.mkdir(parents=True)
+    hipconfig.touch()
+    clang = rocm_path / "lib" / "llvm" / "bin" / "clang"
+    clang.parent.mkdir(parents=True)
+    clang.touch()
+
+    monkeypatch.setenv("ROCM_PATH", str(rocm_path))
+    monkeypatch.setattr(build.shutil, "which", lambda name: None)
+
+    def check_output(command, **kwargs):
+        assert command == [str(hipconfig), "-l"]
+        return f"{clang.parent}\n"
+
+    monkeypatch.setattr(build.subprocess, "check_output", check_output)
+
+    assert build.hip_compiler() == str(clang)
+
+
+def test_hip_compiler_falls_back_to_packaged_llvm_layout(tmp_path, monkeypatch):
+    rocm_path = tmp_path / "rocm"
+    clang = rocm_path / "llvm" / "bin" / "clang++"
+    clang.parent.mkdir(parents=True)
+    clang.touch()
+
+    monkeypatch.setenv("ROCM_PATH", str(rocm_path))
+    monkeypatch.setattr(build.shutil, "which", lambda name: None)
+
+    def missing_hipconfig(*args, **kwargs):
+        raise FileNotFoundError
+
+    monkeypatch.setattr(build.subprocess, "check_output", missing_hipconfig)
+
+    assert build.hip_compiler() == str(clang)

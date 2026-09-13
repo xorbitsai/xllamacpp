@@ -491,7 +491,15 @@ jobs:
           # Install build dependencies into the selected setup-python runtime,
           # rather than Conda's regular-Python environment.
           BUILD_PYTHON="${{ steps.setup-python.outputs.python-path }}"
+          BUILD_PYTHON_HOME="$(dirname "$(dirname "$BUILD_PYTHON")")"
           export PATH="$(dirname "$BUILD_PYTHON"):$PATH"
+          # setup-python's CPython is dynamically linked. Keep its lib directory
+          # ahead of Conda's, otherwise the executable can load Conda's libpython
+          # and combine it with setup-python's stdlib. On Linux ARM64 that mixed
+          # runtime makes platform.py reject Conda's sys.version string while
+          # setuptools is being imported.
+          export LD_LIBRARY_PATH="$BUILD_PYTHON_HOME/lib:$LD_LIBRARY_PATH"
+          "$BUILD_PYTHON" -c "import platform, sys; print(sys.version); print(platform.python_implementation())"
           "$BUILD_PYTHON" -m pip install --upgrade cmake
           "$BUILD_PYTHON" -m pip install build wheel
           "$BUILD_PYTHON" -m pip install -r requirements.txt
@@ -514,7 +522,9 @@ jobs:
           export CUDA_HOME=$CONDA_PREFIX
           export CUDA_PATH=$CONDA_PREFIX
           export CUDA_TOOLKIT_ROOT_DIR=$CONDA_PREFIX
-          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+          # Preserve setup-python's libpython precedence while still exposing
+          # the CUDA libraries from Conda to the build and its subprocesses.
+          export LD_LIBRARY_PATH="$BUILD_PYTHON_HOME/lib:$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
           export PATH="$CONDA_PREFIX/bin:$PATH"
           
           # Save to GITHUB_ENV for subsequent steps
@@ -543,7 +553,9 @@ jobs:
           conda activate llamacpp
 
           BUILD_PYTHON="${{ steps.setup-python.outputs.python-path }}"
+          BUILD_PYTHON_HOME="$(dirname "$(dirname "$BUILD_PYTHON")")"
           export PATH="$(dirname "$BUILD_PYTHON"):$PATH"
+          export LD_LIBRARY_PATH="$BUILD_PYTHON_HOME/lib:$LD_LIBRARY_PATH"
           
           echo "=== Build Environment ==="
           echo "System: ${{ matrix.platform }}"
@@ -585,9 +597,8 @@ jobs:
           echo "CMAKE_ARGS=$CMAKE_ARGS"
           $CXX --version
           
-          # Build requirements are installed above. Avoid build's temporary
-          # pip environment, which is broken by conda-forge CPython 3.10's
-          # sys.version string on GitHub's Linux ARM64 tool cache.
+          # Build requirements are installed above, so use the selected
+          # setup-python runtime directly without creating a temporary env.
           "$BUILD_PYTHON" -m build --wheel --no-isolation
           
           echo "CUDA_VERSION=$cuda_version" >> $GITHUB_ENV
