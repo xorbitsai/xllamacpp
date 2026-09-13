@@ -126,9 +126,7 @@ jobs:
 
       - name: Add msbuild to PATH
         if: ${{ startsWith(matrix.platform.os, 'windows-') }}
-        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
-        with:
-          vs-version: '[17.13,17.14)'
+        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
 
       - name: Build wheels
         uses: pypa/cibuildwheel@54a71d3375df80d84b6d4537d04614fec04e637f # v3.4.0
