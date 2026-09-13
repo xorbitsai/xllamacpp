@@ -141,7 +141,10 @@ jobs:
             cargo --version
             printenv
             git config --global --add safe.directory "*"
-            python -m build --wheel
+            # Build requirements are installed above. Avoid build's temporary
+            # pip environment, which is broken by conda-forge CPython 3.10's
+            # sys.version string on GitHub's Linux ARM64 tool cache.
+            python -m build --wheel --no-isolation
             df -ha
             echo "Clean up"
             rm -rf build
@@ -343,7 +346,10 @@ jobs:
           python --version
           printenv
           git config --global --add safe.directory "*"
-          python -m build --wheel
+          # Build requirements are installed above. Avoid build's temporary
+          # pip environment, which is broken by conda-forge CPython 3.10's
+          # sys.version string on GitHub's Linux ARM64 tool cache.
+          python -m build --wheel --no-isolation
 
       - name: Repair Wheel (Linux)
         if: runner.os == 'Linux'
@@ -579,7 +585,10 @@ jobs:
           echo "CMAKE_ARGS=$CMAKE_ARGS"
           $CXX --version
           
-          "$BUILD_PYTHON" -m build --wheel
+          # Build requirements are installed above. Avoid build's temporary
+          # pip environment, which is broken by conda-forge CPython 3.10's
+          # sys.version string on GitHub's Linux ARM64 tool cache.
+          "$BUILD_PYTHON" -m build --wheel --no-isolation
           
           echo "CUDA_VERSION=$cuda_version" >> $GITHUB_ENV
 
@@ -761,7 +770,10 @@ jobs:
           export VERSIONEER_CLOSEST_TAG_ONLY=1
           export VERBOSE=1
                     
-          python -m build --wheel
+          # Build requirements are installed above. Avoid build's temporary
+          # pip environment, which is broken by conda-forge CPython 3.10's
+          # sys.version string on GitHub's Linux ARM64 tool cache.
+          python -m build --wheel --no-isolation
           
           # On Windows, we use delvewheel for wheel repair.
           # delvewheel must locate the CUDA redistributable DLLs (cudart64_*,
