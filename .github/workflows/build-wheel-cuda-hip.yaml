@@ -46,6 +46,7 @@ jobs:
       # The ROCm images keep the compiler in a versioned prefix. /opt/rocm
       # contains runtime libraries, but is not a complete SDK in every image.
       ROCM_PATH: /opt/rocm-${{ matrix.hip }}
+      CMAKE_HIP_COMPILER: /opt/rocm-${{ matrix.hip }}/lib/llvm/bin/clang
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # main
@@ -88,6 +89,7 @@ jobs:
             -v $PYTHON_HOME:$PYTHON_HOME \
             -e ROCM_PATH=$ROCM_PATH \
             -e HIP_PATH=$ROCM_PATH \
+            -e CMAKE_HIP_COMPILER=$CMAKE_HIP_COMPILER \
             -e PATH=$PYTHON_HOME/bin:$ROCM_PATH/bin:$PATH \
             -w /workspace \
             rocm/dev-ubuntu-22.04:${{ matrix.hip }} \
@@ -106,7 +108,7 @@ jobs:
             apt-get clean
             df -ha
             if command -v hipconfig >/dev/null 2>&1; then hipconfig --full; fi
-            "$ROCM_PATH/lib/llvm/bin/clang" --version
+            "$CMAKE_HIP_COMPILER" --version
             ls -alh "$ROCM_PATH/lib"
           '
 
@@ -141,6 +143,7 @@ jobs:
                      -e VERBOSE=$VERBOSE \
                      -e ROCM_PATH=$ROCM_PATH \
                      -e HIP_PATH=$ROCM_PATH \
+                     -e CMAKE_HIP_COMPILER=$CMAKE_HIP_COMPILER \
                      -e AMDGPU_TARGETS=$AMDGPU_TARGETS \
                      -e GGML_HIP_ROCWMMA_FATTN=$GGML_HIP_ROCWMMA_FATTN \
                      rocm-container bash -l -c '

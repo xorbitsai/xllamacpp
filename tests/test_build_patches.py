@@ -138,6 +138,7 @@ def test_hip_compiler_finds_hipconfig_below_rocm_path(tmp_path, monkeypatch):
     clang.parent.mkdir(parents=True)
     clang.touch()
 
+    monkeypatch.delenv("CMAKE_HIP_COMPILER", raising=False)
     monkeypatch.setenv("ROCM_PATH", str(rocm_path))
     monkeypatch.setattr(build.shutil, "which", lambda name: None)
 
@@ -150,12 +151,26 @@ def test_hip_compiler_finds_hipconfig_below_rocm_path(tmp_path, monkeypatch):
     assert build.hip_compiler() == str(clang)
 
 
+def test_hip_compiler_honors_explicit_cmake_compiler(monkeypatch):
+    compiler = "/configured/rocm/bin/clang"
+    monkeypatch.setenv("CMAKE_HIP_COMPILER", compiler)
+
+    def unexpected_probe(*args, **kwargs):
+        pytest.fail("explicit compiler path should not be probed")
+
+    monkeypatch.setattr(build.shutil, "which", unexpected_probe)
+    monkeypatch.setattr(build.subprocess, "check_output", unexpected_probe)
+
+    assert build.hip_compiler() == compiler
+
+
 def test_hip_compiler_falls_back_to_packaged_llvm_layout(tmp_path, monkeypatch):
     rocm_path = tmp_path / "rocm"
     clang = rocm_path / "llvm" / "bin" / "clang++"
     clang.parent.mkdir(parents=True)
     clang.touch()
 
+    monkeypatch.delenv("CMAKE_HIP_COMPILER", raising=False)
     monkeypatch.setenv("ROCM_PATH", str(rocm_path))
     monkeypatch.setattr(build.shutil, "which", lambda name: None)
 

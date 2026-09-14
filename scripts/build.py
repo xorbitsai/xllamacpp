@@ -121,11 +121,20 @@ def revert_llamacpp_patches(patches: list[Path]) -> None:
 def hip_compiler() -> str:
     """Return the path to the HIP C++ compiler (clang).
 
+    Honor an explicitly configured compiler first. CI verifies this path in
+    the ROCm container before starting the wheel build, so it must not be
+    rejected by a second, potentially isolated Python filesystem probe.
+
     Prefer ROCm's own ``hipconfig`` result, looking it up below ``ROCM_PATH``
     as well as on ``PATH``. Some isolated build environments omit the ROCm
     bin directory from ``PATH``. If hipconfig is unavailable, probe the
     standard packaged ROCm LLVM layouts instead.
     """
+    configured_compiler = os.environ.get("CMAKE_HIP_COMPILER")
+    if configured_compiler:
+        log(f"Using configured HIP compiler: {configured_compiler}")
+        return configured_compiler
+
     rocm_path = Path(os.environ.get("ROCM_PATH", "/opt/rocm"))
     hipconfig = shutil.which("hipconfig") or str(rocm_path / "bin" / "hipconfig")
     try:
