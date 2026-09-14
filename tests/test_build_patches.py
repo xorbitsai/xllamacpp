@@ -1,4 +1,4 @@
-"""Unit tests for the build-time llama.cpp patch machinery in scripts/build.py.
+"""Unit tests for the llama.cpp build helpers in scripts/build.py.
 
 The wheel build applies hotfix patches from patches/llama.cpp/*.patch to the
 vendored submodule before the CMake build and reverts them right after, so
@@ -127,3 +127,81 @@ def test_inapplicable_patch_fails_loudly(fake_llamacpp, tmp_path):
     )
     with pytest.raises(subprocess.CalledProcessError):
         build.apply_llamacpp_patches(build.llamacpp_patches())
+
+
+def test_hip_compiler_finds_hipconfig_below_rocm_path(tmp_path, monkeypatch):
+    rocm_path = tmp_path / "rocm"
+    hipconfig = rocm_path / "bin" / "hipconfig"
+    hipconfig.parent.mkdir(parents=True)
+    hipconfig.touch()
+    clang = rocm_path / "lib" / "llvm" / "bin" / "clang"
+    clang.parent.mkdir(parents=True)
+    clang.touch()
+
+    monkeypatch.delenv("CMAKE_HIP_COMPILER", raising=False)
+    monkeypatch.setenv("ROCM_PATH", str(rocm_path))
+    monkeypatch.setattr(build.shutil, "which", lambda name: None)
+
+    def check_output(command, **kwargs):
+        assert command == [str(hipconfig), "-l"]
+        return f"{clang.parent}\n"
+
+    monkeypatch.setattr(build.subprocess, "check_output", check_output)
+
+    assert build.hip_compiler() == str(clang)
+
+
+def test_hip_compiler_honors_explicit_cmake_compiler(monkeypatch):
+    compiler = "/configured/rocm/bin/clang"
+    monkeypatch.setenv("CMAKE_HIP_COMPILER", compiler)
+
+    def unexpected_probe(*args, **kwargs):
+        pytest.fail("explicit compiler path should not be probed")
+
+    monkeypatch.setattr(build.shutil, "which", unexpected_probe)
+    monkeypatch.setattr(build.subprocess, "check_output", unexpected_probe)
+
+    assert build.hip_compiler() == compiler
+
+
+def test_hip_compiler_falls_back_to_packaged_llvm_layout(tmp_path, monkeypatch):
+    rocm_path = tmp_path / "rocm"
+    clang = rocm_path / "llvm" / "bin" / "clang++"
+    clang.parent.mkdir(parents=True)
+    clang.touch()
+
+    monkeypatch.delenv("CMAKE_HIP_COMPILER", raising=False)
+    monkeypatch.setenv("ROCM_PATH", str(rocm_path))
+    monkeypatch.setattr(build.shutil, "which", lambda name: None)
+
+    def missing_hipconfig(*args, **kwargs):
+        raise FileNotFoundError
+
+    monkeypatch.setattr(build.subprocess, "check_output", missing_hipconfig)
+
+    assert build.hip_compiler() == str(clang)
+
+
+def test_hip_build_passes_rocm_root_to_cmake(tmp_path, monkeypatch):
+    project = tmp_path / "llama.cpp"
+    project.mkdir()
+    rocm_path = tmp_path / "rocm-6.4.1"
+    compiler = rocm_path / "lib" / "llvm" / "bin" / "clang"
+    commands = []
+
+    monkeypatch.setattr(build, "PROJECT", project)
+    monkeypatch.setattr(build, "PREFIX", tmp_path / "prefix")
+    monkeypatch.setattr(build, "ROOT", tmp_path)
+    monkeypatch.setattr(build.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(build, "llamacpp_patches", lambda: [])
+    monkeypatch.setattr(build, "run", lambda command, cwd: commands.append(command))
+    monkeypatch.delenv("XLLAMACPP_BUILD_CUDA", raising=False)
+    monkeypatch.setenv("XLLAMACPP_BUILD_HIP", "1")
+    monkeypatch.setenv("ROCM_PATH", str(rocm_path))
+    monkeypatch.setenv("CMAKE_HIP_COMPILER", str(compiler))
+
+    build.build_llamacpp()
+
+    configure_command = commands[0]
+    assert f"-DCMAKE_HIP_COMPILER={compiler}" in configure_command
+    assert f"-DCMAKE_HIP_COMPILER_ROCM_ROOT={rocm_path}" in configure_command

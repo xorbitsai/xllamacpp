@@ -1,7 +1,8 @@
 # build requirements
-setuptools
+setuptools>=61
 cython>=3.1
 wheel
+versioneer[toml]
 
 # # macos fix wheel tool
 # delocate; sys_platform == 'darwin'

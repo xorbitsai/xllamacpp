@@ -121,19 +121,50 @@ def revert_llamacpp_patches(patches: list[Path]) -> None:
 def hip_compiler() -> str:
     """Return the path to the HIP C++ compiler (clang).
 
-    On ROCm 7.0+ the hipconfig Perl scripts were removed; if the
-    ``hipconfig`` binary is unavailable or fails, fall back to the
-    standard ROCm installation path.
+    Honor an explicitly configured compiler first. CI verifies this path in
+    the ROCm container before starting the wheel build, so it must not be
+    rejected by a second, potentially isolated Python filesystem probe.
+
+    Prefer ROCm's own ``hipconfig`` result, looking it up below ``ROCM_PATH``
+    as well as on ``PATH``. Some isolated build environments omit the ROCm
+    bin directory from ``PATH``. If hipconfig is unavailable, probe the
+    standard packaged ROCm LLVM layouts instead.
     """
+    configured_compiler = os.environ.get("CMAKE_HIP_COMPILER")
+    if configured_compiler:
+        log(f"Using configured HIP compiler: {configured_compiler}")
+        return configured_compiler
+
+    rocm_path = Path(os.environ.get("ROCM_PATH", "/opt/rocm"))
+    hipconfig = shutil.which("hipconfig") or str(rocm_path / "bin" / "hipconfig")
     try:
         hip_root = subprocess.check_output(
-            ["hipconfig", "-l"], text=True, stderr=subprocess.STDOUT
+            [hipconfig, "-l"], text=True, stderr=subprocess.STDOUT
         ).strip()
     except (OSError, subprocess.CalledProcessError) as exc:
-        rocm_path = os.environ.get("ROCM_PATH", "/opt/rocm")
-        hip_root = str(Path(rocm_path) / "llvm")
-        log(f"`hipconfig -l` failed ({exc}), falling back to {hip_root}")
-    return str(Path(hip_root) / "clang")
+        log(f"`{hipconfig} -l` failed ({exc}), probing the ROCm installation")
+    else:
+        for compiler_name in ("clang", "clang++"):
+            compiler = Path(hip_root) / compiler_name
+            if compiler.is_file():
+                return str(compiler)
+
+    compiler_candidates = (
+        rocm_path / "lib" / "llvm" / "bin" / "clang",
+        rocm_path / "lib" / "llvm" / "bin" / "clang++",
+        rocm_path / "llvm" / "bin" / "clang",
+        rocm_path / "llvm" / "bin" / "clang++",
+    )
+    for compiler in compiler_candidates:
+        if compiler.is_file():
+            log(f"Using HIP compiler found at {compiler}")
+            return str(compiler)
+
+    searched = ", ".join(str(path) for path in compiler_candidates)
+    raise SystemExit(
+        "Could not find the ROCm HIP compiler. "
+        f"Set ROCM_PATH to the ROCm installation prefix (searched: {searched})."
+    )
 
 
 def build_llamacpp() -> None:
@@ -228,6 +259,12 @@ def build_llamacpp() -> None:
             [
                 f"-DAMDGPU_TARGETS={amdgpu_targets}",
                 f"-DCMAKE_HIP_COMPILER={hip_compiler()}",
+                # CMake cannot always infer the SDK root from Clang, and its
+                # fallback invokes hipconfig via PATH. Pass the root
+                # explicitly so versioned ROCm installs also work when a
+                # login shell has replaced the container's configured PATH.
+                "-DCMAKE_HIP_COMPILER_ROCM_ROOT="
+                + os.environ.get("ROCM_PATH", "/opt/rocm"),
                 f"-DGGML_HIP_ROCWMMA_FATTN={rocwmma}",
                 "-DGGML_HIP=ON",
             ]
