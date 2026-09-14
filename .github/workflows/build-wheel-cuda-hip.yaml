@@ -43,6 +43,9 @@ jobs:
             amdgpu_targets: "gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102;gfx1150;gfx1151;gfx1200;gfx1201;gfx950"
     env:
       AMDGPU_TARGETS: ${{ matrix.amdgpu_targets }}
+      # The ROCm images keep the compiler in a versioned prefix. /opt/rocm
+      # contains runtime libraries, but is not a complete SDK in every image.
+      ROCM_PATH: /opt/rocm-${{ matrix.hip }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # main
@@ -83,7 +86,9 @@ jobs:
             --name rocm-container \
             -v ${{ github.workspace }}:/workspace \
             -v $PYTHON_HOME:$PYTHON_HOME \
-            -e PATH=$PYTHON_HOME/bin:$PATH \
+            -e ROCM_PATH=$ROCM_PATH \
+            -e HIP_PATH=$ROCM_PATH \
+            -e PATH=$PYTHON_HOME/bin:$ROCM_PATH/bin:$PATH \
             -w /workspace \
             rocm/dev-ubuntu-22.04:${{ matrix.hip }} \
             sleep infinity
@@ -100,8 +105,9 @@ jobs:
             apt-get install -y build-essential git cmake libcurl4-openssl-dev libssl-dev rocblas-dev hipblas-dev rocwmma-dev curl
             apt-get clean
             df -ha
-            hipconfig --full
-            ls -alh /opt/rocm/lib
+            if command -v hipconfig >/dev/null 2>&1; then hipconfig --full; fi
+            "$ROCM_PATH/lib/llvm/bin/clang" --version
+            ls -alh "$ROCM_PATH/lib"
           '
 
       - name: Install Rust
@@ -133,6 +139,8 @@ jobs:
                      -e XLLAMACPP_BUILD_HIP=$XLLAMACPP_BUILD_HIP \
                      -e VERSIONEER_CLOSEST_TAG_ONLY=$VERSIONEER_CLOSEST_TAG_ONLY \
                      -e VERBOSE=$VERBOSE \
+                     -e ROCM_PATH=$ROCM_PATH \
+                     -e HIP_PATH=$ROCM_PATH \
                      -e AMDGPU_TARGETS=$AMDGPU_TARGETS \
                      -e GGML_HIP_ROCWMMA_FATTN=$GGML_HIP_ROCWMMA_FATTN \
                      rocm-container bash -l -c '
