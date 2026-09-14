@@ -259,6 +259,12 @@ def build_llamacpp() -> None:
             [
                 f"-DAMDGPU_TARGETS={amdgpu_targets}",
                 f"-DCMAKE_HIP_COMPILER={hip_compiler()}",
+                # CMake cannot always infer the SDK root from Clang, and its
+                # fallback invokes hipconfig via PATH. Pass the root
+                # explicitly so versioned ROCm installs also work when a
+                # login shell has replaced the container's configured PATH.
+                "-DCMAKE_HIP_COMPILER_ROCM_ROOT="
+                + os.environ.get("ROCM_PATH", "/opt/rocm"),
                 f"-DGGML_HIP_ROCWMMA_FATTN={rocwmma}",
                 "-DGGML_HIP=ON",
             ]
