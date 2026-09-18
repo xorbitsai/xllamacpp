@@ -187,6 +187,11 @@ def test_hip_build_passes_rocm_root_to_cmake(tmp_path, monkeypatch):
     project.mkdir()
     rocm_path = tmp_path / "rocm-6.4.1"
     compiler = rocm_path / "lib" / "llvm" / "bin" / "clang"
+    hip_lang_config = (
+        rocm_path / "lib" / "cmake" / "hip-lang" / "hip-lang-config.cmake"
+    )
+    hip_lang_config.parent.mkdir(parents=True)
+    hip_lang_config.touch()
     commands = []
 
     monkeypatch.setattr(build, "PROJECT", project)
@@ -195,6 +200,7 @@ def test_hip_build_passes_rocm_root_to_cmake(tmp_path, monkeypatch):
     monkeypatch.setattr(build.platform, "system", lambda: "Linux")
     monkeypatch.setattr(build, "llamacpp_patches", lambda: [])
     monkeypatch.setattr(build, "run", lambda command, cwd: commands.append(command))
+    monkeypatch.setattr(build, "rocm_root_candidates", lambda: [rocm_path, tmp_path / "other-rocm"])
     monkeypatch.delenv("XLLAMACPP_BUILD_CUDA", raising=False)
     monkeypatch.setenv("XLLAMACPP_BUILD_HIP", "1")
     monkeypatch.setenv("ROCM_PATH", str(rocm_path))
@@ -205,3 +211,63 @@ def test_hip_build_passes_rocm_root_to_cmake(tmp_path, monkeypatch):
     configure_command = commands[0]
     assert f"-DCMAKE_HIP_COMPILER={compiler}" in configure_command
     assert f"-DCMAKE_HIP_COMPILER_ROCM_ROOT={rocm_path}" in configure_command
+    # Pinning the lib directory skips CMake's own hip-lang prefix probe and
+    # points hip-lang_DIR straight at the package. Patching the root alone is
+    # not enough.
+    assert (
+        f"-DCMAKE_HIP_COMPILER_ROCM_LIB={rocm_path / 'lib'}" in configure_command
+    )
+
+
+def make_rocm_root(root, lib_dir="lib"):
+    """Create a minimal ROCm prefix shipping the HIP runtime CMake package."""
+    config = Path(root) / lib_dir / "cmake" / "hip-lang" / "hip-lang-config.cmake"
+    config.parent.mkdir(parents=True)
+    config.touch()
+    return Path(root)
+
+
+def test_rocm_root_prefers_the_configured_prefix(tmp_path, monkeypatch):
+    configured = make_rocm_root(tmp_path / "rocm-7.2.4")
+    fallback = make_rocm_root(tmp_path / "rocm-6.4.1")
+    monkeypatch.setattr(
+        build, "rocm_root_candidates", lambda: [configured, fallback]
+    )
+
+    assert build.rocm_root() == configured
+
+
+def test_rocm_root_skips_prefixes_without_the_hip_package(tmp_path, monkeypatch):
+    # A prefix that only carries the ROCm runtime libraries (no hip-lang)
+    # makes CMake abort with "does not contain the HIP runtime CMake package".
+    runtime_only = tmp_path / "rocm-runtime-only"
+    (runtime_only / "lib").mkdir(parents=True)
+    usable = make_rocm_root(tmp_path / "rocm-6.4.1", lib_dir="lib64")
+    monkeypatch.setattr(
+        build, "rocm_root_candidates", lambda: [runtime_only, usable]
+    )
+
+    assert build.rocm_root() == usable
+
+
+def test_rocm_root_reports_a_missing_hip_package(tmp_path, monkeypatch):
+    empty = tmp_path / "rocm"
+    empty.mkdir()
+    monkeypatch.setattr(build, "rocm_root_candidates", lambda: [empty])
+
+    with pytest.raises(SystemExit) as excinfo:
+        build.rocm_root()
+
+    message = str(excinfo.value)
+    assert "hip-lang" in message
+    assert "hip-dev" in message
+    assert str(empty) in message
+
+
+def test_rocm_root_candidates_follow_the_configured_compiler(tmp_path, monkeypatch):
+    rocm_path = tmp_path / "rocm-7.2.4"
+    compiler = rocm_path / "lib" / "llvm" / "bin" / "clang"
+    monkeypatch.setenv("ROCM_PATH", str(rocm_path))
+    monkeypatch.setenv("CMAKE_HIP_COMPILER", str(compiler))
+
+    assert build.rocm_root_candidates()[0] == rocm_path
