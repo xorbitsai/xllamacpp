@@ -167,6 +167,10 @@ jobs:
             # Build requirements are installed above. Avoid build's temporary
             # pip environment, which is broken by conda-forge CPython 3.10's
             # sys.version string on GitHub's Linux ARM64 tool cache.
+            if [ ! -f "$ROCM_PATH/lib/cmake/hip-lang/hip-lang-config.cmake" ]; then
+              echo "ERROR: hip-lang disappeared after installing Python dependencies"
+              exit 1
+            fi
             python -m build --wheel --no-isolation
             df -ha
             echo "Clean up"

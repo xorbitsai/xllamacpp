@@ -364,11 +364,25 @@ def build_llamacpp() -> None:
             root = Path(configured_root)
             root_lib = Path(configured_lib)
         else:
-            root = rocm_root()
-            root_lib = hip_package_lib_dir(root)
+            try:
+                root = rocm_root()
+            except SystemExit:
+                configured_root = os.environ.get("CMAKE_HIP_COMPILER_ROCM_ROOT") or os.environ.get(
+                    "ROCM_PATH"
+                )
+                if not configured_root:
+                    raise
+                # The ROCm package may be visible to the container shell but
+                # not to this Python probe. Let CMake validate the configured
+                # SDK directly; CI checks this file before the wheel build.
+                root = Path(configured_root)
+                root_lib = root / "lib"
+                log(f"Passing configured ROCm lib directory to CMake: {root_lib}")
+            else:
+                root_lib = hip_package_lib_dir(root)
         log(f"Using AMDGPU targets: {amdgpu_targets}")
         log(f"ROCWMMA flash attention: {rocwmma}")
-        log(f"Using ROCm root: {root} (HIP CMake package in {root_lib})")
+        log(f"Using ROCm root: {root} (HIP CMake package directory: {root_lib})")
         cmake_args.extend(
             [
                 f"-DAMDGPU_TARGETS={amdgpu_targets}",
