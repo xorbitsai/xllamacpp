@@ -219,6 +219,34 @@ def test_hip_build_passes_rocm_root_to_cmake(tmp_path, monkeypatch):
     )
 
 
+def test_hip_build_uses_ci_verified_lib_without_reprobing(tmp_path, monkeypatch):
+    project = tmp_path / "llama.cpp"
+    project.mkdir()
+    rocm_path = tmp_path / "rocm-6.4.1"
+    compiler = rocm_path / "lib" / "llvm" / "bin" / "clang"
+    commands = []
+
+    monkeypatch.setattr(build, "PROJECT", project)
+    monkeypatch.setattr(build, "PREFIX", tmp_path / "prefix")
+    monkeypatch.setattr(build, "ROOT", tmp_path)
+    monkeypatch.setattr(build.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(build, "llamacpp_patches", lambda: [])
+    monkeypatch.setattr(build, "run", lambda command, cwd: commands.append(command))
+    monkeypatch.setattr(
+        build, "rocm_root", lambda: pytest.fail("explicit SDK path must not be reprobed")
+    )
+    monkeypatch.delenv("XLLAMACPP_BUILD_CUDA", raising=False)
+    monkeypatch.setenv("XLLAMACPP_BUILD_HIP", "1")
+    monkeypatch.setenv("ROCM_PATH", str(rocm_path))
+    monkeypatch.setenv("CMAKE_HIP_COMPILER", str(compiler))
+    monkeypatch.setenv("CMAKE_HIP_COMPILER_ROCM_LIB", str(rocm_path / "lib"))
+
+    build.build_llamacpp()
+
+    assert f"-DCMAKE_HIP_COMPILER_ROCM_ROOT={rocm_path}" in commands[0]
+    assert f"-DCMAKE_HIP_COMPILER_ROCM_LIB={rocm_path / 'lib'}" in commands[0]
+
+
 def make_rocm_root(root, lib_dir="lib"):
     """Create a minimal ROCm prefix shipping the HIP runtime CMake package."""
     config = Path(root) / lib_dir / "cmake" / "hip-lang" / "hip-lang-config.cmake"

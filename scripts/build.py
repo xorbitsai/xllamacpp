@@ -348,8 +348,24 @@ def build_llamacpp() -> None:
         # runtime CMake package below the ROCm root it is given, and its own
         # detection can pick a prefix that only has the ROCm runtime
         # libraries. Resolve a prefix that really provides hip-lang instead.
-        root = rocm_root()
-        root_lib = hip_package_lib_dir(root)
+        configured_lib = os.environ.get("CMAKE_HIP_COMPILER_ROCM_LIB")
+        if configured_lib:
+            configured_root = os.environ.get("CMAKE_HIP_COMPILER_ROCM_ROOT") or os.environ.get(
+                "ROCM_PATH"
+            )
+            if not configured_root:
+                raise SystemExit(
+                    "CMAKE_HIP_COMPILER_ROCM_LIB requires ROCM_PATH or "
+                    "CMAKE_HIP_COMPILER_ROCM_ROOT to select the matching SDK."
+                )
+            # CI has already checked this package path in its ROCm container.
+            # Use the supplied directory directly so Python's filesystem probe
+            # cannot reject a package the container shell has verified.
+            root = Path(configured_root)
+            root_lib = Path(configured_lib)
+        else:
+            root = rocm_root()
+            root_lib = hip_package_lib_dir(root)
         log(f"Using AMDGPU targets: {amdgpu_targets}")
         log(f"ROCWMMA flash attention: {rocwmma}")
         log(f"Using ROCm root: {root} (HIP CMake package in {root_lib})")
