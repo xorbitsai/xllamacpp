@@ -17,6 +17,12 @@ PROJECT = ROOT / "thirdparty" / "llama.cpp"
 PREFIX = ROOT / "src" / "llama.cpp"
 PATCH_DIR = ROOT / "patches" / "llama.cpp"
 
+# Path of the HIP runtime CMake package, relative to a ROCm lib directory.
+# CMake >= 3.31 refuses to enable the HIP language unless it finds this file
+# below <rocm_root>/lib (or <rocm_root>/lib64), so a ROCm prefix without it
+# cannot build the HIP backend at all.
+HIP_LANG_CONFIG = Path("cmake") / "hip-lang" / "hip-lang-config.cmake"
+
 
 def log(message: str) -> None:
     print(message, flush=True)
@@ -118,22 +124,138 @@ def revert_llamacpp_patches(patches: list[Path]) -> None:
                     os.utime(touched)
 
 
-def hip_compiler() -> str:
+def hip_package_lib_dir(rocm_root: Path) -> Path | None:
+    """Return the ROCm lib directory that ships the HIP runtime CMake package.
+
+    ``None`` means the prefix has no ``hip-lang`` package and therefore cannot
+    be used as ``CMAKE_HIP_COMPILER_ROCM_ROOT`` with CMake >= 3.31.
+    """
+    for lib_dir in (Path(rocm_root) / "lib", Path(rocm_root) / "lib64"):
+        if (lib_dir / HIP_LANG_CONFIG).is_file():
+            return lib_dir
+    return None
+
+
+def rocm_root_candidates() -> list[Path]:
+    """ROCm prefixes probed for the HIP runtime CMake package, best first.
+
+    The configured prefix wins, then the prefix the configured HIP compiler
+    lives in (``.../lib/llvm/bin/clang`` -> ``...``), then the ``/opt/rocm``
+    compatibility prefix, then every versioned ``/opt/rocm-*`` installation.
+    """
+    candidates: list[Path] = []
+
+    def add(path: str | os.PathLike[str] | None) -> None:
+        if not path:
+            return
+        candidate = Path(path)
+        if candidate not in candidates:
+            candidates.append(candidate)
+
+    add(os.environ.get("ROCM_PATH"))
+    add(os.environ.get("CMAKE_HIP_COMPILER_ROCM_ROOT"))
+
+    compiler = os.environ.get("CMAKE_HIP_COMPILER")
+    if compiler:
+        for parent in Path(compiler).parents:
+            if parent.name == "llvm":
+                add(parent.parent.parent)
+                break
+
+    add("/opt/rocm")
+    opt = Path("/opt")
+    if opt.is_dir():
+        for versioned in sorted(opt.glob("rocm-*")):
+            add(versioned)
+    return candidates
+
+
+def rocm_root() -> Path:
+    """Return a ROCm prefix that contains the HIP runtime CMake package.
+
+    Handing CMake a prefix without ``hip-lang`` makes ``enable_language(HIP)``
+    abort with "The ROCm root directory ... does not contain the HIP runtime
+    CMake package", which is what happens when ``ROCM_PATH`` points at a
+    prefix that only carries the ROCm runtime libraries, or when the ROCm HIP
+    development package is not installed. Probe the known candidates and use
+    the first usable one instead of failing the build.
+    """
+    for candidate in rocm_root_candidates():
+        if hip_package_lib_dir(candidate):
+            return candidate
+
+    searched = ", ".join(str(path) for path in rocm_root_candidates()) or "(none)"
+    raise SystemExit(
+        "Could not find the HIP runtime CMake package (hip-lang); CMake cannot "
+        "enable the HIP language without it. Install the ROCm HIP development "
+        "package (for example `apt-get install hip-dev`) or point ROCM_PATH at "
+        f"a ROCm prefix that contains {HIP_LANG_CONFIG}. Searched: {searched}."
+    )
+
+
+def hip_compiler(resolved_root: Path | None = None) -> str:
     """Return the path to the HIP C++ compiler (clang).
 
-    On ROCm 7.0+ the hipconfig Perl scripts were removed; if the
-    ``hipconfig`` binary is unavailable or fails, fall back to the
-    standard ROCm installation path.
+    Honor an explicitly configured compiler first. CI verifies this path in
+    the ROCm container before starting the wheel build, so it must not be
+    rejected by a second, potentially isolated Python filesystem probe.
+
+    When a resolved ROCm root is given, its own packaged compiler wins:
+    compiler and ``hip-lang`` package must come from the same SDK. Otherwise
+    prefer ROCm's own ``hipconfig`` result, looking it up below ``ROCM_PATH``
+    as well as on ``PATH``. Some isolated build environments omit the ROCm
+    bin directory from ``PATH``. If hipconfig is unavailable, probe the
+    standard packaged ROCm LLVM layouts instead.
     """
+    configured_compiler = os.environ.get("CMAKE_HIP_COMPILER")
+    if configured_compiler:
+        log(f"Using configured HIP compiler: {configured_compiler}")
+        return configured_compiler
+
+    rocm_path = (
+        Path(resolved_root)
+        if resolved_root
+        else Path(os.environ.get("ROCM_PATH", "/opt/rocm"))
+    )
+
+    if resolved_root:
+        for compiler in (
+            rocm_path / "lib" / "llvm" / "bin" / "clang",
+            rocm_path / "lib" / "llvm" / "bin" / "clang++",
+        ):
+            if compiler.is_file():
+                log(f"Using HIP compiler found at {compiler}")
+                return str(compiler)
+
+    hipconfig = shutil.which("hipconfig") or str(rocm_path / "bin" / "hipconfig")
     try:
         hip_root = subprocess.check_output(
-            ["hipconfig", "-l"], text=True, stderr=subprocess.STDOUT
+            [hipconfig, "-l"], text=True, stderr=subprocess.STDOUT
         ).strip()
     except (OSError, subprocess.CalledProcessError) as exc:
-        rocm_path = os.environ.get("ROCM_PATH", "/opt/rocm")
-        hip_root = str(Path(rocm_path) / "llvm")
-        log(f"`hipconfig -l` failed ({exc}), falling back to {hip_root}")
-    return str(Path(hip_root) / "clang")
+        log(f"`{hipconfig} -l` failed ({exc}), probing the ROCm installation")
+    else:
+        for compiler_name in ("clang", "clang++"):
+            compiler = Path(hip_root) / compiler_name
+            if compiler.is_file():
+                return str(compiler)
+
+    compiler_candidates = (
+        rocm_path / "lib" / "llvm" / "bin" / "clang",
+        rocm_path / "lib" / "llvm" / "bin" / "clang++",
+        rocm_path / "llvm" / "bin" / "clang",
+        rocm_path / "llvm" / "bin" / "clang++",
+    )
+    for compiler in compiler_candidates:
+        if compiler.is_file():
+            log(f"Using HIP compiler found at {compiler}")
+            return str(compiler)
+
+    searched = ", ".join(str(path) for path in compiler_candidates)
+    raise SystemExit(
+        "Could not find the ROCm HIP compiler. "
+        f"Set ROCM_PATH to the ROCm installation prefix (searched: {searched})."
+    )
 
 
 def build_llamacpp() -> None:
@@ -222,12 +344,55 @@ def build_llamacpp() -> None:
         # and the warp mask compile issue is fixed in our submodule
         # (PR #15273).
         rocwmma = os.environ.get("GGML_HIP_ROCWMMA_FATTN") or "ON"
+        # CMake >= 3.31 aborts enable_language(HIP) unless it finds the HIP
+        # runtime CMake package below the ROCm root it is given, and its own
+        # detection can pick a prefix that only has the ROCm runtime
+        # libraries. Resolve a prefix that really provides hip-lang instead.
+        configured_lib = os.environ.get("CMAKE_HIP_COMPILER_ROCM_LIB")
+        if configured_lib:
+            configured_root = os.environ.get("CMAKE_HIP_COMPILER_ROCM_ROOT") or os.environ.get(
+                "ROCM_PATH"
+            )
+            if not configured_root:
+                raise SystemExit(
+                    "CMAKE_HIP_COMPILER_ROCM_LIB requires ROCM_PATH or "
+                    "CMAKE_HIP_COMPILER_ROCM_ROOT to select the matching SDK."
+                )
+            # CI has already checked this package path in its ROCm container.
+            # Use the supplied directory directly so Python's filesystem probe
+            # cannot reject a package the container shell has verified.
+            root = Path(configured_root)
+            root_lib = Path(configured_lib)
+        else:
+            try:
+                root = rocm_root()
+            except SystemExit:
+                configured_root = os.environ.get("CMAKE_HIP_COMPILER_ROCM_ROOT") or os.environ.get(
+                    "ROCM_PATH"
+                )
+                if not configured_root:
+                    raise
+                # The ROCm package may be visible to the container shell but
+                # not to this Python probe. Let CMake validate the configured
+                # SDK directly; CI checks this file before the wheel build.
+                root = Path(configured_root)
+                root_lib = root / "lib"
+                log(f"Passing configured ROCm lib directory to CMake: {root_lib}")
+            else:
+                root_lib = hip_package_lib_dir(root)
         log(f"Using AMDGPU targets: {amdgpu_targets}")
         log(f"ROCWMMA flash attention: {rocwmma}")
+        log(f"Using ROCm root: {root} (HIP CMake package directory: {root_lib})")
         cmake_args.extend(
             [
                 f"-DAMDGPU_TARGETS={amdgpu_targets}",
-                f"-DCMAKE_HIP_COMPILER={hip_compiler()}",
+                f"-DCMAKE_HIP_COMPILER={hip_compiler(root)}",
+                # Pass the root and the lib directory that ships hip-lang
+                # explicitly: CMake cannot always infer the SDK root from
+                # Clang, and pinning CMAKE_HIP_COMPILER_ROCM_LIB both pins
+                # hip-lang_DIR and skips CMake's own prefix probe.
+                f"-DCMAKE_HIP_COMPILER_ROCM_ROOT={root}",
+                f"-DCMAKE_HIP_COMPILER_ROCM_LIB={root_lib}",
                 f"-DGGML_HIP_ROCWMMA_FATTN={rocwmma}",
                 "-DGGML_HIP=ON",
             ]

@@ -156,7 +156,11 @@ else:
                 f"{LLAMACPP_LIBS_DIR}/libggml-hip.a",
             ]
         )
-        LIBRARY_DIRS.extend(["/opt/rocm/lib"])
+        # ROCm Docker images may install the SDK in a versioned prefix such as
+        # /opt/rocm-6.4.1 rather than the incomplete /opt/rocm compatibility
+        # prefix. Keep linking consistent with scripts/build.py and CMake.
+        rocm_path = os.getenv("ROCM_PATH", "/opt/rocm")
+        LIBRARY_DIRS.extend([os.path.join(rocm_path, "lib")])
         LIBRARIES.extend(["amdhip64", "hipblas", "rocblas"])
     if BUILD_VULKAN:
         EXTRA_OBJECTS.extend(
