@@ -105,21 +105,10 @@ jobs:
             df -ha
             apt-get update
             apt-get install -y build-essential git cmake libcurl4-openssl-dev libssl-dev rocblas-dev hipblas-dev rocwmma-dev curl
-            # hip-dev ships the HIP runtime CMake package below
-            # <rocm>/lib/cmake/hip-lang. CMake >= 3.31 refuses to enable the
-            # HIP language when it cannot find it, so install it from the
-            # ROCm repo and reinstall it: that also restores the files if the
-            # image ships the package incompletely.
-            apt-get install -y --reinstall hip-dev
             apt-get clean
             df -ha
             if command -v hipconfig >/dev/null 2>&1; then hipconfig --full; fi
             "$CMAKE_HIP_COMPILER" --version
-            if [ ! -f "$ROCM_PATH/lib/cmake/hip-lang/hip-lang-config.cmake" ]; then
-              echo "ERROR: HIP CMake package (hip-lang) missing below $ROCM_PATH"
-              exit 1
-            fi
-            ls -l "$ROCM_PATH/lib/cmake/hip-lang/hip-lang-config.cmake"
             ls -alh "$ROCM_PATH/lib"
           '
 
@@ -167,10 +156,14 @@ jobs:
             # Build requirements are installed above. Avoid build's temporary
             # pip environment, which is broken by conda-forge CPython 3.10's
             # sys.version string on GitHub's Linux ARM64 tool cache.
+            # Restore hip-lang after all Rust and Python setup. The package was
+            # present after system setup but absent here in prior CI runs.
+            apt-get install -y --reinstall hip-dev
             if [ ! -f "$ROCM_PATH/lib/cmake/hip-lang/hip-lang-config.cmake" ]; then
-              echo "ERROR: hip-lang disappeared after installing Python dependencies"
+              echo "ERROR: HIP CMake package (hip-lang) is missing below $ROCM_PATH"
               exit 1
             fi
+            ls -l "$ROCM_PATH/lib/cmake/hip-lang/hip-lang-config.cmake"
             python -m build --wheel --no-isolation
             df -ha
             echo "Clean up"
