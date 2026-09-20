@@ -1,13 +1,13 @@
 ---
 name: update-llamacpp
-description: Update this xllamacpp repository's vendored llama.cpp checkout. Use when Codex is asked to refresh, update, or sync thirdparty/llama.cpp to the latest stable SemVer release such as v0.2.0 or the latest nightly b-number build such as b10566, ensure its nested submodules are initialized and updated, fetch upstream llama.cpp tags, check whether the vendored checkout is already pinned to the selected release channel, build xllamacpp after a llama.cpp update, update Cython bindings for changed header fields and enum members, or synchronize generated llama-server changes into the owned Python server wrapper.
+description: Update this xllamacpp repository's vendored llama.cpp checkout. Use when Codex is asked to refresh, update, or sync thirdparty/llama.cpp to the latest upstream tag, including rolling b-number tags such as b10566, or to an explicitly requested stable SemVer release; also handles nested submodules, tag refresh, builds, Cython compatibility, and generated llama-server synchronization.
 ---
 
 # Update llama.cpp
 
 ## Overview
 
-Use this skill to update the vendored `thirdparty/llama.cpp` checkout in this repository to either the newest stable SemVer release tag (`vMAJOR.MINOR.PATCH`, for example `v0.2.0`) or the newest nightly build tag (`bNUMBER`, for example `b10566`). Stable is the default channel when the user asks for the latest release; use nightly only when the user explicitly requests the latest/nightly build. A stable release and a nightly tag can point to the same commit. The checkout update is automated by `scripts/update_xllamacpp.sh`; upstream tag refresh is automated by `scripts/update_llamacpp_tags.sh`; release-channel comparison is automated by `scripts/check_latest_llamacpp_tag.sh`; xllamacpp build verification is automated by `scripts/build_xllamacpp.sh`; header binding review is assisted by `scripts/check_header_field_bindings.py`. The workflow also audits generated `src/llama.cpp/src/server.cpp` changes against the owned `src/xllamacpp/server.cpp` wrapper.
+Use this skill to update the vendored `thirdparty/llama.cpp` checkout to the latest upstream tag. By default, "latest" means the highest exact rolling build tag (`bNUMBER`, for example `b10566`), falling back to the highest exact stable SemVer tag (`vMAJOR.MINOR.PATCH`, for example `v0.2.0`) only when no rolling tags exist. Use the stable channel only when the user explicitly asks for a stable or SemVer release. A stable release and a rolling tag can point to the same commit. The checkout update is automated by `scripts/update_xllamacpp.sh`; upstream tag refresh is automated by `scripts/update_llamacpp_tags.sh`; release-channel comparison is automated by `scripts/check_latest_llamacpp_tag.sh`; xllamacpp build verification is automated by `scripts/build_xllamacpp.sh`; header binding review is assisted by `scripts/check_header_field_bindings.py`. The workflow also audits generated `src/llama.cpp/src/server.cpp` changes against the owned `src/xllamacpp/server.cpp` wrapper.
 
 ## Workflow
 
@@ -20,32 +20,43 @@ Use this skill to update the vendored `thirdparty/llama.cpp` checkout in this re
 
 3. The script first switches the parent xllamacpp repository to its upstream default branch from `origin/HEAD` (normally `main`) and fast-forwards it to the latest code. It then switches `thirdparty/llama.cpp` to the upstream default branch from `origin/HEAD` (currently `master` for llama.cpp), fetches it, fast-forwards to it, then runs recursive submodule sync and update inside `thirdparty/llama.cpp`.
 4. After it completes, inspect the resulting submodule pointer change from the xllamacpp repository root with `git status --short` and `git diff --submodule=log -- thirdparty/llama.cpp`.
-5. Refresh upstream tags when requested:
+5. Refresh upstream tags before selecting the update target:
 
    ```bash
    .codex/skills/update-llamacpp/scripts/update_llamacpp_tags.sh
    ```
 
 6. The tag script fetches tags from `thirdparty/llama.cpp`'s `origin`, prunes local tags that no longer exist upstream, and force-updates moved upstream tag refs. It does not move branches, commits, or the parent repository's recorded submodule pointer.
-7. Choose a release channel. Use `stable` unless the user explicitly requests a nightly build. Check whether the vendored checkout is already pinned to the latest tag in that channel:
+7. Choose a release channel. Use `latest` unless the user explicitly requests `stable` or `nightly`. The default `latest` channel includes `bNUMBER` tags and resolves to the highest one, falling back to stable only if upstream has no `b` tags. Check whether the vendored checkout is already pinned to the selected tag:
 
    ```bash
    .codex/skills/update-llamacpp/scripts/check_latest_llamacpp_tag.sh
 
-   # Or, when the user explicitly requests the rolling nightly channel:
+   # Explicit stable-only selection:
+   .codex/skills/update-llamacpp/scripts/check_latest_llamacpp_tag.sh --channel stable
+
+   # Explicit rolling/nightly selection:
    .codex/skills/update-llamacpp/scripts/check_latest_llamacpp_tag.sh --channel nightly
    ```
 
-8. If the selected tag's peeled commit matches `thirdparty/llama.cpp` `HEAD`, stop: llama.cpp is already pinned to the latest tag in that channel. If it differs, derive the exact tag using the same version-aware selection and pin `thirdparty/llama.cpp` to it before continuing. The vendored submodule must end on the selected exact stable or nightly tag commit, not on an upstream branch commit after it:
+8. If the selected tag's peeled commit matches `thirdparty/llama.cpp` `HEAD`, stop: llama.cpp is already pinned to the selected latest tag. If it differs, derive the exact tag using the same version-aware selection and pin `thirdparty/llama.cpp` to it before continuing. The vendored submodule must end on the selected exact rolling or stable tag commit, not on an upstream branch commit after it:
 
    ```bash
-   # Stable channel (default)
-   tag_pattern='^v[0-9]+\.[0-9]+\.[0-9]+$'
+   # Default latest channel. For explicit stable, use the SemVer pattern below.
+   tag_pattern='^b[0-9]+$'
    latest_tag="$(git -C thirdparty/llama.cpp for-each-ref refs/tags \
      --sort=-version:refname --format='%(refname:short)' |
      awk -v pattern="$tag_pattern" '!found && $0 ~ pattern { print; found = 1 }')"
 
-   # For nightly, use: tag_pattern='^b[0-9]+$'
+   if test -z "$latest_tag"; then
+     tag_pattern='^v[0-9]+\.[0-9]+\.[0-9]+$'
+     latest_tag="$(git -C thirdparty/llama.cpp for-each-ref refs/tags \
+       --sort=-version:refname --format='%(refname:short)' |
+       awk -v pattern="$tag_pattern" '!found && $0 ~ pattern { print; found = 1 }')"
+   fi
+
+   # When the user explicitly requests stable, start with the SemVer pattern
+   # instead of considering b-number tags.
    test -n "$latest_tag"
    git -C thirdparty/llama.cpp switch --detach "$latest_tag"
    git -C thirdparty/llama.cpp describe --tags --exact-match HEAD
@@ -111,10 +122,11 @@ Use this skill to update the vendored `thirdparty/llama.cpp` checkout in this re
 - Use fast-forward-only pulls. Do not create merge commits while updating the vendored dependency.
 - Do not run root-level `git submodule update thirdparty/llama.cpp` after the update, because that would reset the vendored checkout back to the commit recorded by the parent repository.
 - Treat tag refresh as remote metadata synchronization only. If local-only tags matter for a task, inspect them before running the tag script because `--prune-tags` removes tags absent from `origin`.
-- Run `scripts/update_llamacpp_tags.sh` before selecting the latest stable or nightly tag when current upstream tag state matters.
+- Always run `scripts/update_llamacpp_tags.sh` before selecting the latest tag so local tag metadata cannot make the result stale.
+- Treat the default `latest` channel as the highest exact `bNUMBER` tag, with the highest exact stable SemVer tag as a fallback only when no `bNUMBER` tags exist. Do not compare `b` and `v` tag names lexically because they are different version families.
 - Treat only exact `vMAJOR.MINOR.PATCH` tags as stable releases. Exclude prerelease, artifact, `master-*`, and nightly tags from stable selection. Use Git's version-aware ref sorting rather than creator date.
 - Treat only exact `bNUMBER` tags as nightly builds. The numeric component may have any number of digits; use Git's version-aware ref sorting rather than lexicographic or creator-date sorting.
-- Pin `thirdparty/llama.cpp` to the exact latest tag in the user-selected channel before compatibility work. Do not leave it on `master` or another branch commit beyond the tag.
+- Pin `thirdparty/llama.cpp` to the exact tag resolved by the default or user-selected channel before compatibility work. Do not leave it on `master` or another branch commit beyond the tag.
 - On macOS, the build wrapper defaults `MACOSX_DEPLOYMENT_TARGET` to `13.3` only when it is unset, matching this repository's wheel workflow. Caller-provided build environment variables still take precedence.
 - Run the xllamacpp build outside the sandbox. llama.cpp's CMake build may provision UI assets or initialize native build tooling differently under sandbox restrictions.
 - Treat removed upstream fields as removed public bindings by default. Never silently retain them as aliases or computed properties; backward compatibility requires an explicit user request.

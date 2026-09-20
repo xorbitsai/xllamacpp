@@ -32,6 +32,7 @@ echo
 echo "Tag count: ${before_count} -> ${after_count}"
 echo "Latest stable release: ${latest_stable:-<none>}"
 echo "Latest nightly build:  ${latest_nightly:-<none>}"
+echo "Default latest tag:    ${latest_nightly:-${latest_stable:-<none>}}"
 echo
 echo "Most recent tags:"
 git -C "${llama_dir}" tag --list --sort=-creatordate | sed -n '1,10p'
