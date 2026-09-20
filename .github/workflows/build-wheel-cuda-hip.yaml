@@ -43,6 +43,11 @@ jobs:
             amdgpu_targets: "gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102;gfx1150;gfx1151;gfx1200;gfx1201;gfx950"
     env:
       AMDGPU_TARGETS: ${{ matrix.amdgpu_targets }}
+      GGML_HIP_ROCWMMA_FATTN: "ON"
+      # The ROCm images keep the compiler in a versioned prefix. /opt/rocm
+      # contains runtime libraries, but is not a complete SDK in every image.
+      ROCM_PATH: /opt/rocm-${{ matrix.hip }}
+      CMAKE_HIP_COMPILER: /opt/rocm-${{ matrix.hip }}/lib/llvm/bin/clang
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # main
@@ -66,61 +71,69 @@ jobs:
         with:
           submodules: "recursive"
 
-      - name: Set up Python ${{ matrix.pyver }}
-        id: setup-python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: ${{ matrix.pyver }}
-
       - name: Start ROCm container
         run: |
-          # Get Python location from setup-python
-          PYTHON_PATH=$(which python)
-          PYTHON_HOME=$(dirname $(dirname $PYTHON_PATH))
-          
-          # Start the container with Python from host mounted
+          # Keep the ROCm SDK and Python in the same container filesystem.
+          # Mounting setup-python's host toolcache into the image made files
+          # below the versioned ROCm prefix disappear across docker exec calls.
           docker run -d \
             --name rocm-container \
             -v ${{ github.workspace }}:/workspace \
-            -v $PYTHON_HOME:$PYTHON_HOME \
-            -e PATH=$PYTHON_HOME/bin:$PATH \
+            -e ROCM_PATH=$ROCM_PATH \
+            -e HIP_PATH=$ROCM_PATH \
+            -e CMAKE_HIP_COMPILER=$CMAKE_HIP_COMPILER \
+            -e PATH=/opt/xllamacpp-python/bin:/root/.cargo/bin:$ROCM_PATH/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
             -w /workspace \
             rocm/dev-ubuntu-22.04:${{ matrix.hip }} \
             sleep infinity
-          
-          # Verify Python installation in container
-          docker exec rocm-container python --version
-          docker exec rocm-container pip --version
 
       - name: System Dependencies
         run: |
-          docker exec rocm-container bash -c '
+          docker exec --user root rocm-container bash -c '
+            set -euxo pipefail
             df -ha
             apt-get update
-            apt-get install -y build-essential git cmake libcurl4-openssl-dev libssl-dev rocblas-dev hipblas-dev rocwmma-dev curl
+            apt-get install -y build-essential git libcurl4-openssl-dev libssl-dev rocblas-dev hipblas-dev rocwmma-dev curl python3-pip
+            # hip-dev owns lib/cmake/hip-lang. Reinstall it once, while this
+            # explicitly-root exec is doing all system package mutations.
+            apt-get install -y --reinstall hip-dev
             apt-get clean
             df -ha
-            hipconfig --full
-            ls -alh /opt/rocm/lib
+            if command -v hipconfig >/dev/null 2>&1; then hipconfig --full; fi
+            "$CMAKE_HIP_COMPILER" --version
+            test -f "$ROCM_PATH/lib/cmake/hip-lang/hip-lang-config.cmake"
+            ls -l "$ROCM_PATH/lib/cmake/hip-lang/hip-lang-config.cmake"
+            ls -alh "$ROCM_PATH/lib"
           '
 
       - name: Install Rust
         run: |
-          docker exec rocm-container bash -c '
+          docker exec --user root rocm-container bash -c '
+            set -euxo pipefail
             curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
             source $HOME/.cargo/env
             rustc --version
             cargo --version
-            # Add cargo to PATH permanently for this container
-            echo "export PATH=\$HOME/.cargo/bin:\$PATH" >> $HOME/.bashrc
           '
 
-      - name: Setup Python environment
+      - name: Set up Python ${{ matrix.pyver }} inside ROCm container
+        env:
+          PYTHON_VERSION: ${{ matrix.pyver }}
         run: |
-          docker exec rocm-container bash -c '
-            python -m pip install --upgrade pip
-            python -m pip install build wheel auditwheel patchelf
-            python -m pip install -r requirements.txt
+          docker exec --user root \
+                      -e PYTHON_VERSION=$PYTHON_VERSION \
+                      rocm-container bash -c '
+            set -euxo pipefail
+            python3 -m pip install --upgrade "uv==0.12.17"
+            uv python install "$PYTHON_VERSION"
+            uv venv --python "$PYTHON_VERSION" --seed /opt/xllamacpp-python
+            /opt/xllamacpp-python/bin/python -m pip install --upgrade pip
+            /opt/xllamacpp-python/bin/python -m pip install "cmake>=3.31,<3.32" build wheel auditwheel patchelf
+            /opt/xllamacpp-python/bin/python -m pip install -r requirements.txt
+            /opt/xllamacpp-python/bin/python -VV
+            if [ "$PYTHON_VERSION" = "3.14t" ]; then
+              /opt/xllamacpp-python/bin/python -c "import sysconfig; assert sysconfig.get_config_var(\"Py_GIL_DISABLED\") == 1"
+            fi
           '
 
       - name: Build with native CMake HIP support
@@ -129,19 +142,28 @@ jobs:
           VERSIONEER_CLOSEST_TAG_ONLY: "1"
           VERBOSE: "1"
         run: |
-          docker exec -e XLLAMACPP_RELEASE=1 \
+          docker exec --user root \
+                     -e XLLAMACPP_RELEASE=1 \
                      -e XLLAMACPP_BUILD_HIP=$XLLAMACPP_BUILD_HIP \
                      -e VERSIONEER_CLOSEST_TAG_ONLY=$VERSIONEER_CLOSEST_TAG_ONLY \
                      -e VERBOSE=$VERBOSE \
+                     -e ROCM_PATH=$ROCM_PATH \
+                     -e HIP_PATH=$ROCM_PATH \
+                     -e CMAKE_HIP_COMPILER=$CMAKE_HIP_COMPILER \
+                     -e CMAKE_HIP_COMPILER_ROCM_LIB=$ROCM_PATH/lib \
                      -e AMDGPU_TARGETS=$AMDGPU_TARGETS \
                      -e GGML_HIP_ROCWMMA_FATTN=$GGML_HIP_ROCWMMA_FATTN \
-                     rocm-container bash -l -c '
+                     -e PATH=/opt/xllamacpp-python/bin:/root/.cargo/bin:$ROCM_PATH/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+                     rocm-container bash -c '
+            set -euxo pipefail
             python --version
             gcc -v
             cargo --version
             printenv
             git config --global --add safe.directory "*"
-            python -m build --wheel
+            test -f "$ROCM_PATH/lib/cmake/hip-lang/hip-lang-config.cmake"
+            ls -l "$ROCM_PATH/lib/cmake/hip-lang/hip-lang-config.cmake"
+            python -m build --wheel --no-isolation
             df -ha
             echo "Clean up"
             rm -rf build
@@ -343,7 +365,10 @@ jobs:
           python --version
           printenv
           git config --global --add safe.directory "*"
-          python -m build --wheel
+          # Build requirements are installed above. Avoid build's temporary
+          # pip environment, which is broken by conda-forge CPython 3.10's
+          # sys.version string on GitHub's Linux ARM64 tool cache.
+          python -m build --wheel --no-isolation
 
       - name: Repair Wheel (Linux)
         if: runner.os == 'Linux'
@@ -485,7 +510,15 @@ jobs:
           # Install build dependencies into the selected setup-python runtime,
           # rather than Conda's regular-Python environment.
           BUILD_PYTHON="${{ steps.setup-python.outputs.python-path }}"
+          BUILD_PYTHON_HOME="$(dirname "$(dirname "$BUILD_PYTHON")")"
           export PATH="$(dirname "$BUILD_PYTHON"):$PATH"
+          # setup-python's CPython is dynamically linked. Keep its lib directory
+          # ahead of Conda's, otherwise the executable can load Conda's libpython
+          # and combine it with setup-python's stdlib. On Linux ARM64 that mixed
+          # runtime makes platform.py reject Conda's sys.version string while
+          # setuptools is being imported.
+          export LD_LIBRARY_PATH="$BUILD_PYTHON_HOME/lib:$LD_LIBRARY_PATH"
+          "$BUILD_PYTHON" -c "import platform, sys; print(sys.version); print(platform.python_implementation())"
           "$BUILD_PYTHON" -m pip install --upgrade cmake
           "$BUILD_PYTHON" -m pip install build wheel
           "$BUILD_PYTHON" -m pip install -r requirements.txt
@@ -508,7 +541,9 @@ jobs:
           export CUDA_HOME=$CONDA_PREFIX
           export CUDA_PATH=$CONDA_PREFIX
           export CUDA_TOOLKIT_ROOT_DIR=$CONDA_PREFIX
-          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+          # Preserve setup-python's libpython precedence while still exposing
+          # the CUDA libraries from Conda to the build and its subprocesses.
+          export LD_LIBRARY_PATH="$BUILD_PYTHON_HOME/lib:$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
           export PATH="$CONDA_PREFIX/bin:$PATH"
           
           # Save to GITHUB_ENV for subsequent steps
@@ -537,7 +572,9 @@ jobs:
           conda activate llamacpp
 
           BUILD_PYTHON="${{ steps.setup-python.outputs.python-path }}"
+          BUILD_PYTHON_HOME="$(dirname "$(dirname "$BUILD_PYTHON")")"
           export PATH="$(dirname "$BUILD_PYTHON"):$PATH"
+          export LD_LIBRARY_PATH="$BUILD_PYTHON_HOME/lib:$LD_LIBRARY_PATH"
           
           echo "=== Build Environment ==="
           echo "System: ${{ matrix.platform }}"
@@ -579,7 +616,9 @@ jobs:
           echo "CMAKE_ARGS=$CMAKE_ARGS"
           $CXX --version
           
-          "$BUILD_PYTHON" -m build --wheel
+          # Build requirements are installed above, so use the selected
+          # setup-python runtime directly without creating a temporary env.
+          "$BUILD_PYTHON" -m build --wheel --no-isolation
           
           echo "CUDA_VERSION=$cuda_version" >> $GITHUB_ENV
 
@@ -761,7 +800,10 @@ jobs:
           export VERSIONEER_CLOSEST_TAG_ONLY=1
           export VERBOSE=1
                     
-          python -m build --wheel
+          # Build requirements are installed above. Avoid build's temporary
+          # pip environment, which is broken by conda-forge CPython 3.10's
+          # sys.version string on GitHub's Linux ARM64 tool cache.
+          python -m build --wheel --no-isolation
           
           # On Windows, we use delvewheel for wheel repair.
           # delvewheel must locate the CUDA redistributable DLLs (cudart64_*,
