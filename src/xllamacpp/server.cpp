@@ -297,7 +297,9 @@ static void init(common_params &   params,
     };
 
     if (params.cors_origins == "*" && params.api_keys.empty()) {
-        SRV_WRN("%s", "security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\n");
+        SRV_WRN("%s",
+                "security: no API key is set and CORS allows all origins (see "
+                "https://github.com/ggml-org/llama.cpp/pull/25655)\n");
     }
 
     // CORS proxy (EXPERIMENTAL, only used by the Web UI for MCP)
@@ -355,7 +357,9 @@ static void init(common_params &   params,
     if (!warn_names.empty()) {
         std::string features;
         for (const auto & name : warn_names) {
-            if (!features.empty()) features += ", ";
+            if (!features.empty()) {
+                features += ", ";
+            }
             features += name;
         }
         SRV_WRN("security: %s enabled - do not expose to untrusted environments\n", features.c_str());
@@ -495,7 +499,9 @@ static void init(common_params &   params,
     // TODO: remove this in the future
     // check the string to also handle the .sock case
     if (string_ends_with(ctx_http.listening_address, ":8080")) {
-        SRV_WRN("%s", "notice: server default port will be changed to :9931 in a future release (ref: https://github.com/ggml-org/llama.cpp/pull/26508)\n");
+        SRV_WRN("%s",
+                "notice: server default port will be changed to :9931 in a future release (ref: "
+                "https://github.com/ggml-org/llama.cpp/pull/26508)\n");
     }
 
     if (is_router_server) {
