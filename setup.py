@@ -77,6 +77,24 @@ INCLUDE_DIRS = [
     os.path.join(CWD, "thirdparty/llama.cpp/tools/mtmd"),
     os.path.join(CWD, "thirdparty/llama.cpp/vendor"),
 ]
+
+
+def _has_system_lib(name: str) -> bool:
+    """True if lib<name> is present in LIBRARY_DIRS or a standard system dir.
+
+    Mirrors CMake's optional-dependency auto-detection so the link line cannot
+    drift out of sync with what ggml was actually built against.
+    """
+    names = [f"lib{name}.so", f"lib{name}.a", f"{name}.lib"]
+    dirs = list(LIBRARY_DIRS) + [
+        "/usr/lib/x86_64-linux-gnu",
+        "/usr/lib64",
+        "/usr/lib",
+        "/usr/local/lib",
+    ]
+    return any(os.path.exists(os.path.join(d, n)) for d in dirs for n in names)
+
+
 LIBRARY_DIRS = [
     LLAMACPP_LIBS_DIR,
 ]
@@ -115,41 +133,64 @@ if PLATFORM == "Windows":
         LIBRARIES.extend(["ggml-vulkan", "vulkan-1"])
 else:
     LIBRARIES.extend(["pthread"])
-    # Order matters for static linking: dependents before dependencies.
-    # libssl.a/libcrypto.a must come AFTER libraries that reference OpenSSL symbols
-    # (e.g., libcpp-httplib.a, libserver-context.a).
-    EXTRA_OBJECTS.extend(
-        [
-            f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
-            f"{LLAMACPP_LIBS_DIR}/libllama-ui.a",
-            f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
-            f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
-            f"{LLAMACPP_LIBS_DIR}/libvendor-hash.a",
-            f"{LLAMACPP_LIBS_DIR}/libllama-common-base.a",
-            f"{LLAMACPP_LIBS_DIR}/libllama-common.a",
-            f"{LLAMACPP_LIBS_DIR}/libllguidance.a",
-            f"{LLAMACPP_LIBS_DIR}/libllama.a",
-            f"{LLAMACPP_LIBS_DIR}/libggml.a",
-            f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
-            f"{LLAMACPP_LIBS_DIR}/libggml-base.a",
-            # BoringSSL static libraries must be last (they are dependencies, not dependents)
-            f"{LLAMACPP_LIBS_DIR}/libssl.a",
-            f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
-        ]
-    )
+    # Order matters for static linking: dependents before dependencies, and
+    # libssl.a/libcrypto.a must come AFTER libraries that reference OpenSSL
+    # symbols (e.g., libcpp-httplib.a, libserver-context.a).
+    #
+    # Some entries belong to optional components: libllguidance.a is only
+    # produced with -DLLAMA_LLGUIDANCE=ON, and libssl.a/libcrypto.a only with
+    # -DLLAMA_BUILD_BORINGSSL=ON. Handing ld a path that does not exist fails
+    # the link outright, yet nothing references those symbols when the
+    # component was disabled -- so keep only the archives that were built.
+    _candidate_objects = [
+        f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
+        f"{LLAMACPP_LIBS_DIR}/libllama-ui.a",
+        f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
+        f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
+        f"{LLAMACPP_LIBS_DIR}/libvendor-hash.a",
+        f"{LLAMACPP_LIBS_DIR}/libllama-common-base.a",
+        f"{LLAMACPP_LIBS_DIR}/libllama-common.a",
+        f"{LLAMACPP_LIBS_DIR}/libllguidance.a",
+        f"{LLAMACPP_LIBS_DIR}/libllama.a",
+        f"{LLAMACPP_LIBS_DIR}/libggml.a",
+        f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
+        f"{LLAMACPP_LIBS_DIR}/libggml-base.a",
+        # BoringSSL static libraries must be last (they are dependencies, not dependents)
+        f"{LLAMACPP_LIBS_DIR}/libssl.a",
+        f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
+    ]
+    _absent = [p for p in _candidate_objects if not os.path.exists(p)]
+    if _absent:
+        print(
+            "xllamacpp: skipping absent optional libraries: "
+            + ", ".join(os.path.basename(p) for p in _absent)
+        )
+    EXTRA_OBJECTS.extend(p for p in _candidate_objects if os.path.exists(p))
     if BUILD_CUDA:
         EXTRA_OBJECTS.extend(
             [
                 f"{LLAMACPP_LIBS_DIR}/libggml-cuda.a",
             ]
         )
-        LIBRARY_DIRS.extend(
-            [
-                os.getenv("CUDA_PATH", "") + "/lib/stubs",
-                os.getenv("CUDA_PATH", "") + "/lib",
-            ],
-        )
+        # NVIDIA's Linux packages and the official CUDA images put the runtime
+        # in lib64, not lib. CUDA_PATH is also usually unset inside containers,
+        # which used to degrade these entries to "/lib/stubs" and "/lib" and
+        # make the link fail with "ld: cannot find -lcudart".
+        cuda_root = os.getenv("CUDA_PATH") or "/usr/local/cuda"
+        for sub in ("lib64", "lib"):
+            for cand in (
+                os.path.join(cuda_root, sub, "stubs"),
+                os.path.join(cuda_root, sub),
+            ):
+                if os.path.isdir(cand) and cand not in LIBRARY_DIRS:
+                    LIBRARY_DIRS.append(cand)
         LIBRARIES.extend(["cudart", "cublas", "cublasLt", "cuda"])
+        # ggml-cuda links NCCL whenever CMake auto-detects it on the system
+        # ("-- Found NCCL: /usr/lib/x86_64-linux-gnu/libnccl.so"). If we do not
+        # link it too the build succeeds but `import xllamacpp` later dies with
+        # "undefined symbol: ncclAllReduce", so mirror that detection here.
+        if _has_system_lib("nccl"):
+            LIBRARIES.append("nccl")
     if BUILD_HIP:
         EXTRA_OBJECTS.extend(
             [
