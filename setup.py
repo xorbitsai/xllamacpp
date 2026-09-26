@@ -2,9 +2,11 @@
 
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import sysconfig
+from pathlib import Path
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext as setuptools_build_ext
 
@@ -79,22 +81,6 @@ INCLUDE_DIRS = [
 ]
 
 
-def _has_system_lib(name: str) -> bool:
-    """True if lib<name> is present in LIBRARY_DIRS or a standard system dir.
-
-    Mirrors CMake's optional-dependency auto-detection so the link line cannot
-    drift out of sync with what ggml was actually built against.
-    """
-    names = [f"lib{name}.so", f"lib{name}.a", f"{name}.lib"]
-    dirs = list(LIBRARY_DIRS) + [
-        "/usr/lib/x86_64-linux-gnu",
-        "/usr/lib64",
-        "/usr/lib",
-        "/usr/local/lib",
-    ]
-    return any(os.path.exists(os.path.join(d, n)) for d in dirs for n in names)
-
-
 LIBRARY_DIRS = [
     LLAMACPP_LIBS_DIR,
 ]
@@ -137,35 +123,25 @@ else:
     # libssl.a/libcrypto.a must come AFTER libraries that reference OpenSSL
     # symbols (e.g., libcpp-httplib.a, libserver-context.a).
     #
-    # Some entries belong to optional components: libllguidance.a is only
-    # produced with -DLLAMA_LLGUIDANCE=ON, and libssl.a/libcrypto.a only with
-    # -DLLAMA_BUILD_BORINGSSL=ON. Handing ld a path that does not exist fails
-    # the link outright, yet nothing references those symbols when the
-    # component was disabled -- so keep only the archives that were built.
-    _candidate_objects = [
-        f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
-        f"{LLAMACPP_LIBS_DIR}/libllama-ui.a",
-        f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
-        f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
-        f"{LLAMACPP_LIBS_DIR}/libvendor-hash.a",
-        f"{LLAMACPP_LIBS_DIR}/libllama-common-base.a",
-        f"{LLAMACPP_LIBS_DIR}/libllama-common.a",
-        f"{LLAMACPP_LIBS_DIR}/libllguidance.a",
-        f"{LLAMACPP_LIBS_DIR}/libllama.a",
-        f"{LLAMACPP_LIBS_DIR}/libggml.a",
-        f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
-        f"{LLAMACPP_LIBS_DIR}/libggml-base.a",
-        # BoringSSL static libraries must be last (they are dependencies, not dependents)
-        f"{LLAMACPP_LIBS_DIR}/libssl.a",
-        f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
-    ]
-    _absent = [p for p in _candidate_objects if not os.path.exists(p)]
-    if _absent:
-        print(
-            "xllamacpp: skipping absent optional libraries: "
-            + ", ".join(os.path.basename(p) for p in _absent)
-        )
-    EXTRA_OBJECTS.extend(p for p in _candidate_objects if os.path.exists(p))
+    EXTRA_OBJECTS.extend(
+        [
+            f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
+            f"{LLAMACPP_LIBS_DIR}/libllama-ui.a",
+            f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
+            f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
+            f"{LLAMACPP_LIBS_DIR}/libvendor-hash.a",
+            f"{LLAMACPP_LIBS_DIR}/libllama-common-base.a",
+            f"{LLAMACPP_LIBS_DIR}/libllama-common.a",
+            f"{LLAMACPP_LIBS_DIR}/libllguidance.a",
+            f"{LLAMACPP_LIBS_DIR}/libllama.a",
+            f"{LLAMACPP_LIBS_DIR}/libggml.a",
+            f"{LLAMACPP_LIBS_DIR}/libggml-cpu.a",
+            f"{LLAMACPP_LIBS_DIR}/libggml-base.a",
+            # BoringSSL static libraries must be last (they are dependencies, not dependents)
+            f"{LLAMACPP_LIBS_DIR}/libssl.a",
+            f"{LLAMACPP_LIBS_DIR}/libcrypto.a",
+        ]
+    )
     if BUILD_CUDA:
         EXTRA_OBJECTS.extend(
             [
@@ -185,12 +161,6 @@ else:
                 if os.path.isdir(cand) and cand not in LIBRARY_DIRS:
                     LIBRARY_DIRS.append(cand)
         LIBRARIES.extend(["cudart", "cublas", "cublasLt", "cuda"])
-        # ggml-cuda links NCCL whenever CMake auto-detects it on the system
-        # ("-- Found NCCL: /usr/lib/x86_64-linux-gnu/libnccl.so"). If we do not
-        # link it too the build succeeds but `import xllamacpp` later dies with
-        # "undefined symbol: ncclAllReduce", so mirror that detection here.
-        if _has_system_lib("nccl"):
-            LIBRARIES.append("nccl")
     if BUILD_HIP:
         EXTRA_OBJECTS.extend(
             [
@@ -296,11 +266,89 @@ def _cythonize_extensions(extensions):
 cmdclass = versioneer.get_cmdclass()
 
 _build_ext = cmdclass.get("build_ext", setuptools_build_ext)
+_sdist = cmdclass["sdist"]
+
+
+class sdist(_sdist):
+    def make_release_tree(self, base_dir, files):
+        super().make_release_tree(base_dir, files)
+        project = Path(base_dir).resolve() / "thirdparty/llama.cpp"
+        patches = sorted((Path(CWD) / "patches/llama.cpp").glob("*.patch"))
+        git_env = os.environ.copy()
+        git_env["GIT_CEILING_DIRECTORIES"] = str(project.parent)
+
+        # setuptools hard-links release files to the checkout; detach files
+        # touched by patches so packaging cannot change the vendored checkout.
+        targets = set()
+        for patch in patches:
+            stats = subprocess.check_output(
+                ["git", "apply", "--numstat", "-z", str(patch)],
+                cwd=project,
+                env=git_env,
+            )
+            targets.update(
+                os.fsdecode(entry.split(b"\t", 2)[2])
+                for entry in stats.split(b"\0")
+                if entry
+            )
+        for name in targets:
+            staged = project / name
+            if staged.is_file():
+                staged.unlink()
+                shutil.copy2(Path(CWD) / "thirdparty/llama.cpp" / name, staged)
+
+        for patch in patches:
+            already_applied = subprocess.run(
+                ["git", "apply", "--reverse", "--check", str(patch)],
+                cwd=project,
+                env=git_env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode == 0
+            if not already_applied:
+                subprocess.run(
+                    ["git", "apply", str(patch)], cwd=project, env=git_env, check=True
+                )
+
+
+cmdclass["sdist"] = sdist
 
 
 class build_ext(_build_ext):
     def run(self):
         _build_llamacpp()
+        # Archives are staged by build.py, so check optional ones only now.
+        for extension in self.distribution.ext_modules:
+            optional = {"libllguidance.a", "libssl.a", "libcrypto.a"}
+            absent = [
+                path
+                for path in extension.extra_objects
+                if os.path.basename(path) in optional and not os.path.exists(path)
+            ]
+            if absent:
+                print(
+                    "xllamacpp: skipping absent optional libraries: "
+                    + ", ".join(os.path.basename(path) for path in absent)
+                )
+                extension.extra_objects = [
+                    path for path in extension.extra_objects if path not in absent
+                ]
+
+            if BUILD_CUDA and PLATFORM != "Windows":
+                # Use CMake's NCCL choice, including libraries under NCCL_ROOT.
+                cache = os.path.join(CWD, "thirdparty/llama.cpp/build/CMakeCache.txt")
+                with open(cache, encoding="utf-8") as f:
+                    entries = {}
+                    for line in f:
+                        key, sep, value = line.partition("=")
+                        if sep and ":" in key:
+                            entries[key.split(":", 1)[0]] = value.strip()
+                if entries.get("GGML_CUDA_NCCL", "").upper() in {
+                    "ON", "TRUE", "YES", "1", "Y"
+                }:
+                    nccl = entries.get("NCCL_LIBRARY", "")
+                    if nccl and not nccl.endswith("-NOTFOUND"):
+                        extension.extra_objects.append(nccl)
         self.distribution.ext_modules = _cythonize_extensions(
             self.distribution.ext_modules
         )
