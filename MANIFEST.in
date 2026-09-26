@@ -1,9 +1,15 @@
 global-include *.pxd
 global-include *.pyx
 global-include *.pxi
+# Headers under src/ are compiled into the extension (e.g. server.cpp does
+# `#include "server.h"`); without this the sdist builds fail with
+# "fatal error: server.h: No such file or directory".
+global-include *.h
 include scripts/build.py
 include scripts/copy_libs.py
 include requirements.txt
 include Makefile
 recursive-include thirdparty/llama.cpp *
-recursive-include patches *
+prune thirdparty/llama.cpp/build
+exclude thirdparty/llama.cpp/.git
+prune patches

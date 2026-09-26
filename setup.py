@@ -2,9 +2,11 @@
 
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import sysconfig
+from pathlib import Path
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext as setuptools_build_ext
 
@@ -77,6 +79,8 @@ INCLUDE_DIRS = [
     os.path.join(CWD, "thirdparty/llama.cpp/tools/mtmd"),
     os.path.join(CWD, "thirdparty/llama.cpp/vendor"),
 ]
+
+
 LIBRARY_DIRS = [
     LLAMACPP_LIBS_DIR,
 ]
@@ -115,9 +119,10 @@ if PLATFORM == "Windows":
         LIBRARIES.extend(["ggml-vulkan", "vulkan-1"])
 else:
     LIBRARIES.extend(["pthread"])
-    # Order matters for static linking: dependents before dependencies.
-    # libssl.a/libcrypto.a must come AFTER libraries that reference OpenSSL symbols
-    # (e.g., libcpp-httplib.a, libserver-context.a).
+    # Order matters for static linking: dependents before dependencies, and
+    # libssl.a/libcrypto.a must come AFTER libraries that reference OpenSSL
+    # symbols (e.g., libcpp-httplib.a, libserver-context.a).
+    #
     EXTRA_OBJECTS.extend(
         [
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
@@ -143,12 +148,18 @@ else:
                 f"{LLAMACPP_LIBS_DIR}/libggml-cuda.a",
             ]
         )
-        LIBRARY_DIRS.extend(
-            [
-                os.getenv("CUDA_PATH", "") + "/lib/stubs",
-                os.getenv("CUDA_PATH", "") + "/lib",
-            ],
-        )
+        # NVIDIA's Linux packages and the official CUDA images put the runtime
+        # in lib64, not lib. CUDA_PATH is also usually unset inside containers,
+        # which used to degrade these entries to "/lib/stubs" and "/lib" and
+        # make the link fail with "ld: cannot find -lcudart".
+        cuda_root = os.getenv("CUDA_PATH") or "/usr/local/cuda"
+        for sub in ("lib64", "lib"):
+            for cand in (
+                os.path.join(cuda_root, sub, "stubs"),
+                os.path.join(cuda_root, sub),
+            ):
+                if os.path.isdir(cand) and cand not in LIBRARY_DIRS:
+                    LIBRARY_DIRS.append(cand)
         LIBRARIES.extend(["cudart", "cublas", "cublasLt", "cuda"])
     if BUILD_HIP:
         EXTRA_OBJECTS.extend(
@@ -255,11 +266,89 @@ def _cythonize_extensions(extensions):
 cmdclass = versioneer.get_cmdclass()
 
 _build_ext = cmdclass.get("build_ext", setuptools_build_ext)
+_sdist = cmdclass["sdist"]
+
+
+class sdist(_sdist):
+    def make_release_tree(self, base_dir, files):
+        super().make_release_tree(base_dir, files)
+        project = Path(base_dir).resolve() / "thirdparty/llama.cpp"
+        patches = sorted((Path(CWD) / "patches/llama.cpp").glob("*.patch"))
+        git_env = os.environ.copy()
+        git_env["GIT_CEILING_DIRECTORIES"] = str(project.parent)
+
+        # setuptools hard-links release files to the checkout; detach files
+        # touched by patches so packaging cannot change the vendored checkout.
+        targets = set()
+        for patch in patches:
+            stats = subprocess.check_output(
+                ["git", "apply", "--numstat", "-z", str(patch)],
+                cwd=project,
+                env=git_env,
+            )
+            targets.update(
+                os.fsdecode(entry.split(b"\t", 2)[2])
+                for entry in stats.split(b"\0")
+                if entry
+            )
+        for name in targets:
+            staged = project / name
+            if staged.is_file():
+                staged.unlink()
+                shutil.copy2(Path(CWD) / "thirdparty/llama.cpp" / name, staged)
+
+        for patch in patches:
+            already_applied = subprocess.run(
+                ["git", "apply", "--reverse", "--check", str(patch)],
+                cwd=project,
+                env=git_env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode == 0
+            if not already_applied:
+                subprocess.run(
+                    ["git", "apply", str(patch)], cwd=project, env=git_env, check=True
+                )
+
+
+cmdclass["sdist"] = sdist
 
 
 class build_ext(_build_ext):
     def run(self):
         _build_llamacpp()
+        # Archives are staged by build.py, so check optional ones only now.
+        for extension in self.distribution.ext_modules:
+            optional = {"libllguidance.a", "libssl.a", "libcrypto.a"}
+            absent = [
+                path
+                for path in extension.extra_objects
+                if os.path.basename(path) in optional and not os.path.exists(path)
+            ]
+            if absent:
+                print(
+                    "xllamacpp: skipping absent optional libraries: "
+                    + ", ".join(os.path.basename(path) for path in absent)
+                )
+                extension.extra_objects = [
+                    path for path in extension.extra_objects if path not in absent
+                ]
+
+            if BUILD_CUDA and PLATFORM != "Windows":
+                # Use CMake's NCCL choice, including libraries under NCCL_ROOT.
+                cache = os.path.join(CWD, "thirdparty/llama.cpp/build/CMakeCache.txt")
+                with open(cache, encoding="utf-8") as f:
+                    entries = {}
+                    for line in f:
+                        key, sep, value = line.partition("=")
+                        if sep and ":" in key:
+                            entries[key.split(":", 1)[0]] = value.strip()
+                if entries.get("GGML_CUDA_NCCL", "").upper() in {
+                    "ON", "TRUE", "YES", "1", "Y"
+                }:
+                    nccl = entries.get("NCCL_LIBRARY", "")
+                    if nccl and not nccl.endswith("-NOTFOUND"):
+                        extension.extra_objects.append(nccl)
         self.distribution.ext_modules = _cythonize_extensions(
             self.distribution.ext_modules
         )
