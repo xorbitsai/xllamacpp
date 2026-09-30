@@ -424,7 +424,7 @@ jobs:
           - cuda: "12.8.1"
             cuda_arch: "50-virtual;61-virtual;70-virtual;75-virtual;80-virtual;86-real;89-real;120a-real"
           - cuda: "13.2.0"
-            cuda_arch: "75-virtual;80-virtual;86-real;89-real;120a-real;121a-real"
+            cuda_arch: "75-real;80-virtual;86-real;89-real;120a-real;121a-real"
     env:
       CUDAVER: ${{ matrix.cuda }}
       # CUDA target architectures (PTX vs SASS, per-arch GPU map and rationale):
@@ -688,8 +688,9 @@ jobs:
           - cuda: "12.8.1"
             cuda_arch: "50-virtual;61-virtual;70-virtual;75-virtual;80-virtual;86-real;89-real;120a-real"
           # CUDA 13 dropped Maxwell/Pascal/Volta; 121a-real is available.
+          # Turing is 75-real here, not 75-virtual (see the notes below).
           - cuda: "13.2.0"
-            cuda_arch: "75-virtual;80-virtual;86-real;89-real;120a-real;121a-real"
+            cuda_arch: "75-real;80-virtual;86-real;89-real;120a-real;121a-real"
     defaults:
       run:
         shell: bash
@@ -728,7 +729,8 @@ jobs:
       #   50     PTX    Maxwell (GTX 9xx)            JIT      (CUDA 12 only)
       #   61     PTX    Pascal  (GTX 10xx, P40)      JIT      (CUDA 12 only)
       #   70     PTX    Volta   (V100)               JIT      (CUDA 12 only)
-      #   75     PTX    Turing  (RTX 20xx, T4)       JIT
+      #   75     PTX    Turing  (RTX 20xx, T4)       JIT      (CUDA 12)
+      #          SASS                                native   (CUDA 13)
       #   80     PTX    Ampere DC (A100)             JIT; also forward-covers
       #                                              Hopper(90) & Blackwell DC
       #                                              (100/103) via JIT
@@ -739,7 +741,13 @@ jobs:
       #
       # Notes:
       #   * CUDA 13 dropped Maxwell/Pascal/Volta, so 50/61/70 are omitted there;
-      #     the CUDA-13 floor is sm_75 (Turing) via the 75-virtual PTX.
+      #     the CUDA-13 floor is sm_75 (Turing) via 75-real SASS.
+      #   * The driver can only JIT PTX from a toolkit no newer than itself.
+      #     The CUDA 13.2 wheel's PTX is ISA 9.2, which a CUDA 13.0 driver
+      #     (R580) rejects with "the provided PTX was compiled with an
+      #     unsupported toolchain". SASS has no such limit, so Turing ships
+      #     as 75-real there. 75-virtual only ever served sm_75 anyway, since
+      #     80-virtual covers 8.0 and up.
       #   * Native SASS is shipped only for mainstream consumer cards; datacenter
       #     parts (A100/Hopper/Blackwell-DC) run via JIT from the 80-virtual PTX.
       #     Add 90-real / 100-real if native datacenter perf is desired.

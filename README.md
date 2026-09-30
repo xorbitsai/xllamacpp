@@ -222,7 +222,7 @@ otherwise the load fails (CUDA error 209, "no kernel image"). This is why at lea
 | `50`   | PTX  | Maxwell (GTX 9xx)            | ✅ JIT  | — |
 | `61`   | PTX  | Pascal (GTX 10xx, P40)       | ✅ JIT  | — |
 | `70`   | PTX  | Volta (V100)                 | ✅ JIT  | — |
-| `75`   | PTX  | Turing (RTX 20xx, T4)        | ✅ JIT  | ✅ JIT  |
+| `75`   | PTX (12.8) / SASS (13.2) | Turing (RTX 20xx, T4) | ✅ JIT  | ✅ native |
 | `80`   | PTX  | Ampere DC (A100); also forward-covers Hopper (90) and Blackwell DC (100/103) via JIT | ✅ JIT  | ✅ JIT  |
 | `86`   | SASS | Ampere (RTX 30xx, A10/A40)   | ✅ native | ✅ native |
 | `89`   | SASS | Ada (RTX 40xx, L4/L40)       | ✅ native | ✅ native |
@@ -232,7 +232,11 @@ otherwise the load fails (CUDA error 209, "no kernel image"). This is why at lea
 Notes:
 
 - **CUDA 13 dropped Maxwell/Pascal/Volta**, so `50`/`61`/`70` are omitted there; the CUDA 13
-  floor is `sm_75` (Turing) via the `75-virtual` PTX.
+  floor is `sm_75` (Turing) via `75-real` SASS.
+- **JIT needs a driver at least as new as the wheel's toolkit.** The CUDA 13.2 wheel's PTX is
+  ISA 9.2, so its JIT rows need a driver that supports CUDA 13.2; an older 13.x driver (e.g.
+  R580, CUDA 13.0) fails with "the provided PTX was compiled with an unsupported toolchain".
+  Native SASS has no such limit, which is why Turing ships as `75-real` in that wheel.
 - **`121a` requires CUDA >= 12.9**, so it is only present in the CUDA 13.2 wheel.
 - **Native SASS is shipped only for mainstream consumer cards.** Datacenter parts
   (A100/Hopper/Blackwell-DC) run via JIT from the `80-virtual` PTX, which works but incurs a
