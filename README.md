@@ -234,8 +234,9 @@ Notes:
 - **CUDA 13 dropped Maxwell/Pascal/Volta**, so `50`/`61`/`70` are omitted there; the CUDA 13
   floor is `sm_75` (Turing) via `75-real` SASS.
 - **JIT needs a driver at least as new as the wheel's toolkit.** The CUDA 13.2 wheel's PTX is
-  ISA 9.2, so its JIT rows need a driver that supports CUDA 13.2; an older 13.x driver (e.g.
-  R580, CUDA 13.0) fails with "the provided PTX was compiled with an unsupported toolchain".
+  ISA 9.2, so its JIT rows need a driver that supports CUDA 13.2. An older 13.x driver, e.g.
+  the R580 branch (580.xx, which `nvidia-smi` reports as CUDA 13.0), fails with "the provided
+  PTX was compiled with an unsupported toolchain".
   Native SASS has no such limit, which is why Turing ships as `75-real` in that wheel.
 - **`121a` requires CUDA >= 12.9**, so it is only present in the CUDA 13.2 wheel.
 - **Native SASS is shipped only for mainstream consumer cards.** Datacenter parts
