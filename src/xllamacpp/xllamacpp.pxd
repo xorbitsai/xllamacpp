@@ -250,6 +250,7 @@ cdef extern from "llama.h":
 
     ctypedef struct llama_context_params:
         uint32_t n_outputs_max_per_seq
+        size_t moe_cache_size
 
 
 #------------------------------------------------------------------------------
@@ -443,6 +444,7 @@ cdef extern from "common.h":
         float p_min     # minimum speculative decoding probability (greedy)
 
         bint backend_sampling  # offload draft sampling to the backend
+        bint probabilistic     # sample and verify draft tokens by rejection
 
         common_params_model mparams  # draft model parameters
 
@@ -644,10 +646,12 @@ cdef extern from "common.h":
         bint no_op_offload          # globally disable offload host tensor operations to device
         bint no_extra_bufts         # disable extra buffer types (used for weight repacking)
         bint no_host                # bypass host buffer allowing extra buffers to be used
+        bint load_mtp               # load MTP/NextN layers
         bint single_turn            # single turn chat conversation
 
         ggml_type cache_type_k      # KV cache data type for the K
         ggml_type cache_type_v      # KV cache data type for the V
+        size_t moe_cache_size       # GPU cache size for CPU-resident MoE experts
 
         common_conversation_mode conversation_mode
 
@@ -691,10 +695,10 @@ cdef extern from "common.h":
         int32_t checkpoint_min_step # minimum spacing between context checkpoints
         int32_t cache_ram_mib       # -1 = no limit, 0 - disable, 1 = 1 MiB, etc.
 
-        std_string hostname
         std_string public_path
         std_string api_prefix
         std_string chat_template
+        std_vector[std_string] hostnames
         bint use_jinja
 
         std_string cors_origins
@@ -781,6 +785,7 @@ cdef extern from "common.h":
         bint process_output      # collect data for the output tensor
         bint compute_ppl         # whether to compute perplexity
         bint show_statistics     # show imatrix statistics per tensor
+        bint activation_statistics # generate activation statistics
         bint parse_special       # whether to parse special tokens during imatrix tokenization
 
         # cvector-generator params

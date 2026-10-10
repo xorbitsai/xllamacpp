@@ -102,6 +102,11 @@ class TestServerHTTP:
         # Metrics should be in Prometheus format
         assert "llamacpp:" in response.text
 
+    def test_systemone_rejects_non_decision_model(self, server_url):
+        response = requests.post(f"{server_url}/v1/systemone", json={})
+        assert response.status_code == 501
+        assert response.json()["error"]["type"] == "not_supported_error"
+
     def test_completion_endpoints(self, server_url):
         """Test text completion endpoints"""
         completion_data = {

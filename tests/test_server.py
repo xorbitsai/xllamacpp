@@ -107,6 +107,10 @@ def test_llama_server(model_path):
 
     server = xlc.Server(params)
 
+    unsupported = server.handle_systemone({"state": "test", "questions": {}})
+    assert unsupported["error"]["code"] == 501
+    assert unsupported["error"]["type"] == "not_supported_error"
+
     complete_prompt = {
         "max_tokens": 128,
         "prompt": "Write the fibonacci function in c++.",
@@ -234,6 +238,70 @@ def test_llama_server(model_path):
     result = server.handle_metrics()
     assert type(result) is str
     assert "llamacpp:prompt_seconds_total" in result
+
+
+def test_llama_server_systemone_laya(model_path):
+    params = xlc.CommonParams()
+    params.model.path = os.path.join(model_path, "Laya-Q8_0.gguf")
+    params.warmup = False
+    params.n_ctx = 1024
+    params.n_batch = 512
+    params.n_ubatch = 512
+    params.n_parallel = 1
+    params.cpuparams.n_threads = 2
+    params.cpuparams_batch.n_threads = 2
+
+    server = xlc.Server(params)
+    result = server.handle_systemone(
+        {
+            "state": "I was charged twice for my order and need a refund today.",
+            "questions": {
+                "route": {
+                    "type": "choice",
+                    "instructions": "Which team should handle this?",
+                    "criteria": {
+                        "billing": None,
+                        "shipping": None,
+                        "technical": None,
+                    },
+                },
+                "refund": {
+                    "type": "noul",
+                    "instructions": "Is a refund requested?",
+                },
+                "urgency": {
+                    "type": "score",
+                    "instructions": "How urgent is this?",
+                    "criteria": ["can wait", "this week", "today", "right now"],
+                },
+            },
+        }
+    )
+
+    assert set(result["answers"]) == {"route", "refund", "urgency"}
+    route = result["answers"]["route"]
+    assert route["type"] == "choice"
+    assert set(route["probabilities"]) == {"billing", "shipping", "technical"}
+    assert sum(route["probabilities"].values()) == pytest.approx(1, abs=1e-4)
+    assert route["choice"] == max(
+        route["probabilities"], key=route["probabilities"].get
+    )
+
+    refund = result["answers"]["refund"]
+    assert refund["type"] == "noul"
+    assert 0 <= refund["noul"] <= 1
+
+    urgency = result["answers"]["urgency"]
+    assert urgency["type"] == "score"
+    assert list(urgency["legend"].values()) == [
+        "can wait",
+        "this week",
+        "today",
+        "right now",
+    ]
+    assert sum(urgency["probabilities"].values()) == pytest.approx(1, abs=1e-4)
+    assert 0 <= urgency["score"] <= 3
+    assert result["usage"]["input_tokens"] > 0
 
 
 @pytest.mark.skipif(

@@ -254,9 +254,15 @@ def test_common_params():
     assert params.no_op_offload is False
     assert params.no_extra_bufts is False
     assert params.no_host is False
+    assert params.load_mtp is False
+    params.load_mtp = True
+    assert params.load_mtp is True
 
     assert params.cache_type_k == xlc.ggml_type.GGML_TYPE_F16
     assert params.cache_type_v == xlc.ggml_type.GGML_TYPE_F16
+    assert params.moe_cache_size == 0
+    params.moe_cache_size = 1024
+    assert params.moe_cache_size == 1024
 
     assert params.mmproj.path == ""
     assert params.mmproj_use_gpu is True
@@ -320,7 +326,9 @@ def test_common_params():
     assert params.checkpoint_min_step == 100
     assert params.cache_ram_mib == 8192
 
-    assert params.hostname == "127.0.0.1"
+    assert params.hostnames == ["127.0.0.1"]
+    params.hostnames = ["127.0.0.1", "::1"]
+    assert params.hostnames == ["127.0.0.1", "::1"]
     assert params.public_path == ""
     assert params.api_prefix == ""
     assert params.chat_template == ""
@@ -443,6 +451,9 @@ def test_common_params():
     assert params.show_statistics is False
     params.show_statistics = True
     assert params.show_statistics is True
+    assert params.activation_statistics is False
+    params.activation_statistics = True
+    assert params.activation_statistics is True
     assert params.parse_special is False
 
     assert params.n_pca_batch == 100
@@ -516,6 +527,9 @@ def test_common_params():
     assert params.speculative.draft.backend_sampling is True
     params.speculative.draft.backend_sampling = False
     assert params.speculative.draft.backend_sampling is False
+    assert params.speculative.draft.probabilistic is False
+    params.speculative.draft.probabilistic = True
+    assert params.speculative.draft.probabilistic is True
 
     # Test new speculative types field
     assert (

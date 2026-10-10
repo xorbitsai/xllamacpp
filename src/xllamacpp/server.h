@@ -33,6 +33,8 @@ class Server {
 
     std::string handle_rerank(const std::string & input_json_str);
 
+    std::string handle_systemone(const std::string & input_json_str);
+
     void handle_completions(const std::string & prompt_json_str,
                             Callback            res_error,
                             void *              py_cb_error,

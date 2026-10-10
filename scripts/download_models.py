@@ -57,6 +57,11 @@ class RetryDelay:
 # (filename, url, sha256)
 MODELS = [
     (
+        "Laya-Q8_0.gguf",
+        "https://huggingface.co/ggml-org/Laya-GGUF/resolve/main/Laya-Q8_0.gguf",
+        "c06528c5746d3bb8baa72a27938be95abbfd0b226f8471e8a9e365ed0bb066d2",
+    ),
+    (
         "Llama-3.2-1B-Instruct-Q8_0.gguf",
         "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf",
         "432f310a77f4650a88d0fd59ecdd7cebed8d684bafea53cbff0473542964f0c3",
