@@ -569,6 +569,61 @@ result = server.handle_chat_completions({
 print(result["choices"][0]["message"]["content"])
 ```
 
+### Decision Models (System One)
+
+Native decision models answer typed questions about a `state` through the
+TypeSafe-compatible [`/v1/systemone` API](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#post-v1systemone-typesafe-compatible-system-one-api).
+This endpoint requires a decision-model GGUF and an xllamacpp build containing
+llama.cpp b11361 or later. For example, download [Laya-Q8_0.gguf](https://huggingface.co/ggml-org/Laya-GGUF):
+
+```sh
+mkdir -p models
+curl -fL https://huggingface.co/ggml-org/Laya-GGUF/resolve/main/Laya-Q8_0.gguf -o models/Laya-Q8_0.gguf
+```
+
+Start the embedded server and send a decision request over HTTP:
+
+```python
+import requests
+import xllamacpp as xlc
+
+params = xlc.CommonParams()
+params.model.path = "models/Laya-Q8_0.gguf"
+params.n_ctx = 1024
+params.n_batch = 512
+params.n_ubatch = 512
+server = xlc.Server(params)
+
+response = requests.post(f"{server.listening_address}/v1/systemone", json={
+    "state": "I was charged twice for my order and need a refund today.",
+    "questions": {
+        "route": {
+            "type": "choice",
+            "instructions": "Which team should handle this?",
+            "criteria": {"billing": None, "shipping": None, "technical": None},
+        },
+        "refund": {
+            "type": "noul",
+            "instructions": "Is a refund requested?",
+        },
+        "urgency": {
+            "type": "score",
+            "instructions": "How urgent is this?",
+            "criteria": ["can wait", "this week", "today", "right now"],
+        },
+    },
+}, timeout=120)
+response.raise_for_status()
+answers = response.json()["answers"]
+print(answers["route"]["choice"])  # Highest-probability option
+print(answers["refund"]["noul"])  # Probability that the answer is true
+print(answers["urgency"]["score"])  # Expected index into the criteria list
+```
+
+The response also includes per-option probabilities for `choice` and `score`
+questions. Decision models return scores rather than generated text; ordinary
+chat GGUF models cannot serve this endpoint.
+
 ### Streaming
 
 Enable streaming to receive tokens as they are generated. Provide a callback function:
@@ -1074,6 +1129,7 @@ The server exposes the following endpoints. For full details on request/response
 | `/v1/chat/completions`, `/chat/completions` | POST | Chat completions (OpenAI compatible) |
 | `/v1/responses` | POST | Responses API (OpenAI compatible) |
 | `/v1/messages` | POST | Messages API (Anthropic compatible) |
+| `/v1/systemone` | POST | Typed questions with a native decision model (TypeSafe compatible) |
 | `/infill` | POST | Code infill (FIM: fill-in-the-middle) |
 
 **Embeddings & Reranking:**
@@ -1416,4 +1472,11 @@ Run the full test suite:
 
 ```sh
 make test
+```
+
+To run the optional decision-model integration test with the GGUF downloaded
+above (requires llama.cpp b11361 or later):
+
+```sh
+XLLAMACPP_DECISION_MODEL=models/Laya-Q8_0.gguf pytest -q tests/test_decision.py
 ```
