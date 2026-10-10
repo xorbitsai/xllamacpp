@@ -713,6 +713,12 @@ std::string Server::handle_rerank(const std::string & input_json_str) {
     return res->data;
 }
 
+std::string Server::handle_systemone(const std::string & input_json_str) {
+    server_http_req req{ {}, {}, "", "", input_json_str, {}, not_stop };
+    auto            res = ex_wrapper(_routes->post_systemone)(req);
+    return res->data;
+}
+
 void Server::handle_completions(const std::string & prompt_json_str,
                                 Callback            res_err,
                                 void *              py_cb_err,

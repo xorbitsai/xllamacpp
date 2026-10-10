@@ -573,7 +573,7 @@ print(result["choices"][0]["message"]["content"])
 
 Native decision models answer typed questions about a `state` through the
 TypeSafe-compatible [`/v1/systemone` API](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#post-v1systemone-typesafe-compatible-system-one-api).
-This endpoint requires a decision-model GGUF and an xllamacpp build containing
+This API requires a decision-model GGUF and an xllamacpp build containing
 llama.cpp b11361 or later. For example, download [Laya-Q8_0.gguf](https://huggingface.co/ggml-org/Laya-GGUF):
 
 ```sh
@@ -581,10 +581,9 @@ mkdir -p models
 curl -fL https://huggingface.co/ggml-org/Laya-GGUF/resolve/main/Laya-Q8_0.gguf -o models/Laya-Q8_0.gguf
 ```
 
-Start the embedded server and send a decision request over HTTP:
+Start the embedded server and call its Python method:
 
 ```python
-import requests
 import xllamacpp as xlc
 
 params = xlc.CommonParams()
@@ -594,7 +593,7 @@ params.n_batch = 512
 params.n_ubatch = 512
 server = xlc.Server(params)
 
-response = requests.post(f"{server.listening_address}/v1/systemone", json={
+request = {
     "state": "I was charged twice for my order and need a refund today.",
     "questions": {
         "route": {
@@ -612,13 +611,16 @@ response = requests.post(f"{server.listening_address}/v1/systemone", json={
             "criteria": ["can wait", "this week", "today", "right now"],
         },
     },
-}, timeout=120)
-response.raise_for_status()
-answers = response.json()["answers"]
+}
+answers = server.handle_systemone(request)["answers"]
 print(answers["route"]["choice"])  # Highest-probability option
 print(answers["refund"]["noul"])  # Probability that the answer is true
 print(answers["urgency"]["score"])  # Expected index into the criteria list
 ```
+
+`handle_systemone()` accepts a `dict`, JSON `str`, or JSON `bytes` and returns
+the corresponding Python or JSON type. The same request is available to HTTP
+clients at `POST /v1/systemone` on `server.listening_address`.
 
 The response also includes per-option probabilities for `choice` and `score`
 questions. Decision models return scores rather than generated text; ordinary

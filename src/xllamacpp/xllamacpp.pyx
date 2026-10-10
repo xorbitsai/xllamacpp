@@ -3307,6 +3307,21 @@ cdef class Server:
                 result = self.svr.get().handle_rerank(prompt_json_string)
             return <json_dict_or_str>result
 
+    def handle_systemone(self, json_dict_or_str request):
+        """Answer typed questions with a decision model (no streaming)."""
+        cdef string result
+        cdef string request_json_string
+        if json_dict_or_str is dict:
+            request_json_string = json.dumps(request)
+            with nogil:
+                result = self.svr.get().handle_systemone(request_json_string)
+            return json.loads(<bytes>result)
+        else:
+            request_json_string = request
+            with nogil:
+                result = self.svr.get().handle_systemone(request_json_string)
+            return <json_dict_or_str>result
+
     def handle_completions(self, json_dict_or_str prompt, callback=None):
         cdef string prompt_json_string
         cdef string result

@@ -107,6 +107,10 @@ def test_llama_server(model_path):
 
     server = xlc.Server(params)
 
+    unsupported = server.handle_systemone({"state": "test", "questions": {}})
+    assert unsupported["error"]["code"] == 501
+    assert unsupported["error"]["type"] == "not_supported_error"
+
     complete_prompt = {
         "max_tokens": 128,
         "prompt": "Write the fibonacci function in c++.",
