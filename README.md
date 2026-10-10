@@ -1356,7 +1356,7 @@ import xllamacpp as xlc
 
 params = xlc.CommonParams()
 params.model.path = "models/Llama-3.2-1B-Instruct-Q8_0.gguf"
-params.hostname = "127.0.0.1"
+params.hostnames = ["127.0.0.1"]
 params.port = 8080
 
 # The Web UI is enabled by default (params.ui = True; params.webui is a

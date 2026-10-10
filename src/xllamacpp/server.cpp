@@ -149,15 +149,6 @@ static void init(common_params &   params,
     // This must outlive ctx_http and tools because their handlers can refer to it.
     server_mcp mcp_mgr;
 
-    server_http_context ctx_http;
-    if (!ctx_http.init(params)) {
-        SRV_ERR("%s", "failed to initialize HTTP server\n");
-        server_stream_session_manager_stop();
-        llama_backend_free();
-        out.set_value(1);
-        return;
-    }
-
     //
     // Router
     //
@@ -168,6 +159,16 @@ static void init(common_params &   params,
     server_tools  tools;
 
     std::optional<server_models_routes> models_routes{};
+
+    server_http_context ctx_http;
+    if (!ctx_http.init(params)) {
+        SRV_ERR("%s", "failed to initialize HTTP server\n");
+        server_stream_session_manager_stop();
+        llama_backend_free();
+        out.set_value(1);
+        return;
+    }
+
     if (is_router_server) {
         // setup server instances manager
         try {
@@ -196,6 +197,7 @@ static void init(common_params &   params,
         routes.post_embeddings             = models_routes->proxy_post;
         routes.post_embeddings_oai         = models_routes->proxy_post;
         routes.post_rerank                 = models_routes->proxy_post;
+        routes.post_systemone              = models_routes->proxy_post;
         routes.post_tokenize               = models_routes->proxy_post;
         routes.post_detokenize             = models_routes->proxy_post;
         routes.post_apply_template         = models_routes->proxy_post;
@@ -243,6 +245,7 @@ static void init(common_params &   params,
     ctx_http.post("/reranking", ex_wrapper(routes.post_rerank));
     ctx_http.post("/v1/rerank", ex_wrapper(routes.post_rerank));
     ctx_http.post("/v1/reranking", ex_wrapper(routes.post_rerank));
+    ctx_http.post("/v1/systemone", ex_wrapper(routes.post_systemone));
     ctx_http.post("/tokenize", ex_wrapper(routes.post_tokenize));
     ctx_http.post("/detokenize", ex_wrapper(routes.post_detokenize));
     ctx_http.post("/apply-template", ex_wrapper(routes.post_apply_template));
@@ -434,10 +437,9 @@ static void init(common_params &   params,
         } catch (const std::exception & e) {
             SRV_ERR("failed to load models on startup: %s\n", e.what());
             ctx_http.stop();
-            if (ctx_http.thread.joinable()) {
-                ctx_http.thread.join();
-            }
+            ctx_http.join();
             clean_up();
+            shutdown_handler = nullptr;
             out.set_value(1);
             return;
         }
@@ -472,9 +474,7 @@ static void init(common_params &   params,
 
         if (!ctx_server.load_model(params)) {
             clean_up();
-            if (ctx_http.thread.joinable()) {
-                ctx_http.thread.join();
-            }
+            ctx_http.join();
             SRV_ERR("%s", "exiting due to model loading error\n");
             out.set_value(1);
             return;
@@ -494,14 +494,8 @@ static void init(common_params &   params,
 
     // Do not install process-wide signal handlers in this Python extension module.
 
-    SRV_INF("listening on %s\n", ctx_http.listening_address.c_str());
-
-    // TODO: remove this in the future
-    // check the string to also handle the .sock case
-    if (string_ends_with(ctx_http.listening_address, ":8080")) {
-        SRV_WRN("%s",
-                "notice: server default port will be changed to :9931 in a future release (ref: "
-                "https://github.com/ggml-org/llama.cpp/pull/26508)\n");
+    for (const auto & address : ctx_http.listening_addresses) {
+        SRV_INF("listening on %s\n", address.c_str());
     }
 
     if (is_router_server) {
@@ -509,9 +503,7 @@ static void init(common_params &   params,
             SRV_WRN("NOTE: using preset.ini from HF repo '%s'\n", params.models_preset_hf.c_str());
             SRV_WRN("%s", "      please only use presets that you can trust! Unknown presets may be unsafe\n");
         }
-        if (ctx_http.thread.joinable()) {
-            ctx_http.thread.join();  // keep the main thread alive
-        }
+        ctx_http.join();  // keep the main thread alive
 
         // when the HTTP server stops, clean up and exit
         clean_up();
@@ -523,8 +515,8 @@ static void init(common_params &   params,
             child.notify_to_router(server_state_to_str(SERVER_STATE_READY), routes.get_model_info());
         }
 
-        // write the listening_address
-        listening_address = ctx_http.listening_address;
+        // The Python API exposes one address; use the first active listener.
+        listening_address = ctx_http.listening_addresses.front();
 
         out.set_value(0);
 
@@ -532,9 +524,7 @@ static void init(common_params &   params,
         ctx_server.start_loop();
 
         clean_up();
-        if (ctx_http.thread.joinable()) {
-            ctx_http.thread.join();
-        }
+        ctx_http.join();
         if (monitor_thread.joinable()) {
             monitor_thread.join();
         }

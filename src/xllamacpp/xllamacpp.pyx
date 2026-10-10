@@ -766,6 +766,15 @@ cdef class CommonParamsSpeculativeDraft:
         self.p.backend_sampling = value
 
     @property
+    def probabilistic(self) -> bool:
+        """sample and verify draft tokens by rejection."""
+        return self.p.probabilistic
+
+    @probabilistic.setter
+    def probabilistic(self, value: bool):
+        self.p.probabilistic = value
+
+    @property
     def mparams(self) -> CommonParamsModel:
         """draft model parameters."""
         return CommonParamsModel.from_ptr(&self.p.mparams, self)
@@ -2164,6 +2173,15 @@ cdef class CommonParams:
         self.p.no_host = value
 
     @property
+    def load_mtp(self) -> bool:
+        """load MTP/NextN layers."""
+        return self.p.load_mtp
+
+    @load_mtp.setter
+    def load_mtp(self, value: bool):
+        self.p.load_mtp = value
+
+    @property
     def single_turn(self) -> bool:
         """single turn chat conversation"""
         return self.p.single_turn
@@ -2189,6 +2207,15 @@ cdef class CommonParams:
     @cache_type_v.setter
     def cache_type_v(self, ggml_type value):
         self.p.cache_type_v = value
+
+    @property
+    def moe_cache_size(self) -> int:
+        """GPU cache size in bytes for CPU-resident MoE experts."""
+        return self.p.moe_cache_size
+
+    @moe_cache_size.setter
+    def moe_cache_size(self, value: int):
+        self.p.moe_cache_size = value
 
     @property
     def mmproj(self) -> CommonParamsModel:
@@ -2476,13 +2503,15 @@ cdef class CommonParams:
         self.p.cache_ram_mib = value
 
     @property
-    def hostname(self) -> str:
-        """server hostname"""
-        return self.p.hostname
+    def hostnames(self) -> list[str]:
+        """server listening hostnames."""
+        return [self.p.hostnames[i] for i in range(self.p.hostnames.size())]
 
-    @hostname.setter
-    def hostname(self, value: str):
-        self.p.hostname = value
+    @hostnames.setter
+    def hostnames(self, values: list[str]):
+        self.p.hostnames.clear()
+        for value in values:
+            self.p.hostnames.push_back(value)
 
     @property
     def public_path(self) -> str:
@@ -3038,6 +3067,15 @@ cdef class CommonParams:
     @show_statistics.setter
     def show_statistics(self, value: bool):
         self.p.show_statistics = value
+
+    @property
+    def activation_statistics(self) -> bool:
+        """generate activation statistics."""
+        return self.p.activation_statistics
+
+    @activation_statistics.setter
+    def activation_statistics(self, value: bool):
+        self.p.activation_statistics = value
 
     @property
     def parse_special(self) -> bool:
