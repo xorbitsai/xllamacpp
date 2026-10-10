@@ -287,8 +287,8 @@ def parse_pyx(pyx_path: Path) -> dict[str, ClassInfo]:
 # Parse common.h
 # ---------------------------------------------------------------------------
 
-# Pre-compiled pattern for stripping string literals
-_RE_STRING_LITERAL = re.compile(r'"[^"]*"')
+# Pre-compiled pattern for stripping C++ string and character literals
+_RE_STRING_LITERAL = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
 
 
 def parse_common_h(h_path: Path) -> dict[str, dict[str, CppFieldInfo]]:
@@ -313,7 +313,7 @@ def parse_common_h(h_path: Path) -> dict[str, dict[str, CppFieldInfo]]:
         "common_params_speculative_ngram_cache": "CommonParamsSpeculativeNgramCache",
         "common_params_vocoder": "CommonParamsVocoder",
         "common_params_diffusion": "CommonParamsDiffusion",
-        "cpu_params": "CpuParams",
+        "common_cpu_params": "CpuParams",
         "common_adapter_lora_info": "CommonAdapterLoraInfo",
     }
 
@@ -322,13 +322,9 @@ def parse_common_h(h_path: Path) -> dict[str, dict[str, CppFieldInfo]]:
     brace_depth = 0
 
     def _structural_brace_delta(s: str) -> int:
-        """Count brace depth change, ignoring braces inside initializers and strings."""
-        # Only count structural braces; strip everything after '='
-        eq_pos = s.find("=")
-        if eq_pos >= 0:
-            s = s[:eq_pos]
-        # Remove string literals
+        """Count braces, including multiline initializers but not literals or comments."""
         s = _RE_STRING_LITERAL.sub("", s)
+        s = s.split("//", 1)[0]
         return s.count("{") - s.count("}")
 
     for line in lines:
@@ -463,7 +459,7 @@ COMMON_PARAMS_GROUPS = [
         "cont_batching", "no_perf", "show_timings",
         "use_mmap", "use_direct_io", "use_mlock",
         "verbose_prompt", "display_prompt", "warmup", "check_tensors",
-        "offline",
+        "offline", "load_mtp",
     ]),
     ("CPU", [
         "cpuparams", "cpuparams_batch", "numa",
@@ -481,6 +477,7 @@ COMMON_PARAMS_GROUPS = [
         "n_gpu_layers", "main_gpu", "tensor_split", "split_mode",
         "fit_params", "fit_params_print", "fit_params_min_ctx", "fit_params_target",
         "no_kv_offload", "no_op_offload", "no_extra_bufts", "no_host",
+        "moe_cache_size",
     ]),
     ("IMatrix", [
         "n_out_freq", "n_save_freq", "i_chunk", "imat_dat",
@@ -523,7 +520,7 @@ COMMON_PARAMS_GROUPS = [
         "yarn_ext_factor", "yarn_attn_factor", "yarn_beta_fast", "yarn_beta_slow", "yarn_orig_ctx",
     ]),
     ("Server", [
-        "port", "hostname", "public_path", "api_prefix",
+        "port", "hostnames", "public_path", "api_prefix",
         "timeout_read", "timeout_write", "n_threads_http",
         "n_cache_reuse", "cache_prompt", "cache_idle_slots", "n_ctx_checkpoints", "checkpoint_every_nt", "cache_ram_mib",
         "chat_template", "use_jinja", "enable_chat_template",
@@ -805,7 +802,7 @@ def main():
     md = generate_markdown(pyx_classes, cpp_structs, sort_fields=not args.no_sort)
 
     if args.output == "-":
-        print(md)
+        sys.stdout.write(md)
     else:
         out_path = Path(args.output)
         out_path.parent.mkdir(parents=True, exist_ok=True)

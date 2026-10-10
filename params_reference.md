@@ -68,6 +68,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `display_prompt` | bool | `true` | R/W | print prompt before generation |
 | `escape` | bool | `true` | R/W | escape "\n", "\r", "\t", "\'", "\"", and "\\" |
 | `interactive` | bool | `false` | R/W | interactive mode |
+| `load_mtp` | bool | `false` | R/W | load MTP/NextN layers. |
 | `multiline_input` | bool | `false` | R/W | reverse the usage of "\" |
 | `no_perf` | bool | `false` | R/W | disable performance metrics |
 | `offline` | bool | `false` | R/W |  |
@@ -123,6 +124,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `fit_params_print` | bool | `false` | R/W | print the estimated required memory to run the model |
 | `fit_params_target` | list[int] | `std::vector<size_t>(llama_max_devices(), 1024 * 1024*1024)` | R/W | margin per device in bytes for fitting parameters to free memory |
 | `main_gpu` | int | `0` | R/W | the GPU that is used for scratch and small tensors |
+| `moe_cache_size` | int | `0` | R/W | GPU cache size in bytes for the MoE experts kept in the CPU, split among the GPUs like the layers |
 | `n_gpu_layers` | int | `-1` | R/W | number of layers to store in VRAM, -1 is auto, <= -2 is all |
 | `no_extra_bufts` | bool | `false` | R/W | disable extra buffer types (used for weight repacking) |
 | `no_host` | bool | `false` | R/W | bypass host buffer allowing extra buffers to be used |
@@ -265,7 +267,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `endpoint_metrics` | bool | `false` | R/W | endpoint metrics |
 | `endpoint_props` | bool | `false` | R/W | only control POST requests, not GET |
 | `endpoint_slots` | bool | `true` | R/W | endpoint slots |
-| `hostname` | str | `"127.0.0.1"` | R/W | server hostname |
+| `hostnames` | list[str] | `{"127.0.0.1"}` | R/W | server listening hostnames. |
 | `log_json` | bool | `false` | R/W | log json |
 | `media_path` | str | `` | R/W | path to directory for loading media files |
 | `models_autoload` | bool | `true` | R/W | automatically load models when requested via the router server |
@@ -275,7 +277,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `n_cache_reuse` | int | `0` | R/W | min chunk size to reuse from the cache via KV shifting |
 | `n_ctx_checkpoints` | int | `32` | R/W | max number of context checkpoints per slot |
 | `n_threads_http` | int | `-1` | R/W | number of threads to process HTTP requests (TODO: support threadpool) |
-| `port` | int | `8080` | R/W | server listens on this network port |
+| `port` | int | `9931` | R/W | server listens on this network port |
 | `prefill_assistant` | bool | `true` | R/W | if true, any trailing assistant message will be prefilled into the response |
 | `public_path` | str | `""` | R/W | server public_path |
 | `reasoning_format` | common_reasoning_format | `COMMON_REASONING_FORMAT_DEEPSEEK` | R/W |  |
@@ -306,6 +308,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
+| `activation_statistics` | bool | `false` | R/W | generate data to calculate activation based statistics |
 | `checkpoint_min_step` | int | `8192` | R/W | minimum spacing between context checkpoints |
 | `cors_credentials` | bool | `true` | R/W |  |
 | `cors_headers` | str | `"*"` | R/W |  |
@@ -387,7 +390,7 @@ Sampling parameters that control token generation strategy. Access via `params.s
 |:---------|:-----|:--------|:---:|:------------|
 | `adaptive_decay` | float | `0.90` | R/W | EMA decay for adaptation; history ≈ 1/(1-decay) tokens (0.0 - 0.99) |
 | `adaptive_target` | float | `-1.0` | R/W | select tokens near this probability (valid range 0.0 to 1.0; negative = disabled) |
-| `backend_sampling` | bool | `` | R/W | enable backend sampling |
+| `backend_sampling` | bool | `false` | R/W | enable backend sampling |
 | `dry_allowed_length` | int | `2` | R/W | tokens extending repetitions beyond this receive penalty |
 | `dry_base` | float | `1.75` | R/W | 0.0 = disabled;      multiplier * base ^ (length of sequence before token - allowed length) |
 | `dry_multiplier` | float | `0.0` | R/W | 0.0 = disabled;      DRY repetition penalty for tokens extending repetition: |
@@ -411,12 +414,12 @@ Sampling parameters that control token generation strategy. Access via `params.s
 | `penalty_last_n` | int | `64` | R/W | last n tokens to penalize (0 = disable penalty, -1 = context size) |
 | `penalty_present` | float | `0.00` | R/W | 0.0 = disabled |
 | `penalty_repeat` | float | `1.00` | R/W | 1.0 = disabled |
-| `reasoning_budget_end` | list[list[int]] | `` | R/W | end tag token sequences |
-| `reasoning_budget_forced` | list[int] | `` | R/W | forced sequence (message + end tag) |
+| `reasoning_budget_end` | list[list[int]] | `` | R/W | end tag token sequences; the first tag is used as the forcing sequence |
+| `reasoning_budget_forced` | list[int] | `` | R/W | forced sequence (message + first end tag) |
 | `reasoning_budget_message` | str | `` | R/W | message injected before end tag when budget exhausted |
 | `reasoning_budget_start` | list[int] | `` | R/W | start tag token sequence |
-| `reasoning_budget_tokens` | int | `` | R/W | -1 = disabled, >= 0 = token budget |
-| `reasoning_control` | bool | `` | R/W | create the budget sampler on demand so reasoning can be ended at runtime |
+| `reasoning_budget_tokens` | int | `-1` | R/W | -1 = disabled, >= 0 = token budget |
+| `reasoning_control` | bool | `false` | R/W | create the budget sampler on demand so reasoning can be ended at runtime |
 | `samplers` | str | `` | R/W | get/set sampler types |
 | `seed` | int | `LLAMA_DEFAULT_SEED` | R/W | the seed used to initialize llama_sampler. |
 | `temp` | float | `0.80` | R/W | <= 0.0 to sample greedily, 0.0 to not output probabilities |
@@ -466,6 +469,7 @@ Draft-model speculative decoding parameters. Access via `params.speculative.draf
 | `n_min` | int | `0` | R/W | Minimum number of draft tokens to propose before verification; adaptive drafting does not stop below this count. |
 | `p_min` | float | `0.0` | R/W | Minimum probability for a drafted token to be accepted (greedy verification); tokens below it are rejected. |
 | `p_split` | float | `0.1` | R/W | Probability threshold used to split the draft sequence during adaptive drafting. |
+| `probabilistic` | bool | `false` | R/W | sample the draft and verify by rejection, instead of argmax and match |
 | `tensor_buft_overrides` | str | `` | R/W | Tensor buffer-type overrides for the draft model. |
 
 ---
@@ -511,9 +515,9 @@ CPU threading and scheduling parameters. Access via `params.cpuparams` or `param
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
-| `cpumask` | list[bool] | `` | R/W | CPU affinity mask: mask of cpu cores (all-zeros means use default affinity settings) |
-| `mask_valid` | bool | `` | R/W | Default: any CPU. |
-| `n_threads` | int | `` | R/W | number of threads. |
-| `poll` | uint32_t | `` | R/W | Polling (busywait) level (0 - no polling, 100 - mostly polling) |
-| `priority` | ggml_sched_priority | `` | R/W | Scheduling prio : (0 - normal, 1 - medium, 2 - high, 3 - realtime). |
-| `strict_cpu` | bool | `` | R/W | Use strict CPU placement. |
+| `cpumask` | list[bool] | `{false}` | R/W | CPU affinity mask: mask of cpu cores (all-zeros means use default affinity settings) |
+| `mask_valid` | bool | `false` | R/W | Default: any CPU. |
+| `n_threads` | int | `-1` | R/W | number of threads. |
+| `poll` | uint32_t | `50` | R/W | Polling (busywait) level (0 - no polling, 100 - mostly polling) |
+| `priority` | ggml_sched_priority | `GGML_SCHED_PRIO_NORMAL` | R/W | Scheduling prio : (0 - normal, 1 - medium, 2 - high, 3 - realtime). |
+| `strict_cpu` | bool | `false` | R/W | Use strict CPU placement. |
