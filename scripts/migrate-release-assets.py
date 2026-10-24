@@ -48,7 +48,7 @@ def upload_asset(release, asset, path, digest):
         "Content-Length": str(path.stat().st_size),
         "User-Agent": "xllamacpp-release-migration",
     }
-    for attempt in range(6):
+    for attempt in range(10):
         try:
             with path.open("rb") as body:
                 request = urllib.request.Request(url, data=body, headers=headers, method="POST")
@@ -70,9 +70,9 @@ def upload_asset(release, asset, path, digest):
                     request_json(candidate["url"], method="DELETE")
                 else:
                     raise ValueError(f"Conflicting destination asset: {asset['name']}") from error
-            if attempt == 5:
+            if attempt == 9:
                 raise
-            delay = 30 * (attempt + 1)
+            delay = min(60 * 2**attempt, 900)
             if isinstance(error, urllib.error.HTTPError):
                 delay = max(delay, int(error.headers.get("Retry-After", "0")))
                 if error.headers.get("X-RateLimit-Remaining") == "0":
@@ -86,11 +86,19 @@ def main():
     parser.add_argument("--destination", default="xorbitsai/xllamacpp")
     parser.add_argument("--shard", type=int, required=True)
     parser.add_argument("--shards", type=int, default=8)
+    parser.add_argument("--manifest", type=Path, default=Path(".github/release-migration-manifest.json"))
     args = parser.parse_args()
     if not token() or not 0 <= args.shard < args.shards:
         parser.error("A GitHub token and valid shard number are required")
-    source = list_releases(args.source, authenticated=False)
-    destination = {release["tag_name"]: release for release in list_releases(args.destination)}
+    if args.manifest.exists():
+        manifest = json.loads(args.manifest.read_text())
+        if manifest["source_repository"] != args.source or manifest["destination_repository"] != args.destination:
+            raise ValueError("Migration manifest repositories do not match arguments")
+        source = manifest["source"]
+        destination = manifest["destination"]
+    else:
+        source = list_releases(args.source, authenticated=False)
+        destination = {release["tag_name"]: release for release in list_releases(args.destination)}
     releases = partition(source, args.shards)[args.shard]
     report = []
     last_upload = 0
@@ -124,8 +132,8 @@ def main():
                 digest = "sha256:" + hasher.hexdigest()
                 if path.stat().st_size != asset["size"] or (asset.get("digest") and asset["digest"] != digest):
                     raise ValueError(f"Source download integrity mismatch: {tag}/{asset['name']}")
-                # Eight shards together stay below GitHub's secondary write-rate limit.
-                time.sleep(max(0, 8 - (time.monotonic() - last_upload)))
+                # Together the shards stay below GitHub's secondary write-rate limit.
+                time.sleep(max(0, args.shards - (time.monotonic() - last_upload)))
                 last_upload = time.monotonic()
                 uploaded = upload_asset(target, asset, path, digest)
                 report.append({"tag": tag, "name": asset["name"], "size": asset["size"], "digest": digest, "destination_digest": uploaded.get("digest")})

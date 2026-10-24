@@ -37,7 +37,7 @@ def request_json(url, *, authenticated=True, method="GET", payload=None):
                 or b"rate limit" in error.read().lower()
             ):
                 raise
-            delay = max(10 * (attempt + 1), int(error.headers.get("Retry-After", "0")))
+            delay = max(min(60 * 2**attempt, 900), int(error.headers.get("Retry-After", "0")))
             if error.headers.get("X-RateLimit-Remaining") == "0":
                 delay = max(delay, int(error.headers.get("X-RateLimit-Reset", "0")) - time.time() + 2)
             print(f"GitHub API retry after {delay:.0f}s (HTTP {error.code})", flush=True)
