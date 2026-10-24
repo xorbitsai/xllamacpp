@@ -3,7 +3,7 @@ name: Wheels Index
 on:
   # Trigger on new release
   workflow_run:
-    workflows: ["Build Wheels (CUDA & HIP)"]
+    workflows: ["Build Wheels (CUDA & HIP)", "Migrate Legacy Releases"]
     types:
       - completed
 
@@ -39,12 +39,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./scripts/get-releases.sh
-          ./scripts/releases-to-pep-503.sh index/whl/cu128 '^[v]?[0-9]+\.[0-9]+\.[0-9]+-cu128$'
-          ./scripts/releases-to-pep-503.sh index/whl/cu132 '^[v]?[0-9]+\.[0-9]+\.[0-9]+-cu132$'
-          ./scripts/releases-to-pep-503.sh index/whl/rocm-6.4.1 '^[v]?[0-9]+\.[0-9]+\.[0-9]+-rocm-6.4.1$'
-          ./scripts/releases-to-pep-503.sh index/whl/rocm-7.2.4 '^[v]?[0-9]+\.[0-9]+\.[0-9]+-rocm-7.2.4$'
-          ./scripts/releases-to-pep-503.sh index/whl/vulkan '^[v]?[0-9]+\.[0-9]+\.[0-9]+-vulkan*'
+          python3 scripts/build-wheel-index.py --source "$GITHUB_REPOSITORY" --output index
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:

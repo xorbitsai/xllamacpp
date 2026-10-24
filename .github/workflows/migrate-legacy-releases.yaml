@@ -1,0 +1,35 @@
+name: Migrate Legacy Releases
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: migrate-legacy-releases
+  cancel-in-progress: false
+
+jobs:
+  copy:
+    name: Copy and verify assets (shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Copy release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/migrate-release-assets.py --shard "${{ matrix.shard }}" --destination "$GITHUB_REPOSITORY"
+      - name: Upload integrity report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-migration-${{ matrix.shard }}
+          path: migration-report-${{ matrix.shard }}.json
