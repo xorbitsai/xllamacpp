@@ -109,13 +109,14 @@ def main():
         target = destination[tag]
         existing = {asset["name"]: asset for asset in target["assets"]}
         for asset in release["assets"]:
-            if asset["name"] in existing:
-                candidate = existing[asset["name"]]
+            candidate = existing.get(asset["name"])
+            if candidate:
                 if not asset_matches(asset, candidate):
                     raise ValueError(f"Conflicting destination asset: {tag}/{asset['name']}")
-                print(f"Already copied: {tag}/{asset['name']}", flush=True)
-                report.append({"tag": tag, "name": asset["name"], "size": asset["size"], "digest": candidate.get("digest"), "skipped": True})
-                continue
+                if asset.get("digest"):
+                    print(f"Already copied: {tag}/{asset['name']}", flush=True)
+                    report.append({"tag": tag, "name": asset["name"], "size": asset["size"], "digest": candidate.get("digest"), "skipped": True})
+                    continue
             with tempfile.TemporaryDirectory(prefix="release-asset-") as temporary:
                 path = Path(temporary) / "asset"
                 # No credentials are sent to the public asset download URL or redirects.
@@ -132,10 +133,15 @@ def main():
                 digest = "sha256:" + hasher.hexdigest()
                 if path.stat().st_size != asset["size"] or (asset.get("digest") and asset["digest"] != digest):
                     raise ValueError(f"Source download integrity mismatch: {tag}/{asset['name']}")
-                # Together the shards stay below GitHub's secondary write-rate limit.
-                time.sleep(max(0, args.shards - (time.monotonic() - last_upload)))
-                last_upload = time.monotonic()
-                uploaded = upload_asset(target, asset, path, digest)
+                if candidate:
+                    if not asset_matches(asset, candidate, digest):
+                        raise ValueError(f"Previously copied asset integrity mismatch: {tag}/{asset['name']}")
+                    uploaded = candidate
+                else:
+                    # Together the shards stay below GitHub's secondary write-rate limit.
+                    time.sleep(max(0, args.shards - (time.monotonic() - last_upload)))
+                    last_upload = time.monotonic()
+                    uploaded = upload_asset(target, asset, path, digest)
                 report.append({"tag": tag, "name": asset["name"], "size": asset["size"], "digest": digest, "destination_digest": uploaded.get("digest")})
                 print(f"Copied and verified: {tag}/{asset['name']} ({asset['size']} bytes)", flush=True)
             Path(f"migration-report-{args.shard}.json").write_text(json.dumps(report, indent=2) + "\n")
