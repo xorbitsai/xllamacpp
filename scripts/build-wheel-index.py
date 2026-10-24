@@ -90,7 +90,7 @@ def build_index(release_groups, output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", default="xorbitsai/xllamacpp")
-    parser.add_argument("--fallback", default="xorbitsai/xllamacpp-legacy")
+    parser.add_argument("--fallback", default="")
     parser.add_argument("--output", type=Path, default=Path("index"))
     arguments = parser.parse_args()
     groups = []
