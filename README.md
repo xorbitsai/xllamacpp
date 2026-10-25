@@ -201,9 +201,10 @@ Before pip installing `xllamacpp`, please ensure your system meets the following
 ## CUDA GPU Architecture Coverage
 
 The prebuilt CUDA wheels are compiled for a curated set of NVIDIA GPU architectures
-that mirrors the upstream llama.cpp *release* default (`ggml/src/ggml-cuda/CMakeLists.txt`,
-`GGML_NATIVE=OFF` branch). The set differs between CUDA versions because newer toolkits
-drop older architectures and add newer ones.
+that follows the upstream llama.cpp release default (`ggml/src/ggml-cuda/CMakeLists.txt`,
+`GGML_NATIVE=OFF` branch), with native Turing code for compatibility with older CUDA 13
+drivers. The set differs between CUDA versions because newer toolkits drop older
+architectures and add newer ones.
 
 Each architecture is shipped in one of two forms:
 
@@ -223,9 +224,10 @@ otherwise the load fails (CUDA error 209, "no kernel image"). This is why at lea
 | `61`   | PTX  | Pascal (GTX 10xx, P40)       | ✅ JIT  | — |
 | `70`   | PTX  | Volta (V100)                 | ✅ JIT  | — |
 | `75`   | PTX (12.8) / SASS (13.2) | Turing (RTX 20xx, T4) | ✅ JIT  | ✅ native |
-| `80`   | PTX  | Ampere DC (A100); also forward-covers Hopper (90) and Blackwell DC (100/103) via JIT | ✅ JIT  | ✅ JIT  |
+| `80`   | PTX  | Ampere DC (A100)             | ✅ JIT  | ✅ JIT  |
 | `86`   | SASS | Ampere (RTX 30xx, A10/A40)   | ✅ native | ✅ native |
 | `89`   | SASS | Ada (RTX 40xx, L4/L40)       | ✅ native | ✅ native |
+| `90`   | PTX  | Hopper (H100/H200); also covers Blackwell DC (100/103) via JIT | ✅ JIT | ✅ JIT |
 | `120a` | SASS | Blackwell (RTX 50xx)         | ✅ native | ✅ native |
 | `121a` | SASS | Blackwell variant            | —       | ✅ native |
 
@@ -240,7 +242,7 @@ Notes:
   Native SASS has no such limit, which is why Turing ships as `75-real` in that wheel.
 - **`121a` requires CUDA >= 12.9**, so it is only present in the CUDA 13.2 wheel.
 - **Native SASS is shipped only for mainstream consumer cards.** Datacenter parts
-  (A100/Hopper/Blackwell-DC) run via JIT from the `80-virtual` PTX, which works but incurs a
+  use `80-virtual` PTX for A100 and `90-virtual` for Hopper/Blackwell-DC, which incurs a
   one-time JIT compile on first launch.
 - **Local source builds** (where `CUDA_ARCHITECTURES` is unset) instead use CMake's
   `native`, producing native SASS for the GPU architectures detected on the build machine —
@@ -265,6 +267,9 @@ a wider list, covering both older and newer architectures.
 
 | Target | Arch family | GPUs | ROCm 6.4.1 wheel | ROCm 7.2.4 wheel |
 |:-------|:------------|:-----|:-----------------:|:-----------------:|
+| `gfx908` | CDNA1     | Instinct MI100                 | —  | ✅ |
+| `gfx90a` | CDNA2     | Instinct MI200 series          | —  | ✅ |
+| `gfx942` | CDNA3     | Instinct MI300 series          | —  | ✅ |
 | `gfx1030` | RDNA2     | RX 6800 / 6900 XT              | ✅ | ✅ |
 | `gfx1031` | RDNA2     | RX 6700 / 6750 XT              | ✅ | ✅ |
 | `gfx1032` | RDNA2     | RX 6600 / 6650 XT              | ✅ | ✅ |
@@ -273,22 +278,22 @@ a wider list, covering both older and newer architectures.
 | `gfx1102` | RDNA3     | RX 7600 XT                     | ✅ | ✅ |
 | `gfx1150` | RDNA 3.5  | Strix Point (Ryzen AI 300)     | —  | ✅ |
 | `gfx1151` | RDNA 3.5  | Strix Halo (Ryzen AI Max 300)  | —  | ✅ |
-| `gfx1200` | RDNA4     | RX 9060 / 9070 XT              | —  | ✅ |
-| `gfx1201` | RDNA4     | RX 9070 variants               | —  | ✅ |
+| `gfx1200` | RDNA4     | RX 9060 / 9060 XT              | —  | ✅ |
+| `gfx1201` | RDNA4     | RX 9070 / 9070 XT              | —  | ✅ |
 | `gfx950`  | CDNA4     | Instinct MI350X / MI355X       | —  | ✅ |
 
 Notes:
 
 - **ROCm 6.4.1** covers RDNA2 + RDNA3 only. It is retained as the fallback for
   users who cannot upgrade to ROCm 7.x.
-- **ROCm 7.2.4** adds RDNA 3.5 (Strix Halo / Strix Point APUs), RDNA4 (RX 9060 /
-  9070), and CDNA4 (MI350X datacenter). It is a superset — all GPUs supported by
-  the 6.4.1 wheel are also covered.
-- **ABI compatibility:** a binary built with ROCm 7.2.4 runs on any ROCm 7.x
-  runtime (including 7.13/7.14 from TheRock), since the major version is the
-  ABI boundary. It does **not** run on ROCm 6.x.
-- **rocWMMA flash attention** is enabled on all builds, providing faster
-  attention on supported architectures.
+- **ROCm 7.2.4** adds RDNA 3.5, RDNA4, and CDNA1–4 targets. All GPUs supported
+  by the 6.4.1 wheel are also covered.
+- **Runtime compatibility:** select the wheel for your installed ROCm version.
+- **FlashAttention** uses the current HIP kernels, enabled by the upstream
+  `GGML_CUDA_FA=ON` default.
+- **ROCm 6.4.1 source builds** need
+  `CMAKE_ARGS="-DCMAKE_HIP_FLAGS=-DHIP_ENABLE_WARP_SYNC_BUILTINS=1"`
+  for grouped-expert fusion. The release workflow supplies this automatically.
 - **Local source builds** (where `AMDGPU_TARGETS` is unset) default to RDNA2 +
   RDNA3 targets — see `scripts/build.py`. Set `AMDGPU_TARGETS` explicitly to
   target your specific GPU (e.g., `export AMDGPU_TARGETS=gfx1151`).
