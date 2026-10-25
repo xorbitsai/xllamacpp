@@ -317,8 +317,22 @@ cmdclass["sdist"] = sdist
 class build_ext(_build_ext):
     def run(self):
         _build_llamacpp()
+        cache = os.path.join(CWD, "thirdparty/llama.cpp/build/CMakeCache.txt")
+        with open(cache, encoding="utf-8") as f:
+            entries = {}
+            for line in f:
+                key, sep, value = line.partition("=")
+                if sep and ":" in key:
+                    entries[key.split(":", 1)[0]] = value.strip()
+        cmake_true = {"ON", "TRUE", "YES", "1", "Y"}
+
         # Archives are staged by build.py, so check optional ones only now.
         for extension in self.distribution.ext_modules:
+            # subproc.h changes common_subproc's layout behind this macro.
+            # Match the native library when compiling server-connect.cpp.
+            if entries.get("LLAMA_SUBPROCESS", "").upper() in cmake_true:
+                extension.define_macros.append(("LLAMA_SUBPROCESS", "1"))
+
             optional = {"libllguidance.a", "libssl.a", "libcrypto.a"}
             absent = [
                 path
@@ -336,16 +350,7 @@ class build_ext(_build_ext):
 
             if BUILD_CUDA and PLATFORM != "Windows":
                 # Use CMake's NCCL choice, including libraries under NCCL_ROOT.
-                cache = os.path.join(CWD, "thirdparty/llama.cpp/build/CMakeCache.txt")
-                with open(cache, encoding="utf-8") as f:
-                    entries = {}
-                    for line in f:
-                        key, sep, value = line.partition("=")
-                        if sep and ":" in key:
-                            entries[key.split(":", 1)[0]] = value.strip()
-                if entries.get("GGML_CUDA_NCCL", "").upper() in {
-                    "ON", "TRUE", "YES", "1", "Y"
-                }:
+                if entries.get("GGML_CUDA_NCCL", "").upper() in cmake_true:
                     nccl = entries.get("NCCL_LIBRARY", "")
                     if nccl and not nccl.endswith("-NOTFOUND"):
                         extension.extra_objects.append(nccl)
@@ -383,6 +388,7 @@ extensions = [
         sources=[
             "src/xllamacpp/xllamacpp.pyx",
             "src/xllamacpp/server.cpp",
+            "thirdparty/llama.cpp/tools/server/server-connect.cpp",
             "thirdparty/llama.cpp/tools/server/server-models.cpp",
             "thirdparty/llama.cpp/tools/server/server-http.cpp",
         ],

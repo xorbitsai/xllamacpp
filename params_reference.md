@@ -68,8 +68,11 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `display_prompt` | bool | `true` | R/W | print prompt before generation |
 | `escape` | bool | `true` | R/W | escape "\n", "\r", "\t", "\'", "\"", and "\\" |
 | `interactive` | bool | `false` | R/W | interactive mode |
+| `lazy_mode` | llama_lazy_mode | `LLAMA_LAZY_MODE_AUTO` | R/W | on-demand reading mode for tensors marked by the architecture. |
+| `load_mode` | llama_load_mode | `LLAMA_LOAD_MODE_AUTO` | R/W | how to load the model. |
 | `load_mtp` | bool | `false` | R/W | load MTP/NextN layers. |
 | `multiline_input` | bool | `false` | R/W | reverse the usage of "\" |
+| `no_alloc` | bool | `false` | R/W | Don't allocate model buffers |
 | `no_perf` | bool | `false` | R/W | disable performance metrics |
 | `offline` | bool | `false` | R/W |  |
 | `prompt_cache_all` | bool | `false` | R/W | save user input and generations to prompt cache |
@@ -137,6 +140,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
+| `activation_statistics` | bool | `false` | R/W | generate data to calculate activation based statistics |
 | `compute_ppl` | bool | `true` | R/W | whether to compute perplexity |
 | `i_chunk` | int | `0` | R/W | start processing from this chunk |
 | `imat_dat` | int | `0` | R/W | whether the legacy imatrix.dat format should be output (gguf <= 0 < dat) |
@@ -156,6 +160,8 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `n_chunks` | int | `-1` | R/W | max number of chunks to process (-1 = unlimited). |
 | `n_ctx` | int | `0` | R/W | context size, 0 == context the model was trained with |
 | `n_keep` | int | `0` | R/W | number of tokens to keep from initial prompt. |
+| `n_outputs_max` | int | `0` | R/W | max outputs in a batch (0 = n_batch). |
+| `n_outputs_max_per_seq` | int | `1` | R/W | max outputs per sequence. |
 | `n_parallel` | int | `1` | R/W | number of parallel sequences to decode. |
 | `n_predict` | int | `-1` | R/W | max. number of new tokens to predict, -1 == no limit |
 | `n_print` | int | `-1` | R/W | print token count every n tokens (-1 = disabled). |
@@ -186,16 +192,23 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `image_max_tokens` | int | `-1` | R/W |  |
 | `image_min_tokens` | int | `-1` | R/W |  |
 | `mmproj` | [CommonParamsModel](#commonparamsmodel) | `` | R/W |  |
+| `mmproj_device` | str | `nullptr` | R/W | GPU device for the multimodal projector (empty means auto, 'none' disables offload). |
 | `mmproj_use_gpu` | bool | `true` | R/W | use GPU for multimodal model |
+| `mtmd_batch_max_tokens` | int | `1024` | R/W |  |
 | `no_mmproj` | bool | `false` | R/W | explicitly disable multimodal model |
+| `video_ffmpeg_bin_dir` | str | `""` | R/W |  |
+| `video_fps` | float | `4.0` | R/W |  |
+| `video_timestamp_interval_ms` | int | `5000` | R/W |  |
 
 ### Output / Logging
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
+| `is_gen_docs` | bool | `false` | R/W | whether we are running inside llama-gen-docs |
 | `logits_file` | str | `""` | R/W | file for saving *all* logits |
 | `logits_output_dir` | str | `"data"` | R/W | directory for saving logits output files |
 | `out_file` | str | `` | R/W | output filename for all example programs |
+| `path_prompts_log_dir` | str | `""` | R/W | directory with logged prompts |
 | `save_logits` | bool | `false` | R/W | whether to save logits to files |
 | `tensor_filter` | list[str] | `` | R/W | filter tensor names for debug output (regex) |
 | `verbosity` | int | `3` | R/W | LOG_LEVEL_INFO |
@@ -227,6 +240,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `path_prompt_cache` | str | `""` | R/W | path to file for saving/loading prompt eval state |
 | `prompt` | str | `""` | R/W | the prompt text |
 | `prompt_file` | str | `""` | R/W | store the external prompt file name |
+| `system_prompt` | str | `""` | R/W | the system prompt text |
 
 ### Retrieval / Passkey
 
@@ -259,35 +273,58 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `api_prefix` | str | `""` | R/W |  |
 | `cache_idle_slots` | bool | `true` | R/W | save and clear idle slots upon starting a new task |
 | `cache_prompt` | bool | `true` | R/W | whether to enable prompt caching |
+| `cache_ram_explicit` | bool | `false` | R/W | set by --cache-ram, decision models disable the cache otherwise |
 | `cache_ram_mib` | int | `8192` | R/W | -1 = no limit, 0 - disable, 1 = 1 MiB, etc. |
 | `chat_template` | str | `""` | R/W | chat template |
+| `checkpoint_min_step` | int | `8192` | R/W | minimum spacing between context checkpoints |
+| `cors_credentials` | bool | `true` | R/W |  |
+| `cors_headers` | str | `"*"` | R/W |  |
+| `cors_methods` | str | `"GET, POST, DELETE, OPTIONS"` | R/W |  |
+| `cors_origins` | str | `"*"` | R/W |  |
+| `cors_origins_explicit` | bool | `false` | R/W | for --agent option |
 | `default_template_kwargs` | dict | `` | R/W |  |
 | `enable_chat_template` | bool | `true` | R/W | enable chat template |
 | `enable_reasoning` | int | `-1` | R/W | -1 = auto, 0 = disable, 1 = enable |
 | `endpoint_metrics` | bool | `false` | R/W | endpoint metrics |
 | `endpoint_props` | bool | `false` | R/W | only control POST requests, not GET |
 | `endpoint_slots` | bool | `true` | R/W | endpoint slots |
+| `force_pure_content_parser` | bool | `false` | R/W | force pure content parser |
 | `hostnames` | list[str] | `{"127.0.0.1"}` | R/W | server listening hostnames. |
+| `kv_unified_per_slot` | int | `0` | R/W | maximum context per parallel slot; 0 leaves it unset. |
 | `log_json` | bool | `false` | R/W | log json |
+| `mcp_servers_config` | str | `` | R/W | path to JSON file with MCP server definitions |
+| `mcp_servers_json` | str | `` | R/W | inline JSON with MCP server definitions |
 | `media_path` | str | `` | R/W | path to directory for loading media files |
 | `models_autoload` | bool | `true` | R/W | automatically load models when requested via the router server |
 | `models_dir` | str | `""` | R/W | directory containing models for the router server |
 | `models_max` | int | `4` | R/W | maximum number of models to load simultaneously |
 | `models_preset` | str | `""` | R/W | directory containing model presets for the router server |
+| `models_preset_hf` | str | `""` | R/W | show a warning about remote presets on router loaded (if not empty) |
 | `n_cache_reuse` | int | `0` | R/W | min chunk size to reuse from the cache via KV shifting |
 | `n_ctx_checkpoints` | int | `32` | R/W | max number of context checkpoints per slot |
 | `n_threads_http` | int | `-1` | R/W | number of threads to process HTTP requests (TODO: support threadpool) |
-| `port` | int | `9931` | R/W | server listens on this network port |
+| `port` | int | `0` | R/W | Server listening port; 0 selects an available port automatically. |
 | `prefill_assistant` | bool | `true` | R/W | if true, any trailing assistant message will be prefilled into the response |
+| `preserve_reasoning_specified` | bool | `false` | R/W |  |
 | `public_path` | str | `""` | R/W | server public_path |
 | `reasoning_format` | common_reasoning_format | `COMMON_REASONING_FORMAT_DEEPSEEK` | R/W |  |
+| `reuse_port` | bool | `false` | R/W | allow multiple sockets to bind to the same port |
+| `server_base` | str | `` | R/W | if set, connect to this server instead of starting a new one |
+| `server_connect` | bool | `false` | R/W | enable the optional llama-connect tunnel. |
+| `server_connect_code` | str | `""` | R/W | share code for llama-connect; empty generates a code at startup. |
+| `server_tools` | list[str] | `` | R/W | enable built-in tools |
+| `server_tools_runtime` | str | `` | R/W | runtime used for built-in server tools. |
 | `sleep_idle_seconds` | int | `-1` | R/W | if >0, server will sleep after this many seconds of idle time |
 | `slot_prompt_similarity` | float | `0.1` | R/W | slot prompt similarity. |
 | `slot_save_path` | str | `` | R/W | slot save path |
+| `sse_ping_interval` | int | `30` | R/W | SSE ping interval in seconds |
 | `ssl_file_cert` | str | `""` | R/W | ssl file cert |
 | `ssl_file_key` | str | `""` | R/W | ssl file key |
 | `timeout_read` | int | `3600` | R/W | http read timeout in seconds |
 | `timeout_write` | int | `timeout_read` | R/W | http write timeout in seconds |
+| `ui` | bool | `true` | R/W | enable UI |
+| `ui_config_json` | str | `` | R/W | UI config json |
+| `ui_mcp_proxy` | bool | `false` | R/W | UI MCP proxy |
 | `use_jinja` | bool | `true` | R/W |  |
 
 ### Sub-params
@@ -304,50 +341,21 @@ The central configuration object. Controls model loading, inference, sampling, s
 |:---------|:-----|:--------|:---:|:------------|
 | `tensor_buft_overrides` | str | `` | R/W |  |
 
-### Other
+### Text-to-Speech
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
-| `activation_statistics` | bool | `false` | R/W | generate data to calculate activation based statistics |
-| `checkpoint_min_step` | int | `8192` | R/W | minimum spacing between context checkpoints |
-| `cors_credentials` | bool | `true` | R/W |  |
-| `cors_headers` | str | `"*"` | R/W |  |
-| `cors_methods` | str | `"GET, POST, DELETE, OPTIONS"` | R/W |  |
-| `cors_origins` | str | `"*"` | R/W |  |
-| `cors_origins_explicit` | bool | `false` | R/W | for --agent option |
-| `force_pure_content_parser` | bool | `false` | R/W | force pure content parser |
-| `is_gen_docs` | bool | `false` | R/W | whether we are running inside llama-gen-docs |
-| `kv_unified_per_slot` | int | `0` | R/W | maximum context per parallel slot; 0 leaves it unset. |
-| `lazy_mode` | llama_lazy_mode | `LLAMA_LAZY_MODE_AUTO` | R/W | on-demand reading mode for tensors marked by the architecture. |
-| `load_mode` | llama_load_mode | `LLAMA_LOAD_MODE_AUTO` | R/W | how to load the model. |
-| `mcp_servers_config` | str | `` | R/W | path to JSON file with MCP server definitions |
-| `mcp_servers_json` | str | `` | R/W | inline JSON with MCP server definitions |
-| `mmproj_device` | str | `nullptr` | R/W | GPU device for the multimodal projector (empty means auto, 'none' disables offload). |
-| `models_preset_hf` | str | `""` | R/W | show a warning about remote presets on router loaded (if not empty) |
-| `mtmd_batch_max_tokens` | int | `1024` | R/W |  |
-| `n_outputs_max` | int | `0` | R/W | max outputs in a batch (0 = n_batch). |
-| `n_outputs_max_per_seq` | int | `1` | R/W | max outputs per sequence. |
-| `no_alloc` | bool | `false` | R/W | Don't allocate model buffers |
-| `path_prompts_log_dir` | str | `""` | R/W | directory with logged prompts |
-| `preserve_reasoning_specified` | bool | `false` | R/W |  |
-| `reuse_port` | bool | `false` | R/W | allow multiple sockets to bind to the same port |
-| `server_base` | str | `` | R/W | if set, connect to this server instead of starting a new one |
-| `server_tools` | list[str] | `` | R/W | enable built-in tools |
-| `server_tools_runtime` | str | `` | R/W | runtime used for built-in server tools. |
-| `sse_ping_interval` | int | `30` | R/W | SSE ping interval in seconds |
-| `system_prompt` | str | `""` | R/W | the system prompt text |
+| `tts_lang` | str | `""` | R/W |  |
+| `tts_speaker_file` | str | `""` | R/W |  |
+
+### Tokenization
+
+| Property | Type | Default | R/W | Description |
+|:---------|:-----|:--------|:---:|:------------|
 | `tokenize_ids` | bool | `false` | R/W | if true, only print the token IDs |
 | `tokenize_no_bos` | bool | `false` | R/W | if true, do not add the BOS token |
 | `tokenize_show_count` | bool | `false` | R/W | if true, print the total token count |
 | `tokenize_stdin` | bool | `false` | R/W | if true, read the prompt from stdin |
-| `tts_lang` | str | `""` | R/W |  |
-| `tts_speaker_file` | str | `""` | R/W |  |
-| `ui` | bool | `true` | R/W | enable UI |
-| `ui_config_json` | str | `` | R/W | UI config json |
-| `ui_mcp_proxy` | bool | `false` | R/W | UI MCP proxy |
-| `video_ffmpeg_bin_dir` | str | `""` | R/W |  |
-| `video_fps` | float | `4.0` | R/W |  |
-| `video_timestamp_interval_ms` | int | `5000` | R/W |  |
 
 ---
 
@@ -374,10 +382,10 @@ Model path and source parameters. Access via `params.model`.
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
-| `docker_repo` | str | `` | R/W | Docker repo |
+| `docker_repo` | str | `""` | R/W | Docker repo |
 | `hf_file` | str | `""` | R/W | HF file |
-| `hf_repo` | str | `` | R/W | HF repo |
-| `path` | str | `` | R/W | model local path |
+| `hf_repo` | str | `""` | R/W | HF repo |
+| `path` | str | `""` | R/W | model local path |
 | `url` | str | `""` | R/W | model url to download |
 
 ---
@@ -420,7 +428,7 @@ Sampling parameters that control token generation strategy. Access via `params.s
 | `reasoning_budget_start` | list[int] | `` | R/W | start tag token sequence |
 | `reasoning_budget_tokens` | int | `-1` | R/W | -1 = disabled, >= 0 = token budget |
 | `reasoning_control` | bool | `false` | R/W | create the budget sampler on demand so reasoning can be ended at runtime |
-| `samplers` | str | `` | R/W | get/set sampler types |
+| `samplers` | str | `{ COMMON_SAMPLER_TYPE_PENALTIES, COMMON_SAMPLER_TYPE_DRY, COMMON_SAMPLER_TYPE_TOP_N_SIGMA, COMMON_SAMPLER_TYPE_TOP_K, COMMON_SAMPLER_TYPE_TYPICAL_P, COMMON_SAMPLER_TYPE_TOP_P, COMMON_SAMPLER_TYPE_MIN_P, COMMON_SAMPLER_TYPE_XTC, COMMON_SAMPLER_TYPE_TEMPERATURE, }` | R/W | get/set sampler types |
 | `seed` | int | `LLAMA_DEFAULT_SEED` | R/W | the seed used to initialize llama_sampler. |
 | `temp` | float | `0.80` | R/W | <= 0.0 to sample greedily, 0.0 to not output probabilities |
 | `timing_per_token` | bool | `false` | R/W |  |
@@ -467,6 +475,7 @@ Draft-model speculative decoding parameters. Access via `params.speculative.draf
 | `n_gpu_layers` | int | `-1` | R/W | Number of draft-model layers to store in VRAM (-1 = use default). |
 | `n_max` | int | `3` | R/W | Maximum number of tokens the draft model proposes per step. Larger windows accept more tokens per target-model pass but waste compute when drafts are rejected. |
 | `n_min` | int | `0` | R/W | Minimum number of draft tokens to propose before verification; adaptive drafting does not stop below this count. |
+| `n_ubatch` | int | `0` | R/W | physical batch size of the draft context (0 - use the target's n_ubatch) |
 | `p_min` | float | `0.0` | R/W | Minimum probability for a drafted token to be accepted (greedy verification); tokens below it are rejected. |
 | `p_split` | float | `0.1` | R/W | Probability threshold used to split the draft sequence during adaptive drafting. |
 | `probabilistic` | bool | `false` | R/W | sample the draft and verify by rejection, instead of argmax and match |

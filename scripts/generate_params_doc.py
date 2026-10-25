@@ -4,7 +4,8 @@ Generate parameter documentation for CommonParams and its sub-classes.
 
 Extracts Python-exposed properties (name, type, docstring) from the Cython
 .pyx wrapper, cross-references them with default values and comments from the
-C++ common.h header, and produces a Markdown reference document.
+C++ common.h header, applies literal Python constructor defaults, and produces
+a Markdown reference document.
 
 Usage:
     python scripts/generate_params_doc.py                    # write to params_reference.md
@@ -15,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import ast
 import re
 import sys
 from dataclasses import dataclass, field
@@ -37,6 +39,7 @@ class PropertyInfo:
     python_type: str = ""
     docstring: str = ""
     has_setter: bool = False
+    python_default: str | None = None
 
 
 @dataclass
@@ -69,7 +72,6 @@ TARGET_CLASSES = [
     "CommonParamsSpeculativeNgramMod",
     "CommonParamsSpeculativeNgramMap",
     "CommonParamsSpeculativeNgramCache",
-    "CommonParamsVocoder",
     "CommonParamsDiffusion",
     "CpuParams",
     "CommonAdapterLoraInfo",
@@ -85,7 +87,6 @@ CLASS_DESCRIPTIONS = {
     "CommonParamsSpeculativeNgramMod": "Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MOD` speculative method. Access via `params.speculative.ngram_mod`.",
     "CommonParamsSpeculativeNgramMap": "N-gram lookup parameters shared by the `NGRAM_SIMPLE`, `NGRAM_MAP_K`, and `NGRAM_MAP_K4V` speculative methods. Access via `params.speculative.ngram_simple`, `params.speculative.ngram_map_k`, or `params.speculative.ngram_map_k4v`.",
     "CommonParamsSpeculativeNgramCache": "N-gram cache file parameters for lookup decoding. Access via `params.speculative.ngram_cache`.",
-    "CommonParamsVocoder": "Text-to-speech (vocoder) parameters. Access via `params.vocoder`.",
     "CommonParamsDiffusion": "Diffusion model parameters. Access via `params.diffusion`.",
     "CpuParams": "CPU threading and scheduling parameters. Access via `params.cpuparams` or `params.cpuparams_batch`.",
     "CommonAdapterLoraInfo": "LoRA adapter info. Create via `xlc.CommonAdapterLoraInfo(path, scale)`.",
@@ -96,6 +97,8 @@ CLASS_DESCRIPTIONS = {
 # and are used where the sources are missing or too terse to explain behavior
 # (see https://github.com/xorbitsai/xllamacpp/issues/177).
 FIELD_DESCRIPTIONS: dict[tuple[str, str], str] = {
+    ("CommonParams", "port"):
+        "Server listening port; 0 selects an available port automatically.",
     # -- CommonParamsSpeculative ------------------------------------------------
     ("CommonParamsSpeculative", "types"):
         "List of speculative decoding methods to enable. Draft-model-free methods: "
@@ -194,6 +197,8 @@ def parse_pyx(pyx_path: Path) -> dict[str, ClassInfo]:
     in_setter = False
     in_docstring = False
     docstring_lines: list[str] = []
+    in_cinit = False
+    constructor_defaults: dict[str, str] = {}
 
     for line in lines:
         stripped = line.strip()
@@ -202,6 +207,8 @@ def parse_pyx(pyx_path: Path) -> dict[str, ClassInfo]:
         class_match = re.match(r"^cdef class (\w+)", stripped)
         if class_match:
             cls_name = class_match.group(1)
+            in_cinit = False
+            constructor_defaults = {}
             if cls_name in TARGET_CLASSES:
                 current_class = ClassInfo(name=cls_name)
                 classes[cls_name] = current_class
@@ -214,6 +221,21 @@ def parse_pyx(pyx_path: Path) -> dict[str, ClassInfo]:
 
         if current_class is None:
             continue
+
+        # Literal assignments in __cinit__ override the upstream defaults.
+        if re.match(r"^    def __cinit__\(", line):
+            in_cinit = True
+        elif re.match(r"^    (?:def |cdef |@)", line):
+            in_cinit = False
+        if in_cinit:
+            assignment = re.match(r"^        self\.p\.(\w+)\s*=\s*(.+)$", line)
+            if assignment:
+                try:
+                    value = ast.literal_eval(assignment.group(2))
+                except (ValueError, SyntaxError):
+                    pass
+                else:
+                    constructor_defaults[assignment.group(1)] = repr(value)
 
         # Detect @property decorator
         if stripped == "@property":
@@ -240,7 +262,11 @@ def parse_pyx(pyx_path: Path) -> dict[str, ClassInfo]:
             if def_match:
                 prop_name = def_match.group(1)
                 prop_type = (def_match.group(2) or "").strip()
-                current_prop = PropertyInfo(name=prop_name, python_type=prop_type)
+                current_prop = PropertyInfo(
+                    name=prop_name,
+                    python_type=prop_type,
+                    python_default=constructor_defaults.get(prop_name),
+                )
                 current_class.properties.append(current_prop)
                 in_property = False
                 in_docstring = False
@@ -311,7 +337,6 @@ def parse_common_h(h_path: Path) -> dict[str, dict[str, CppFieldInfo]]:
         "common_params_speculative_ngram_mod": "CommonParamsSpeculativeNgramMod",
         "common_params_speculative_ngram_map": "CommonParamsSpeculativeNgramMap",
         "common_params_speculative_ngram_cache": "CommonParamsSpeculativeNgramCache",
-        "common_params_vocoder": "CommonParamsVocoder",
         "common_params_diffusion": "CommonParamsDiffusion",
         "common_cpu_params": "CpuParams",
         "common_adapter_lora_info": "CommonAdapterLoraInfo",
@@ -320,6 +345,7 @@ def parse_common_h(h_path: Path) -> dict[str, dict[str, CppFieldInfo]]:
     current_struct: str | None = None
     current_fields: dict[str, CppFieldInfo] = {}
     brace_depth = 0
+    pending_declaration = ""
 
     def _structural_brace_delta(s: str) -> int:
         """Count braces, including multiline initializers but not literals or comments."""
@@ -339,11 +365,13 @@ def parse_common_h(h_path: Path) -> dict[str, dict[str, CppFieldInfo]]:
                 current_fields = {}
                 structs[current_struct] = current_fields
                 brace_depth = _structural_brace_delta(stripped)
+                pending_declaration = ""
                 continue
 
         if current_struct is None:
             continue
 
+        previous_depth = brace_depth
         brace_depth += _structural_brace_delta(stripped)
         if brace_depth <= 0:
             current_struct = None
@@ -355,8 +383,15 @@ def parse_common_h(h_path: Path) -> dict[str, dict[str, CppFieldInfo]]:
         if stripped.startswith("using "):
             continue
 
-        # Must contain a semicolon to be a field declaration
+        # Join multiline field initializers, and ignore method bodies.
+        if pending_declaration:
+            stripped = pending_declaration + " " + stripped
+            pending_declaration = ""
+        elif previous_depth != 1:
+            continue
         if ";" not in stripped:
+            if "=" in stripped:
+                pending_declaration = stripped
             continue
 
         # Skip method declarations
@@ -438,7 +473,6 @@ CLASS_ORDER = [
     "CommonParamsSpeculativeNgramCache",
     "CommonParamsSpeculativeNgramMap",
     "CommonParamsSpeculativeNgramMod",
-    "CommonParamsVocoder",
     "CpuParams",
 ]
 
@@ -457,7 +491,7 @@ COMMON_PARAMS_GROUPS = [
         "prompt_cache_all", "prompt_cache_ro",
         "escape", "multiline_input", "simple_io",
         "cont_batching", "no_perf", "show_timings",
-        "use_mmap", "use_direct_io", "use_mlock",
+        "load_mode", "lazy_mode", "no_alloc",
         "verbose_prompt", "display_prompt", "warmup", "check_tensors",
         "offline", "load_mtp",
     ]),
@@ -481,11 +515,12 @@ COMMON_PARAMS_GROUPS = [
     ]),
     ("IMatrix", [
         "n_out_freq", "n_save_freq", "i_chunk", "imat_dat",
-        "process_output", "compute_ppl", "show_statistics", "parse_special",
+        "process_output", "compute_ppl", "show_statistics", "activation_statistics", "parse_special",
     ]),
     ("Inference", [
         "n_predict", "n_ctx", "n_batch", "n_ubatch", "n_keep", "n_chunks",
-        "n_parallel", "n_sequences", "grp_attn_n", "grp_attn_w", "n_print",
+        "n_parallel", "n_sequences", "n_outputs_max", "n_outputs_max_per_seq",
+        "grp_attn_n", "grp_attn_w", "n_print",
     ]),
     ("LoRA", [
         "lora_init_without_apply", "lora_adapters",
@@ -494,11 +529,13 @@ COMMON_PARAMS_GROUPS = [
         "model", "model_alias", "model_tags", "hf_token",
     ]),
     ("Multimodal", [
-        "mmproj", "mmproj_use_gpu", "no_mmproj", "image", "image_min_tokens", "image_max_tokens",
+        "mmproj", "mmproj_use_gpu", "mmproj_device", "no_mmproj", "image",
+        "image_min_tokens", "image_max_tokens", "mtmd_batch_max_tokens",
+        "video_fps", "video_timestamp_interval_ms", "video_ffmpeg_bin_dir",
     ]),
     ("Output / Logging", [
         "logits_file", "logits_output_dir", "save_logits", "tensor_filter",
-        "verbosity", "out_file",
+        "verbosity", "out_file", "path_prompts_log_dir", "is_gen_docs",
     ]),
     ("Perplexity / Benchmarks", [
         "ppl_stride", "ppl_output_type",
@@ -508,7 +545,7 @@ COMMON_PARAMS_GROUPS = [
         "kl_divergence", "check",
     ]),
     ("Prompt / Input", [
-        "prompt", "prompt_file", "path_prompt_cache", "input_prefix", "input_suffix",
+        "prompt", "prompt_file", "system_prompt", "path_prompt_cache", "input_prefix", "input_suffix",
         "input_prefix_bos", "antiprompt", "in_files",
     ]),
     ("Retrieval / Passkey", [
@@ -520,24 +557,34 @@ COMMON_PARAMS_GROUPS = [
         "yarn_ext_factor", "yarn_attn_factor", "yarn_beta_fast", "yarn_beta_slow", "yarn_orig_ctx",
     ]),
     ("Server", [
-        "port", "hostnames", "public_path", "api_prefix",
+        "port", "hostnames", "reuse_port", "public_path", "api_prefix", "server_base",
+        "server_connect", "server_connect_code",
         "timeout_read", "timeout_write", "n_threads_http",
-        "n_cache_reuse", "cache_prompt", "cache_idle_slots", "n_ctx_checkpoints", "checkpoint_every_nt", "cache_ram_mib",
-        "chat_template", "use_jinja", "enable_chat_template",
+        "n_cache_reuse", "cache_prompt", "cache_idle_slots", "n_ctx_checkpoints",
+        "checkpoint_min_step", "kv_unified_per_slot", "cache_ram_mib", "cache_ram_explicit",
+        "chat_template", "use_jinja", "enable_chat_template", "force_pure_content_parser",
         "reasoning_format", "enable_reasoning",
         "prefill_assistant", "sleep_idle_seconds",
         "api_keys", "ssl_file_key", "ssl_file_cert",
-        "default_template_kwargs",
-        "webui", "webui_mcp_proxy", "webui_config_json",
+        "default_template_kwargs", "preserve_reasoning_specified",
+        "cors_origins", "cors_origins_explicit", "cors_methods", "cors_headers", "cors_credentials",
+        "ui", "ui_mcp_proxy", "ui_config_json",
+        "server_tools", "server_tools_runtime", "mcp_servers_config", "mcp_servers_json",
         "endpoint_slots", "endpoint_props", "endpoint_metrics",
-        "models_dir", "models_preset", "models_max", "models_autoload",
-        "log_json", "slot_save_path", "media_path", "slot_prompt_similarity",
+        "models_dir", "models_preset", "models_preset_hf", "models_max", "models_autoload",
+        "log_json", "slot_save_path", "media_path", "slot_prompt_similarity", "sse_ping_interval",
     ]),
     ("Sub-params", [
-        "sampling", "speculative", "vocoder", "diffusion",
+        "sampling", "speculative", "diffusion",
     ]),
     ("Tensor Buffer Overrides", [
         "tensor_buft_overrides",
+    ]),
+    ("Text-to-Speech", [
+        "tts_lang", "tts_speaker_file",
+    ]),
+    ("Tokenization", [
+        "tokenize_ids", "tokenize_stdin", "tokenize_no_bos", "tokenize_show_count",
     ]),
 ]
 
@@ -715,6 +762,9 @@ def _write_prop_row(
         # If the .pyx docstring is empty or shorter, prefer the C++ comment
         if cpp.comment and (not desc or len(desc) < len(cpp.comment)):
             desc = cpp.comment
+
+    if prop.python_default is not None:
+        default = prop.python_default
 
     # Manually curated descriptions take precedence over both sources
     override = FIELD_DESCRIPTIONS.get((cls_name, prop.name))
