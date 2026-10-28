@@ -793,6 +793,15 @@ cdef class CommonParamsSpeculativeDraft:
         self.p.n_gpu_layers = value
 
     @property
+    def n_ubatch(self) -> int:
+        """physical draft batch size; 0 uses the target context's batch size."""
+        return self.p.n_ubatch
+
+    @n_ubatch.setter
+    def n_ubatch(self, value: int):
+        self.p.n_ubatch = value
+
+    @property
     def cache_type_k(self) -> ggml_type:
         """data type for K cache"""
         return self.p.cache_type_k
@@ -2501,6 +2510,33 @@ cdef class CommonParams:
     @cache_ram_mib.setter
     def cache_ram_mib(self, value: int):
         self.p.cache_ram_mib = value
+
+    @property
+    def cache_ram_explicit(self) -> bool:
+        """whether the RAM cache size was explicitly configured."""
+        return self.p.cache_ram_explicit
+
+    @cache_ram_explicit.setter
+    def cache_ram_explicit(self, value: bool):
+        self.p.cache_ram_explicit = value
+
+    @property
+    def server_connect(self) -> bool:
+        """enable the optional llama-connect tunnel."""
+        return self.p.server_connect
+
+    @server_connect.setter
+    def server_connect(self, value: bool):
+        self.p.server_connect = value
+
+    @property
+    def server_connect_code(self) -> str:
+        """share code for llama-connect; empty generates a code at startup."""
+        return self.p.server_connect_code
+
+    @server_connect_code.setter
+    def server_connect_code(self, value: str):
+        self.p.server_connect_code = value
 
     @property
     def hostnames(self) -> list[str]:

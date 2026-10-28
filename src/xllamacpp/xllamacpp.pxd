@@ -449,6 +449,7 @@ cdef extern from "common.h":
         common_params_model mparams  # draft model parameters
 
         int32_t n_gpu_layers  # number of layers to store in VRAM for the draft model (-1 - use default)
+        int32_t n_ubatch  # physical batch size; 0 uses the target context
 
         ggml_type cache_type_k  # KV cache data type for the K
         ggml_type cache_type_v  # KV cache data type for the V
@@ -694,6 +695,10 @@ cdef extern from "common.h":
         int32_t kv_unified_per_slot # max context per parallel slot; 0 = unset
         int32_t checkpoint_min_step # minimum spacing between context checkpoints
         int32_t cache_ram_mib       # -1 = no limit, 0 - disable, 1 = 1 MiB, etc.
+
+        bint cache_ram_explicit
+        bint server_connect
+        std_string server_connect_code
 
         std_string public_path
         std_string api_prefix

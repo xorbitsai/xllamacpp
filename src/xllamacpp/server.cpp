@@ -1,4 +1,5 @@
 #include "json-schema-to-grammar.h"
+#include "server-connect.h"
 #include "server-context.h"
 #include "server-http.h"
 #include "server-mcp.h"
@@ -63,56 +64,9 @@ static server_http_context::handler_t ex_wrapper(server_http_context::handler_t 
     };
 }
 
-static void init(common_params &   params,
-                 server_context &  ctx_server,
-                 std::string &     listening_address,
-                 std::promise<int> out) {
-    // Do not call std::setlocale() in this Python extension module: it mutates
-    // the process-wide locale used by the host interpreter and other libraries.
-    // std::setlocale(LC_NUMERIC, "C");
-
-    common_log_set_verbosity_thold(params.verbosity);
-
-    common_init();
-
-    // Start the stream session manager GC right after common init, before any HTTP route can
-    // touch it. Lifecycle is symmetric: every exit after this point calls stop_gc().
-    server_stream_session_manager_start();
-
-    SRV_INF("%s", "initializing ...\n");
-
-    llama_backend_init();
-    llama_numa_init(params.numa);
-
-    SRV_INF("build_info: %s\n", llama_build_info());
-
-    common_models_handler models_handler;
-
-    // xllamacpp starts from already-populated common_params, not argc / argv,
-    // so keep the non-CLI server path active while mirroring llama.cpp's flow.
-    const bool is_run_by_cli = false;
-
-    // note: router mode also accepts -hf remote-preset, so we need to check that first
-    if (!is_run_by_cli && !params.model.hf_repo.empty()) {
-        try {
-            models_handler = common_models_handler_init(params, LLAMA_EXAMPLE_SERVER);
-            if (common_models_handler_is_preset_repo(models_handler)) {
-                // apply the preset and start the server in router mode
-                common_models_handler_apply(models_handler, params);
-            }
-        } catch (const std::exception & e) {
-            SRV_ERR("failed to fetch model metadata: %s\n", e.what());
-            server_stream_session_manager_stop();
-            llama_backend_free();
-            out.set_value(1);
-            return;
-        }
-    }
-
-    const bool is_router_server = false;
-    common_params_print_info(params, !is_router_server);
-
-    if (!is_router_server) {
+// adjust the params for the role; returns false on a configuration error
+static bool server_prepare_params(common_params & params, server_role_type role_type) {
+    if (role_type != SERVER_ROLE_ROUTER) {
         // validate batch size for embeddings
         // embeddings require all tokens to be processed in a single ubatch
         // see https://github.com/ggml-org/llama.cpp/issues/12836
@@ -142,83 +96,30 @@ static void init(common_params &   params,
     }
 
     // for consistency between server router mode and single-model mode, we set the same model name as alias
-    if (params.model_alias.empty() && !params.model.empty()) {
-        params.model_alias.insert(params.model.get_name());
+    auto model_name = params.model.get_name();
+    if (params.model_alias.empty() && !model_name.empty()) {
+        params.model_alias.insert(model_name);
     }
 
-    // This must outlive ctx_http and tools because their handlers can refer to it.
-    server_mcp mcp_mgr;
-
-    //
-    // Router
-    //
-
-    // register API routes
-    server_child  child;
-    server_routes routes(params, ctx_server);
-    server_tools  tools;
-
-    std::optional<server_models_routes> models_routes{};
-
-    server_http_context ctx_http;
-    if (!ctx_http.init(params)) {
-        SRV_ERR("%s", "failed to initialize HTTP server\n");
-        server_stream_session_manager_stop();
-        llama_backend_free();
-        out.set_value(1);
-        return;
-    }
-
-    if (is_router_server) {
-        // setup server instances manager
-        try {
-            models_routes.emplace(params, 0, nullptr);
-        } catch (const std::exception & e) {
-            SRV_ERR("failed to initialize router models: %s\n", e.what());
-            server_stream_session_manager_stop();
-            llama_backend_free();
-            out.set_value(1);
-            return;
+    // check early, so a missing llama-connect fails-fast
+    if (params.server_connect) {
+        const std::string reason = server_connect::unavailable_reason(params);
+        if (!reason.empty()) {
+            SRV_ERR("--connect is not available: %s\n", reason.c_str());
+            return false;
         }
-
-        // proxy handlers
-        // note: routes.get_health stays the same
-        routes.get_metrics                 = models_routes->proxy_get;
-        routes.post_props                  = models_routes->proxy_post;
-        routes.post_completions            = models_routes->proxy_post;
-        routes.post_completions_oai        = models_routes->proxy_post;
-        routes.post_chat_completions       = models_routes->proxy_post;
-        routes.post_control                = models_routes->proxy_post;
-        routes.post_responses_oai          = models_routes->proxy_post;
-        routes.post_transcriptions_oai     = models_routes->proxy_post;
-        routes.post_anthropic_messages     = models_routes->proxy_post;
-        routes.post_anthropic_count_tokens = models_routes->proxy_post;
-        routes.post_infill                 = models_routes->proxy_post;
-        routes.post_embeddings             = models_routes->proxy_post;
-        routes.post_embeddings_oai         = models_routes->proxy_post;
-        routes.post_rerank                 = models_routes->proxy_post;
-        routes.post_systemone              = models_routes->proxy_post;
-        routes.post_tokenize               = models_routes->proxy_post;
-        routes.post_detokenize             = models_routes->proxy_post;
-        routes.post_apply_template         = models_routes->proxy_post;
-        routes.post_chat_completions_tok   = models_routes->proxy_post;
-        routes.post_responses_tok_oai      = models_routes->proxy_post;
-        routes.get_lora_adapters           = models_routes->proxy_get;
-        routes.post_lora_adapters          = models_routes->proxy_post;
-        routes.get_slots                   = models_routes->proxy_get;
-        routes.post_slots                  = models_routes->proxy_post;
-
-        // custom routes for router
-        routes.get_props  = models_routes->get_router_props;
-        routes.get_models = models_routes->get_router_models;
-
-        ctx_http.post("/models", ex_wrapper(models_routes->post_router_models));
-        ctx_http.post("/models/load", ex_wrapper(models_routes->post_router_models_load));
-        ctx_http.post("/models/unload", ex_wrapper(models_routes->post_router_models_unload));
-        ctx_http.get("/models/sse", ex_wrapper(models_routes->get_router_models_sse));
-        ctx_http.del("/models", ex_wrapper(models_routes->del_router_models));
+        params.server_connect_code = server_connect::resolve_code(params.server_connect_code);
+    } else if (!params.server_connect_code.empty()) {
+        // the code is only meaningful while the tunnel runs, and /props keys off it being set
+        SRV_WRN("%s", "--connect-code is ignored without --connect\n");
+        params.server_connect_code.clear();
     }
 
+    return true;
+}
+
+// the API of every server; a router points the handlers in routes at its proxies before calling this
+static void server_register_routes(server_http_context & ctx_http, server_routes & routes) {
     ctx_http.get("/health", ex_wrapper(routes.get_health));     // public endpoint (no API key check)
     ctx_http.get("/v1/health", ex_wrapper(routes.get_health));  // public endpoint (no API key check)
     ctx_http.get("/metrics", ex_wrapper(routes.get_metrics));
@@ -236,6 +137,8 @@ static void init(common_params &   params,
     ctx_http.post("/responses", ex_wrapper(routes.post_responses_oai));
     ctx_http.post("/v1/audio/transcriptions", ex_wrapper(routes.post_transcriptions_oai));
     ctx_http.post("/audio/transcriptions", ex_wrapper(routes.post_transcriptions_oai));
+    ctx_http.post("/tts", ex_wrapper(routes.post_tts));
+    ctx_http.ws("/v1/realtime", routes.ws_realtime);
     ctx_http.post("/v1/messages", ex_wrapper(routes.post_anthropic_messages));  // anthropic messages API
     ctx_http.post("/infill", ex_wrapper(routes.post_infill));
     ctx_http.post("/embedding", ex_wrapper(routes.post_embeddings));            // legacy
@@ -263,29 +166,29 @@ static void init(common_params &   params,
     ctx_http.get("/slots", ex_wrapper(routes.get_slots));
     ctx_http.post("/slots/:id_slot", ex_wrapper(routes.post_slots));
 
-    // Resumable streaming: a child binds the local session factories, the router binds
-    // proxies that resolve the owning child. The conversation ID is a query parameter so
-    // model names containing slashes remain intact.
-    server_http_context::handler_t stream_get_h;
-    server_http_context::handler_t streams_lookup_h;
-    server_http_context::handler_t stream_delete_h;
-    if (is_router_server) {
-        stream_get_h     = models_routes->router_stream_get;
-        streams_lookup_h = models_routes->router_streams_lookup;
-        stream_delete_h  = models_routes->router_stream_delete;
-    } else {
-        stream_get_h     = server_stream_make_get_handler();
-        streams_lookup_h = server_stream_make_lookup_handler();
-        stream_delete_h  = server_stream_make_delete_handler();
-    }
-    ctx_http.get("/v1/stream", ex_wrapper(stream_get_h));
-    ctx_http.post("/v1/streams/lookup", ex_wrapper(streams_lookup_h));
-    ctx_http.del("/v1/stream", ex_wrapper(stream_delete_h));
-
     // Google Cloud Platform (Vertex AI) compat
     ctx_http.register_gcp_compat();
+}
 
-    // Return a stable response for features that are present but disabled.
+// resumable streaming, see server-stream.h: an instance binds the local session factories,
+// a router binds proxies that resolve the owning child
+static void server_register_stream_routes(server_http_context &                  ctx_http,
+                                          const server_http_context::handler_t & stream_get,
+                                          const server_http_context::handler_t & streams_lookup,
+                                          const server_http_context::handler_t & stream_delete) {
+    ctx_http.get("/v1/stream", ex_wrapper(stream_get));
+    ctx_http.post("/v1/streams/lookup", ex_wrapper(streams_lookup));
+    ctx_http.del("/v1/stream", ex_wrapper(stream_delete));
+}
+
+// the features behind a flag, and the warning about the ones that must not face untrusted clients
+// returns false when one of them fails to start
+static bool server_setup_features(server_http_context & ctx_http,
+                                  const common_params & params,
+                                  server_mcp &          mcp_mgr,
+                                  server_tools &        tools,
+                                  server_role_type      role_type) {
+    // return 403 for disabled features
     server_http_context::handler_t res_403 = [](const server_http_req &) {
         auto res    = std::make_unique<server_http_res>();
         res->status = 403;
@@ -305,12 +208,16 @@ static void init(common_params &   params,
                 "https://github.com/ggml-org/llama.cpp/pull/25655)\n");
     }
 
-    // CORS proxy (EXPERIMENTAL, only used by the Web UI for MCP)
     std::vector<std::string> warn_names;
-    if (is_router_server) {
+    if (role_type == SERVER_ROLE_ROUTER) {
         warn_names.push_back("router mode");
     }
 
+    if (params.server_connect) {
+        warn_names.push_back("peer-to-peer tunnel (llama-connect, experimental)");
+    }
+
+    // CORS proxy (EXPERIMENTAL, only used by the Web UI for MCP)
     if (params.ui_mcp_proxy) {
         ctx_http.get("/cors-proxy", ex_wrapper(proxy_handler_get));
         ctx_http.post("/cors-proxy", ex_wrapper(proxy_handler_post));
@@ -324,10 +231,7 @@ static void init(common_params &   params,
         mcp_mgr.start(params);
     } catch (const std::exception & e) {
         SRV_ERR("MCP starting failed: %s\n", e.what());
-        server_stream_session_manager_stop();
-        llama_backend_free();
-        out.set_value(1);
-        return;
+        return false;
     }
 
     if (!params.server_tools.empty() || !mcp_mgr.empty()) {
@@ -335,11 +239,7 @@ static void init(common_params &   params,
             tools.setup(params.server_tools, mcp_mgr, params.server_tools_runtime);
         } catch (const std::exception & e) {
             SRV_ERR("tools setup failed: %s\n", e.what());
-            mcp_mgr.shutdown();
-            server_stream_session_manager_stop();
-            llama_backend_free();
-            out.set_value(1);
-            return;
+            return false;
         }
         ctx_http.get("/tools", ex_wrapper(tools.handle_get));
         ctx_http.post("/tools", ex_wrapper(tools.handle_post));
@@ -368,177 +268,157 @@ static void init(common_params &   params,
         SRV_WRN("security: %s enabled - do not expose to untrusted environments\n", features.c_str());
     }
 
-    //
-    // Handle downloading model
-    //
+    return true;
+}
 
-    if (child.is_child() && child.get_mode() == SERVER_CHILD_MODE_DOWNLOAD) {
-        const int result = child.run_download(params);
-        mcp_mgr.shutdown();
-        server_stream_session_manager_stop();
-        llama_backend_free();
-        out.set_value(result);
-        return;
-    } else if (!is_router_server && !is_run_by_cli) {
-        // single-model mode (NOT spawned by router)
-        // if this is invoked by CLI, model downloading should be already handled
-        try {
-            common_models_handler_apply(models_handler, params);
-        } catch (const std::exception & e) {
-            SRV_ERR("failed to download model: %s\n", e.what());
-            mcp_mgr.shutdown();
-            server_stream_session_manager_stop();
-            llama_backend_free();
-            out.set_value(1);
-            return;
-        }
-    }
-
-    //
-    // Start the server
-    //
-
-    std::function<void()> clean_up;
-
-    if (is_router_server) {
-        SRV_INF("%s", "starting server in router mode. models will be automatically loaded on-demand\n");
-
-        clean_up = [&models_routes, &mcp_mgr]() {
-            SRV_INF("%s: cleaning up before exit...\n", __func__);
-            // Stop the session GC first so live readers are finalized before backend teardown.
-            server_stream_session_manager_stop();
-            if (models_routes.has_value()) {
-                models_routes->stopping.store(true);  // maybe redundant, but just to be safe
-                models_routes->models.unload_all();
-            }
-            mcp_mgr.shutdown();
-            llama_backend_free();
-        };
-
-        if (!ctx_http.start()) {
-            clean_up();
-            SRV_ERR("%s", "exiting due to HTTP server error\n");
-            out.set_value(1);
-            return;
-        }
-        ctx_http.is_ready.store(true);
-
-        shutdown_handler = [&](int) {
-            if (models_routes.has_value()) {
-                // important to disconnect any SSE clients
-                models_routes->stopping.store(true);
-            }
-            mcp_mgr.shutdown();
-            ctx_http.stop();
-        };
-
-        try {
-            models_routes->models.load_startup_models();
-        } catch (const std::exception & e) {
-            SRV_ERR("failed to load models on startup: %s\n", e.what());
-            ctx_http.stop();
-            ctx_http.join();
-            clean_up();
-            shutdown_handler = nullptr;
-            out.set_value(1);
-            return;
-        }
-
-    } else {
-        // setup clean up function, to be called before exit
-        clean_up = [&ctx_http, &ctx_server, &mcp_mgr]() {
-            SRV_INF("%s: cleaning up before exit...\n", __func__);
-            // Stop the session GC first so live readers are finalized before backend teardown.
-            server_stream_session_manager_stop();
-            ctx_http.stop();
-            ctx_server.terminate();
-            mcp_mgr.shutdown();
-            llama_backend_free();
-        };
-
-        // start the HTTP server before loading the model to be able to serve /health requests
-        if (!ctx_http.start()) {
-            clean_up();
-            SRV_ERR("%s", "exiting due to HTTP server error\n");
-            out.set_value(1);
-            return;
-        }
-
-        // load the model
-        SRV_INF("%s", "loading model\n");
-
-        if (child.is_child()) {
-            ctx_server.set_state_callback(
-                [&](server_state state, json payload) { child.notify_to_router(server_state_to_str(state), payload); });
-        }
-
-        if (!ctx_server.load_model(params)) {
-            clean_up();
-            ctx_http.join();
-            SRV_ERR("%s", "exiting due to model loading error\n");
-            out.set_value(1);
-            return;
-        }
-
-        routes.update_meta(ctx_server);
-        ctx_http.is_ready.store(true);
-
-        SRV_INF("%s", "model loaded\n");
-
-        shutdown_handler = [&](int) {
-            mcp_mgr.shutdown();
-            // this will unblock start_loop()
-            ctx_server.terminate();
-        };
-    }
-
-    // Do not install process-wide signal handlers in this Python extension module.
-
+// once the HTTP server listens: log the addresses and spawn llama-connect if asked, so the port is
+// bound and the child startup health check reaches us. the destructor of connect_proc stops it
+static bool server_on_listening(server_http_context & ctx_http,
+                                const common_params & params,
+                                server_connect &      connect_proc) {
     for (const auto & address : ctx_http.listening_addresses) {
         SRV_INF("listening on %s\n", address.c_str());
     }
 
-    if (is_router_server) {
-        if (!params.models_preset_hf.empty()) {
-            SRV_WRN("NOTE: using preset.ini from HF repo '%s'\n", params.models_preset_hf.c_str());
-            SRV_WRN("%s", "      please only use presets that you can trust! Unknown presets may be unsafe\n");
-        }
-        ctx_http.join();  // keep the main thread alive
+    if (params.server_connect && !connect_proc.start(params, ctx_http.port)) {
+        SRV_ERR("%s", "exiting due to llama-connect error\n");
+        return false;
+    }
+    return true;
+}
 
-        // when the HTTP server stops, clean up and exit
-        clean_up();
-    } else {
-        // optionally, notify router server that this instance is ready
-        std::thread monitor_thread;
-        if (child.is_child()) {
-            monitor_thread = child.setup(shutdown_handler);
-            child.notify_to_router(server_state_to_str(SERVER_STATE_READY), routes.get_model_info());
-        }
+static void init(common_params &   params,
+                 server_context &  ctx_server,
+                 std::string &     listening_address,
+                 std::promise<int> out) {
+    // Python owns the process locale and signal handlers.
+    common_log_set_verbosity_thold(params.verbosity);
+    common_init();
+    server_stream_session_manager_start();
 
-        // The Python API exposes one address; use the first active listener.
-        listening_address = ctx_http.listening_addresses.front();
+    SRV_INF("%s", "initializing ...\n");
+    llama_backend_init();
+    llama_numa_init(params.numa);
+    SRV_INF("build_info: %s\n", llama_build_info());
 
-        out.set_value(0);
+    auto clean_up_globals = []() {
+        server_stream_session_manager_stop();
+        llama_backend_free();
+        shutdown_handler = nullptr;
+    };
 
-        // this call blocks the main thread until queue_tasks.terminate() is called
-        ctx_server.start_loop();
-
-        clean_up();
-        ctx_http.join();
-        if (monitor_thread.joinable()) {
-            monitor_thread.join();
-        }
-
-        // crash during common_memory_breakdown_print if the model is rerank.
-        auto * ll_ctx = ctx_server.get_llama_context();
-        if (ll_ctx != nullptr && params.pooling_type != LLAMA_POOLING_TYPE_RANK) {
-            common_memory_breakdown_print(ll_ctx);
+    common_models_handler models_handler;
+    if (!params.model.hf_repo.empty()) {
+        try {
+            models_handler = common_models_handler_init(params, LLAMA_EXAMPLE_SERVER);
+            if (common_models_handler_is_preset_repo(models_handler)) {
+                common_models_handler_apply(models_handler, params);
+            }
+        } catch (const std::exception & e) {
+            SRV_ERR("failed to fetch model metadata: %s\n", e.what());
+            clean_up_globals();
+            out.set_value(1);
+            return;
         }
     }
 
-    // init() runs on the Python Server thread; clear the process-wide handler
-    // before its lambdas can outlive ctx_http / ctx_server stack references.
-    shutdown_handler = nullptr;
+    // Server requires a model path; router and download-worker roles are CLI-only.
+    common_params_print_info(params, true);
+    if (!server_prepare_params(params, SERVER_ROLE_INSTANCE)) {
+        clean_up_globals();
+        out.set_value(1);
+        return;
+    }
+
+    // Resolve model files before initializing HTTP and tools, as upstream does.
+    try {
+        common_models_handler_apply(models_handler, params);
+    } catch (const std::exception & e) {
+        SRV_ERR("failed to download model: %s\n", e.what());
+        clean_up_globals();
+        out.set_value(1);
+        return;
+    }
+
+    // These objects outlive the HTTP handlers that capture them.
+    server_mcp          mcp_mgr;
+    server_routes       routes(params, ctx_server);
+    server_tools        tools;
+    server_http_context ctx_http;
+
+    auto clean_up = [&]() {
+        SRV_INF("%s: cleaning up before exit...\n", __func__);
+        server_stream_session_manager_stop();
+        ctx_http.stop();
+        ctx_server.terminate();
+        mcp_mgr.shutdown();
+        llama_backend_free();
+        shutdown_handler = nullptr;
+    };
+
+    if (!ctx_http.init(params)) {
+        SRV_ERR("%s", "failed to initialize HTTP server\n");
+        clean_up();
+        out.set_value(1);
+        return;
+    }
+
+    server_register_routes(ctx_http, routes);
+    server_register_stream_routes(ctx_http, server_stream_make_get_handler(), server_stream_make_lookup_handler(),
+                                  server_stream_make_delete_handler());
+
+    if (!server_setup_features(ctx_http, params, mcp_mgr, tools, SERVER_ROLE_INSTANCE)) {
+        clean_up();
+        out.set_value(1);
+        return;
+    }
+
+    // Serve /health while the model loads.
+    if (!ctx_http.start()) {
+        clean_up();
+        SRV_ERR("%s", "exiting due to HTTP server error\n");
+        out.set_value(1);
+        return;
+    }
+
+    if (!ctx_server.load_model(params)) {
+        clean_up();
+        ctx_http.join();
+        SRV_ERR("%s", "exiting due to model loading error\n");
+        out.set_value(1);
+        return;
+    }
+
+    routes.update_meta(ctx_server);
+    ctx_http.is_ready.store(true);
+    SRV_INF("%s", "model loaded\n");
+
+    shutdown_handler = [&](int) {
+        mcp_mgr.shutdown();
+        ctx_server.terminate();
+    };
+
+    server_connect connect_proc;
+    if (!server_on_listening(ctx_http, params, connect_proc)) {
+        ctx_http.stop();
+        ctx_http.join();
+        clean_up();
+        out.set_value(1);
+        return;
+    }
+
+    listening_address = ctx_http.listening_addresses.front();
+    out.set_value(0);
+    ctx_server.start_loop();
+
+    clean_up();
+    ctx_http.join();
+
+    // Rerank contexts cannot use common_memory_breakdown_print.
+    auto * ll_ctx = ctx_server.get_llama_context();
+    if (ll_ctx != nullptr && params.pooling_type != LLAMA_POOLING_TYPE_RANK) {
+        common_memory_breakdown_print(ll_ctx);
+    }
 }
 
 static void ggml_log_callback_default(enum ggml_log_level level, const char * text, void * user_data) {

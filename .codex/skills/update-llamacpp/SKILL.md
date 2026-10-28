@@ -1,13 +1,13 @@
 ---
 name: update-llamacpp
-description: Update this xllamacpp repository's vendored llama.cpp checkout. Use when Codex is asked to refresh, update, or sync thirdparty/llama.cpp to the latest upstream tag, including rolling b-number tags such as b10566, or to an explicitly requested stable SemVer release; also handles nested submodules, tag refresh, builds, Cython compatibility, and generated llama-server synchronization.
+description: Update this xllamacpp repository's vendored llama.cpp checkout. Use when Codex is asked to refresh, update, or sync thirdparty/llama.cpp to the latest upstream tag, including rolling b-number tags such as b10566, or to an explicitly requested stable SemVer release; also handles nested submodules, tag refresh, builds, Cython compatibility, generated llama-server synchronization, and parameter documentation regeneration.
 ---
 
 # Update llama.cpp
 
 ## Overview
 
-Use this skill to update the vendored `thirdparty/llama.cpp` checkout to the latest upstream tag. By default, "latest" means the highest exact rolling build tag (`bNUMBER`, for example `b10566`), falling back to the highest exact stable SemVer tag (`vMAJOR.MINOR.PATCH`, for example `v0.2.0`) only when no rolling tags exist. Use the stable channel only when the user explicitly asks for a stable or SemVer release. A stable release and a rolling tag can point to the same commit. The checkout update is automated by `scripts/update_xllamacpp.sh`; upstream tag refresh is automated by `scripts/update_llamacpp_tags.sh`; release-channel comparison is automated by `scripts/check_latest_llamacpp_tag.sh`; xllamacpp build verification is automated by `scripts/build_xllamacpp.sh`; header binding review is assisted by `scripts/check_header_field_bindings.py`. The workflow also audits generated `src/llama.cpp/src/server.cpp` changes against the owned `src/xllamacpp/server.cpp` wrapper.
+Use this skill to update the vendored `thirdparty/llama.cpp` checkout to the latest upstream tag. By default, "latest" means the highest exact rolling build tag (`bNUMBER`, for example `b10566`), falling back to the highest exact stable SemVer tag (`vMAJOR.MINOR.PATCH`, for example `v0.2.0`) only when no rolling tags exist. Use the stable channel only when the user explicitly asks for a stable or SemVer release. A stable release and a rolling tag can point to the same commit. The checkout update is automated by `scripts/update_xllamacpp.sh`; upstream tag refresh is automated by `scripts/update_llamacpp_tags.sh`; release-channel comparison is automated by `scripts/check_latest_llamacpp_tag.sh`; xllamacpp build verification is automated by `scripts/build_xllamacpp.sh`; header binding review is assisted by `scripts/check_header_field_bindings.py`. The workflow also audits generated `src/llama.cpp/src/server.cpp` changes against the owned `src/xllamacpp/server.cpp` wrapper and refreshes `params_reference.md` using the repository-level `scripts/generate_params_doc.py`.
 
 ## Workflow
 
@@ -106,13 +106,21 @@ Use this skill to update the vendored `thirdparty/llama.cpp` checkout to the lat
    ```
 
 25. Fix all test failures caused by the update. Do not treat sandbox-only local socket binding failures or native backend initialization failures as project regressions until the same test also fails outside the sandbox.
-26. After the build and tests pass, create the local working branch `enh/update_llama_cpp` from the current repository state. If a local branch with that name already exists, delete it first:
+26. Review `scripts/generate_params_doc.py` against the pinned `thirdparty/llama.cpp/common/common.h` and the updated `src/xllamacpp/xllamacpp.pyx`. Sync class/struct mappings, property groups, and curated descriptions with added, renamed, or removed bindings. Check that header syntax (including multiline initializers) is parsed correctly and Python constructor overrides take precedence over upstream defaults.
+27. Regenerate the parameter reference from the repository root after binding changes are complete:
+
+   ```bash
+   python3 scripts/generate_params_doc.py
+   ```
+
+   Review `git diff -- scripts/generate_params_doc.py params_reference.md`. Verify newly bound fields appear with the correct types, defaults, and descriptions, removed bindings are absent, and all exposed configuration properties are documented. If the generator changed, run `python3 -m pytest tests/test_generate_params_doc.py`. Regenerate a second time and confirm the output is unchanged.
+28. After the build, tests, and documentation checks pass, create the local working branch `enh/update_llama_cpp` from the current repository state. If a local branch with that name already exists, delete it first:
 
    ```bash
    git branch -D enh/update_llama_cpp
    git switch -c enh/update_llama_cpp
    ```
-27. Tell the user the update work is done. Summarize the work, especially the llama.cpp tag and commit, binding changes, server-wrapper synchronization and intentional divergences, and build/test results. Ask the user to review the changes and commit manually.
+29. Tell the user the update work is done. Summarize the work, especially the llama.cpp tag and commit, binding changes, server-wrapper synchronization and intentional divergences, parameter documentation changes, and build/test results. Ask the user to review the changes and commit manually.
 
 ## Guardrails
 
@@ -138,3 +146,4 @@ Use this skill to update the vendored `thirdparty/llama.cpp` checkout to the lat
 - Only delete the local `enh/update_llama_cpp` branch when recreating the update branch. Do not delete any remote branch unless the user explicitly asks.
 - Do not create a commit as part of this skill unless the user explicitly asks. End with a summary of the work, including the updated llama.cpp tag/commit, then prompt the user to review the changes and commit manually.
 - Treat `scripts/check_header_field_bindings.py` as a review aid, not an automatic patcher. Verify each reported field or enum member against the header and bindings before editing Cython code.
+- Generate `params_reference.md` from the updated bindings and the pinned vendored header. Fix stale generator metadata or parsing rather than editing the generated reference by hand.

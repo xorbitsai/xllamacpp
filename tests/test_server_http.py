@@ -7,6 +7,7 @@ import pytest
 import requests
 import threading
 from typing import Dict, Any
+from contextlib import closing
 
 import xllamacpp as xlc
 
@@ -29,6 +30,7 @@ class TestServerHTTP:
         params.cpuparams.n_threads = 2
         params.cpuparams_batch.n_threads = 2
         params.endpoint_metrics = True
+        params.server_connect_code = "ignored-without-connect"
         params.sleep_idle_seconds = 1  # Set sleep time to 1 second for testing
 
         # Create server instance - this automatically starts the HTTP server
@@ -94,6 +96,7 @@ class TestServerHTTP:
         assert response.status_code == 200
         data = response.json()
         assert "build_info" in data
+        assert "connect_code" not in data
 
     def test_metrics_endpoint(self, server_url):
         """Test metrics endpoint"""
@@ -106,6 +109,23 @@ class TestServerHTTP:
         response = requests.post(f"{server_url}/v1/systemone", json={})
         assert response.status_code == 501
         assert response.json()["error"]["type"] == "not_supported_error"
+
+    def test_tts_rejects_non_audio_model(self, server_url):
+        response = requests.post(f"{server_url}/tts", json={"input": "Hello"})
+        assert response.status_code == 501
+        assert response.json()["error"]["type"] == "not_supported_error"
+
+    def test_realtime_rejects_non_audio_model(self, server_url):
+        websocket = pytest.importorskip("websocket")
+        with closing(
+            websocket.create_connection(
+                server_url.replace("http://", "ws://") + "/v1/realtime", timeout=5
+            )
+        ) as connection:
+            event = json.loads(connection.recv())
+            assert event["type"] == "error"
+            assert event["error"]["type"] == "invalid_request_error"
+            assert "realtime transcription" in event["error"]["message"]
 
     def test_completion_endpoints(self, server_url):
         """Test text completion endpoints"""

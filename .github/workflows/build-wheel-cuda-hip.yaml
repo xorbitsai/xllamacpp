@@ -37,13 +37,17 @@ jobs:
           # ROCm 6.4.1: RDNA2 + RDNA3 only.
           - hip: "6.4.1"
             amdgpu_targets: "gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102"
-          # ROCm 7.2.4: adds RDNA3.5 (Strix Halo gfx1150/51), RDNA4
-          # (gfx1200/01), CDNA4 (gfx950 / MI350X).
+            # ROCm 6.x requires an opt-in for the synchronized ballot used by
+            # grouped-expert fusion. ROCm 7.x enables it by default.
+            cmake_args: "-DCMAKE_HIP_FLAGS=-DHIP_ENABLE_WARP_SYNC_BUILTINS=1"
+          # Include the CDNA targets from upstream .devops/rocm.Dockerfile,
+          # plus our existing RDNA2 variants and CDNA4 target.
           - hip: "7.2.4"
-            amdgpu_targets: "gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102;gfx1150;gfx1151;gfx1200;gfx1201;gfx950"
+            amdgpu_targets: "gfx908;gfx90a;gfx942;gfx1030;gfx1031;gfx1032;gfx1100;gfx1101;gfx1102;gfx1150;gfx1151;gfx1200;gfx1201;gfx950"
+            cmake_args: ""
     env:
       AMDGPU_TARGETS: ${{ matrix.amdgpu_targets }}
-      GGML_HIP_ROCWMMA_FATTN: "ON"
+      CMAKE_ARGS: ${{ matrix.cmake_args }}
       # The ROCm images keep the compiler in a versioned prefix. /opt/rocm
       # contains runtime libraries, but is not a complete SDK in every image.
       ROCM_PATH: /opt/rocm-${{ matrix.hip }}
@@ -93,7 +97,7 @@ jobs:
             set -euxo pipefail
             df -ha
             apt-get update
-            apt-get install -y build-essential git libcurl4-openssl-dev libssl-dev rocblas-dev hipblas-dev rocwmma-dev curl python3-pip
+            apt-get install -y build-essential git libssl-dev rocblas-dev hipblas-dev curl python3-pip
             # hip-dev owns lib/cmake/hip-lang. Reinstall it once, while this
             # explicitly-root exec is doing all system package mutations.
             apt-get install -y --reinstall hip-dev
@@ -151,8 +155,8 @@ jobs:
                      -e HIP_PATH=$ROCM_PATH \
                      -e CMAKE_HIP_COMPILER=$CMAKE_HIP_COMPILER \
                      -e CMAKE_HIP_COMPILER_ROCM_LIB=$ROCM_PATH/lib \
+                     -e CMAKE_ARGS="$CMAKE_ARGS" \
                      -e AMDGPU_TARGETS=$AMDGPU_TARGETS \
-                     -e GGML_HIP_ROCWMMA_FATTN=$GGML_HIP_ROCWMMA_FATTN \
                      -e PATH=/opt/xllamacpp-python/bin:/root/.cargo/bin:$ROCM_PATH/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
                      rocm-container bash -c '
             set -euxo pipefail
@@ -416,20 +420,21 @@ jobs:
         cuda: ["12.8.1", "13.2.0"]
         include:
           # Per-CUDA-version GPU architecture lists, mirroring the upstream
-          # llama.cpp *release* default (ggml/src/ggml-cuda/CMakeLists.txt,
-          # GGML_NATIVE=OFF branch). Without this, build.py falls back to
-          # "all" (every arch the toolkit supports), which is far slower than
-          # needed. Applies to both x86_64 and arm64 hosts (sm_XX is the GPU
-          # arch, independent of host CPU). 121a needs CUDA >= 12.9.
+          # llama.cpp release default (ggml/src/ggml-cuda/CMakeLists.txt,
+          # GGML_NATIVE=OFF branch), with native Turing code for CUDA 13.
+          # Local builds instead use "native". These targets apply to both
+          # x86_64 and arm64 hosts. 121a needs CUDA >= 12.9.
           - cuda: "12.8.1"
-            cuda_arch: "50-virtual;61-virtual;70-virtual;75-virtual;80-virtual;86-real;89-real;120a-real"
+            cuda_arch: "50-virtual;61-virtual;70-virtual;75-virtual;80-virtual;86-real;89-real;90-virtual;120a-real"
           - cuda: "13.2.0"
-            cuda_arch: "75-real;80-virtual;86-real;89-real;120a-real;121a-real"
+            cuda_arch: "75-real;80-virtual;86-real;89-real;90-virtual;120a-real;121a-real"
     env:
       CUDAVER: ${{ matrix.cuda }}
       # CUDA target architectures (PTX vs SASS, per-arch GPU map and rationale):
       # see the detailed reference in the build_wheels_cuda_windows job below.
       CUDA_ARCHITECTURES: ${{ matrix.cuda_arch }}
+      # Match upstream .github/workflows/release.yml for toolkits below 13.5.
+      CMAKE_ARGS: "-DGGML_CUDA_CCCL_VERSION=v3.4.3 -DGGML_CUDA_NCCL=OFF"
 
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -609,7 +614,7 @@ jobs:
           # CMAKE_ARGS is picked up by scripts/build.py to pass to CMake
           # -DCMAKE_CUDA_HOST_COMPILER ensures nvcc also uses system g++ for
           # host-side compilation, preventing CXXABI_1.3.15 from CUDA objects.
-          export CMAKE_ARGS="-DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++"
+          export CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++"
           echo "=== Forcing system compiler to avoid CXXABI_1.3.15 dependency ==="
           echo "CC=$CC"
           echo "CXX=$CXX"
@@ -686,25 +691,25 @@ jobs:
           # CUDA 12.x still supports Maxwell/Pascal/Volta; 121a needs CUDA >= 12.9
           # so it is NOT included for 12.8.
           - cuda: "12.8.1"
-            cuda_arch: "50-virtual;61-virtual;70-virtual;75-virtual;80-virtual;86-real;89-real;120a-real"
+            cuda_arch: "50-virtual;61-virtual;70-virtual;75-virtual;80-virtual;86-real;89-real;90-virtual;120a-real"
           # CUDA 13 dropped Maxwell/Pascal/Volta; 121a-real is available.
           # Turing is 75-real here, not 75-virtual (see the notes below).
           - cuda: "13.2.0"
-            cuda_arch: "75-real;80-virtual;86-real;89-real;120a-real;121a-real"
+            cuda_arch: "75-real;80-virtual;86-real;89-real;90-virtual;120a-real;121a-real"
     defaults:
       run:
         shell: bash
     env:
       CUDAVER: ${{ matrix.cuda }}
+      # Match upstream .github/workflows/release.yml for toolkits below 13.5.
+      CMAKE_ARGS: "-DGGML_CUDA_CCCL_VERSION=v3.4.3 -DGGML_CUDA_NCCL=OFF"
       # ----------------------------------------------------------------------
       # CUDA target architectures (canonical reference; the Linux job points here)
       # ----------------------------------------------------------------------
       # Why pin this: the Windows runner has only 4 vCPUs, so CUDA compile time
-      # scales with the number of code-gen outputs. build.py would otherwise
-      # auto-detect archs via `nvcc --list-gpu-arch` -> 12 *bare* archs for
-      # CUDA 13, and a bare arch tells CMake to emit BOTH SASS and PTX, i.e.
-      # 24 code-gen outputs per .cu file. Across ~138 .cu files that blows past
-      # GitHub's 6-hour job limit. The lists below produce only ~6-8 outputs.
+      # scales with the number of code-gen outputs. A bare arch tells CMake
+      # to emit BOTH SASS and PTX, so list the required form explicitly.
+      # The lists below produce only 7-9 outputs per .cu file.
       #
       # PTX vs SASS (what the suffixes mean):
       #   * <arch>-real    = SASS:  native machine code (cubin) for exactly that
@@ -721,7 +726,8 @@ jobs:
       # PTX -> JIT; else load fails (CUDA error 209, no kernel image). So at
       # least one -virtual entry is REQUIRED for any GPU we do not ship SASS for.
       #
-      # These lists mirror the upstream llama.cpp *release* default
+      # These lists follow the upstream llama.cpp release default, with
+      # native Turing code for CUDA 13 to support older CUDA 13 drivers
       # (ggml/src/ggml-cuda/CMakeLists.txt, GGML_NATIVE=OFF branch):
       #
       #   arch   kind   GPUs                         runtime
@@ -731,11 +737,11 @@ jobs:
       #   70     PTX    Volta   (V100)               JIT      (CUDA 12 only)
       #   75     PTX    Turing  (RTX 20xx, T4)       JIT      (CUDA 12)
       #          SASS                                native   (CUDA 13)
-      #   80     PTX    Ampere DC (A100)             JIT; also forward-covers
-      #                                              Hopper(90) & Blackwell DC
-      #                                              (100/103) via JIT
+      #   80     PTX    Ampere DC (A100)             JIT
       #   86     SASS   Ampere  (RTX 30xx, A10/A40)  native
       #   89     SASS   Ada     (RTX 40xx, L4/L40)   native
+      #   90     PTX    Hopper (H100/H200)           JIT; also covers
+      #                                              Blackwell DC (100/103)
       #   120a   SASS   Blackwell (RTX 50xx)         native   (CUDA >= 12.8)
       #   121a   SASS   Blackwell variant            native   (CUDA >= 12.9)
       #
@@ -749,8 +755,7 @@ jobs:
       #     as 75-real there. 75-virtual only ever served sm_75 anyway, since
       #     80-virtual covers 8.0 and up.
       #   * Native SASS is shipped only for mainstream consumer cards; datacenter
-      #     parts (A100/Hopper/Blackwell-DC) run via JIT from the 80-virtual PTX.
-      #     Add 90-real / 100-real if native datacenter perf is desired.
+      #     parts use PTX: 80-virtual for A100, 90-virtual for Hopper/Blackwell DC.
       #   * Local builds (CUDA_ARCHITECTURES unset) instead use CMake's "native"
       #     for native SASS on the GPUs detected on the build machine. This keeps
       #     local builds fast and optimized for that hardware, but the resulting

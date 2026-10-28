@@ -325,6 +325,15 @@ def test_common_params():
     params.checkpoint_min_step = 100
     assert params.checkpoint_min_step == 100
     assert params.cache_ram_mib == 8192
+    assert params.cache_ram_explicit is False
+    params.cache_ram_explicit = True
+    assert params.cache_ram_explicit is True
+    assert params.server_connect is False
+    params.server_connect = True
+    assert params.server_connect is True
+    assert params.server_connect_code == ""
+    params.server_connect_code = "A" * 40
+    assert params.server_connect_code == "A" * 40
 
     assert params.hostnames == ["127.0.0.1"]
     params.hostnames = ["127.0.0.1", "::1"]
@@ -522,6 +531,9 @@ def test_common_params():
     assert params.sampling.samplers == sp
     params.sampling.samplers = "top_k;top_p;min_p;temperature;dry;typ_p;xtc"
     assert params.sampling.samplers == "top_k;top_p;min_p;temperature;dry;typ_p;xtc"
+    assert params.speculative.draft.n_ubatch == 0
+    params.speculative.draft.n_ubatch = 64
+    assert params.speculative.draft.n_ubatch == 64
     assert params.speculative.draft.cache_type_k == xlc.ggml_type.GGML_TYPE_F16
     assert params.speculative.draft.cache_type_v == xlc.ggml_type.GGML_TYPE_F16
     assert params.speculative.draft.backend_sampling is True

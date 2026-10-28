@@ -274,7 +274,6 @@ def build_llamacpp() -> None:
         "-DBUILD_SHARED_LIBS=OFF",
         "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
         "-DCMAKE_INSTALL_LIBDIR=lib",
-        "-DLLAMA_CURL=OFF",
         "-DLLAMA_LLGUIDANCE=ON",
         "-DLLAMA_BUILD_BORINGSSL=ON",
         "-DLLAMA_OPENSSL=OFF",
@@ -325,7 +324,6 @@ def build_llamacpp() -> None:
         cmake_args.extend(
             [
                 "-DGGML_CUDA=ON",
-                "-DGGML_CUDA_FORCE_MMQ=ON",
                 f"-DCMAKE_CUDA_ARCHITECTURES={cuda_archs}",
             ]
         )
@@ -338,12 +336,6 @@ def build_llamacpp() -> None:
         amdgpu_targets = os.environ.get("AMDGPU_TARGETS") or (
             "gfx1100;gfx1101;gfx1102;gfx1030;gfx1031;gfx1032"
         )
-        # ROCWMMA flash attention provides significant performance gains
-        # on supported archs. CI sets this per version; local builds
-        # default to ON. gfx12 support requires ROCm 7.0+ (PR #14202),
-        # and the warp mask compile issue is fixed in our submodule
-        # (PR #15273).
-        rocwmma = os.environ.get("GGML_HIP_ROCWMMA_FATTN") or "ON"
         # CMake >= 3.31 aborts enable_language(HIP) unless it finds the HIP
         # runtime CMake package below the ROCm root it is given, and its own
         # detection can pick a prefix that only has the ROCm runtime
@@ -381,7 +373,6 @@ def build_llamacpp() -> None:
             else:
                 root_lib = hip_package_lib_dir(root)
         log(f"Using AMDGPU targets: {amdgpu_targets}")
-        log(f"ROCWMMA flash attention: {rocwmma}")
         log(f"Using ROCm root: {root} (HIP CMake package directory: {root_lib})")
         cmake_args.extend(
             [
@@ -393,7 +384,6 @@ def build_llamacpp() -> None:
                 # hip-lang_DIR and skips CMake's own prefix probe.
                 f"-DCMAKE_HIP_COMPILER_ROCM_ROOT={root}",
                 f"-DCMAKE_HIP_COMPILER_ROCM_LIB={root_lib}",
-                f"-DGGML_HIP_ROCWMMA_FATTN={rocwmma}",
                 "-DGGML_HIP=ON",
             ]
         )

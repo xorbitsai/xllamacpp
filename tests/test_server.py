@@ -91,6 +91,61 @@ def test_llama_server_keeps_explicit_n_threads():
     assert params.speculative.draft.cpuparams_batch.n_threads == 5
 
 
+def test_model_download_precedes_http_init(model_path, tmp_path):
+    import socket
+    import subprocess
+
+    # Server construction holds the GIL, so serve downloads in another process.
+    download_server = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "from functools import partial; "
+            "from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer; "
+            "import sys; "
+            "server = ThreadingHTTPServer(('127.0.0.1', 0), "
+            "partial(SimpleHTTPRequestHandler, directory=sys.argv[1])); "
+            "print(server.server_port, flush=True); server.serve_forever()",
+            model_path,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    download_port = int(download_server.stdout.readline())
+    downloaded = tmp_path / "downloaded.gguf"
+    params = xlc.CommonParams()
+    params.model.path = str(downloaded)
+    params.model.url = (
+        f"http://127.0.0.1:{download_port}/stories15M-q4_0.gguf"
+    )
+    params.n_ctx = 256
+    params.n_parallel = 1
+    params.cpuparams.n_threads = 2
+    params.cpuparams_batch.n_threads = 2
+    params.warmup = False
+    try:
+        # A bind failure must happen after the model has been downloaded.
+        with socket.socket() as occupied:
+            occupied.bind(("127.0.0.1", 0))
+            occupied.listen()
+            params.port = occupied.getsockname()[1]
+            with pytest.raises(RuntimeError, match="Failed to init server"):
+                xlc.Server(params)
+        assert downloaded.stat().st_size == os.path.getsize(
+            os.path.join(model_path, "stories15M-q4_0.gguf")
+        )
+    finally:
+        download_server.terminate()
+        download_server.wait(timeout=5)
+        download_server.stdout.close()
+
+    params.model.url = ""
+    params.port = 0
+    server = xlc.Server(params)
+    assert server.listening_address.startswith("http://127.0.0.1:")
+
+
 def test_llama_server(model_path):
     params = xlc.CommonParams()
 
