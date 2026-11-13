@@ -99,6 +99,11 @@ CLASS_DESCRIPTIONS = {
 FIELD_DESCRIPTIONS: dict[tuple[str, str], str] = {
     ("CommonParams", "port"):
         "Server listening port; 0 selects an available port automatically.",
+    ("CommonParamsModel", "shards"):
+        "Additional local shard paths for a split GGUF model; the primary path is included automatically.",
+    ("CommonParams", "models_memory_margin"):
+        "MiB of device memory to keep free when loading router models (0 disables accounting). "
+        "Router mode is disabled in the Python Server API.",
     # -- CommonParamsSpeculative ------------------------------------------------
     ("CommonParamsSpeculative", "types"):
         "List of speculative decoding methods to enable. Draft-model-free methods: "
@@ -511,7 +516,7 @@ COMMON_PARAMS_GROUPS = [
         "n_gpu_layers", "main_gpu", "tensor_split", "split_mode",
         "fit_params", "fit_params_print", "fit_params_min_ctx", "fit_params_target",
         "no_kv_offload", "no_op_offload", "no_extra_bufts", "no_host",
-        "moe_cache_size",
+        "moe_cache_size", "moe_cache_cpu_share",
     ]),
     ("IMatrix", [
         "n_out_freq", "n_save_freq", "i_chunk", "imat_dat",
@@ -569,10 +574,10 @@ COMMON_PARAMS_GROUPS = [
         "default_template_kwargs", "preserve_reasoning_specified",
         "cors_origins", "cors_origins_explicit", "cors_methods", "cors_headers", "cors_credentials",
         "ui", "ui_mcp_proxy", "ui_config_json",
-        "server_tools", "server_tools_runtime", "mcp_servers_config", "mcp_servers_json",
+        "server_tools", "server_tools_runtime", "server_tools_allow_unauth", "mcp_servers_config", "mcp_servers_json",
         "endpoint_slots", "endpoint_props", "endpoint_metrics",
-        "models_dir", "models_preset", "models_preset_hf", "models_max", "models_autoload",
-        "log_json", "slot_save_path", "media_path", "slot_prompt_similarity", "sse_ping_interval",
+        "models_dir", "models_preset", "models_preset_hf", "models_max", "models_memory_margin", "models_autoload",
+        "log_json", "slot_save_path", "media_path", "media_allow_private_urls", "slot_prompt_similarity", "sse_ping_interval",
     ]),
     ("Sub-params", [
         "sampling", "speculative", "diffusion",
@@ -581,7 +586,7 @@ COMMON_PARAMS_GROUPS = [
         "tensor_buft_overrides",
     ]),
     ("Text-to-Speech", [
-        "tts_lang", "tts_speaker_file",
+        "tts_lang", "tts_voice", "tts_speaker_file",
     ]),
     ("Tokenization", [
         "tokenize_ids", "tokenize_stdin", "tokenize_no_bos", "tokenize_show_count",
@@ -759,6 +764,8 @@ def _write_prop_row(
 
     if cpp:
         default = _clean_default(cpp.default)
+        if not default and ptype.startswith("list") and cpp.cpp_type.startswith("std::vector<"):
+            default = "[]"
         # If the .pyx docstring is empty or shorter, prefer the C++ comment
         if cpp.comment and (not desc or len(desc) < len(cpp.comment)):
             desc = cpp.comment

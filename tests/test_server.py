@@ -91,6 +91,47 @@ def test_llama_server_keeps_explicit_n_threads():
     assert params.speculative.draft.cpuparams_batch.n_threads == 5
 
 
+def test_native_auto_fit_can_reduce_gpu_layers(model_path):
+    import re
+    import subprocess
+
+    gpu_types = {
+        xlc.ggml_backend_dev_type.GGML_BACKEND_DEVICE_TYPE_GPU,
+        xlc.ggml_backend_dev_type.GGML_BACKEND_DEVICE_TYPE_IGPU,
+    }
+    if not any(device["type"] in gpu_types for device in xlc.get_device_info()):
+        pytest.skip("native GPU layer fitting requires a GPU backend")
+
+    script = """
+import sys
+import xllamacpp as xlc
+
+params = xlc.CommonParams()
+params.model.path = sys.argv[1]
+params.n_ctx = 128
+params.n_parallel = 1
+params.cpuparams.n_threads = 2
+params.cpuparams_batch.n_threads = 2
+params.warmup = False
+params.verbosity = 5
+# Request more headroom than any test GPU has, without allocating that memory.
+params.fit_params_target = [1 << 50] * len(params.fit_params_target)
+server = xlc.Server(params)
+del server
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, os.path.join(model_path, "stories15M-q4_0.gguf")],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "successfully fit params to free device memory" in result.stderr
+    assert "failed to fit params" not in result.stderr
+    offloads = re.findall(r"offloaded (\d+)/\d+ layers to GPU", result.stderr)
+    assert offloads and offloads[-1] == "0", result.stderr
+
+
 def test_model_download_precedes_http_init(model_path, tmp_path):
     import socket
     import subprocess
@@ -144,6 +185,68 @@ def test_model_download_precedes_http_init(model_path, tmp_path):
     params.port = 0
     server = xlc.Server(params)
     assert server.listening_address.startswith("http://127.0.0.1:")
+
+
+@pytest.mark.parametrize(
+    "feature,value",
+    [
+        ("server_tools", ["bash"]),
+        ("mcp_servers_config", "missing-mcp.json"),
+        ("mcp_servers_json", "{}"),
+        ("ui_mcp_proxy", True),
+    ],
+)
+def test_network_tools_require_authentication(model_path, capfd, feature, value):
+    import time
+
+    params = xlc.CommonParams()
+    params.model.path = os.path.join(model_path, "stories15M-q4_0.gguf")
+    params.hostnames = ["0.0.0.0"]
+    params.n_ctx = 256
+    params.n_parallel = 1
+    params.warmup = False
+    setattr(params, feature, value)
+    with pytest.raises(RuntimeError, match="Failed to init server"):
+        xlc.Server(params)
+    # The native logger writes asynchronously.
+    diagnostic = "non-loopback address without an API key"
+    stderr = ""
+    deadline = time.monotonic() + 2
+    while diagnostic not in stderr and time.monotonic() < deadline:
+        stderr += capfd.readouterr().err
+        time.sleep(0.01)
+    assert diagnostic in stderr
+
+    # Failed feature setup must clean up global streaming/backend state.
+    params.hostnames = ["127.0.0.1"]
+    setattr(params, feature, type(value)())
+    server = xlc.Server(params)
+    assert server.listening_address.startswith("http://127.0.0.1:")
+
+
+@pytest.mark.parametrize("authorization", ["loopback", "api_key", "explicit_opt_in"])
+def test_tools_allow_authorized_network_configuration(model_path, authorization):
+    import requests
+
+    params = xlc.CommonParams()
+    params.model.path = os.path.join(model_path, "stories15M-q4_0.gguf")
+    params.hostnames = ["127.0.0.1" if authorization == "loopback" else "0.0.0.0"]
+    params.n_ctx = 256
+    params.n_parallel = 1
+    params.warmup = False
+    params.ui_mcp_proxy = True
+    headers = {}
+    if authorization == "api_key":
+        params.api_keys = ["test-tools-key"]
+        headers["Authorization"] = "Bearer test-tools-key"
+    elif authorization == "explicit_opt_in":
+        params.server_tools_allow_unauth = True
+    server = xlc.Server(params)
+    url = server.listening_address.replace("0.0.0.0", "127.0.0.1")
+    assert requests.get(f"{url}/health", timeout=5).status_code == 200
+    response = requests.get(f"{url}/cors-proxy", headers=headers, timeout=5)
+    assert response.status_code == 500  # enabled proxy rejects the missing URL
+    assert "invalid URL" in response.json()["error"]["message"]
 
 
 def test_llama_server(model_path):

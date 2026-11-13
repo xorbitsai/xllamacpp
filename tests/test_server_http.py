@@ -115,6 +115,23 @@ class TestServerHTTP:
         assert response.status_code == 501
         assert response.json()["error"]["type"] == "not_supported_error"
 
+    @pytest.mark.parametrize("path", ["/v1/audio/speech", "/audio/speech"])
+    def test_speech_rejects_non_audio_model(self, server_url, path):
+        response = requests.post(f"{server_url}{path}", json={"input": "Hello"})
+        assert response.status_code == 501
+        assert response.json()["error"]["type"] == "not_supported_error"
+
+    @pytest.mark.parametrize("path", ["/v1/audio/speech", "/audio/speech"])
+    @pytest.mark.parametrize(
+        "options", [{"response_format": "mp3"}, {"stream_format": "sse"}, {"speed": 2.0}]
+    )
+    def test_speech_validates_options(self, server_url, path, options):
+        response = requests.post(
+            f"{server_url}{path}", json={"input": "Hello", **options}
+        )
+        assert response.status_code == 400
+        assert response.json()["error"]["type"] == "invalid_request_error"
+
     def test_realtime_rejects_non_audio_model(self, server_url):
         websocket = pytest.importorskip("websocket")
         with closing(

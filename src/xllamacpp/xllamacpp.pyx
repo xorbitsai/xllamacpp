@@ -706,6 +706,15 @@ cdef class CommonParamsModel:
     def docker_repo(self, value: str):
         self.p.docker_repo = value
 
+    @property
+    def shards(self) -> list[str]:
+        """Additional local shard paths for a split GGUF model."""
+        return self.p.shards
+
+    @shards.setter
+    def shards(self, value: list[str]):
+        self.p.shards = value
+
 cdef class CommonParamsSpeculativeDraft:
     cdef xllamacpp.common_params_speculative_draft *p
     cdef object owner
@@ -1538,7 +1547,7 @@ cdef class CommonParams:
 
     @property
     def numa(self) -> ggml_numa_strategy:
-        """KV cache defragmentation threshold."""
+        """NUMA memory placement strategy."""
         return self.p.numa
 
     @numa.setter
@@ -2227,6 +2236,15 @@ cdef class CommonParams:
         self.p.moe_cache_size = value
 
     @property
+    def moe_cache_cpu_share(self) -> float:
+        """Share of MoE cache misses computed on the CPU instead of uploaded."""
+        return self.p.moe_cache_cpu_share
+
+    @moe_cache_cpu_share.setter
+    def moe_cache_cpu_share(self, value: float):
+        self.p.moe_cache_cpu_share = value
+
+    @property
     def mmproj(self) -> CommonParamsModel:
         return CommonParamsModel.from_ptr(&self.p.mmproj, self)
 
@@ -2811,6 +2829,15 @@ cdef class CommonParams:
         self.p.server_tools_runtime = value
 
     @property
+    def server_tools_allow_unauth(self) -> bool:
+        """Allow tools/MCP on a non-loopback address without an API key."""
+        return self.p.server_tools_allow_unauth
+
+    @server_tools_allow_unauth.setter
+    def server_tools_allow_unauth(self, value: bool):
+        self.p.server_tools_allow_unauth = value
+
+    @property
     def mcp_servers_config(self) -> str:
         """path to JSON file with MCP server definitions"""
         return self.p.mcp_servers_config
@@ -2856,6 +2883,15 @@ cdef class CommonParams:
         self.p.models_max = value
 
     @property
+    def models_memory_margin(self) -> int:
+        """MiB of device memory to keep free when loading router models; 0 disables accounting."""
+        return self.p.models_memory_margin
+
+    @models_memory_margin.setter
+    def models_memory_margin(self, value: int):
+        self.p.models_memory_margin = value
+
+    @property
     def models_autoload(self) -> bool:
         """automatically load models when requested via the router server"""
         return self.p.models_autoload
@@ -2899,6 +2935,15 @@ cdef class CommonParams:
     @media_path.setter
     def media_path(self, value: str):
         self.p.media_path = value
+
+    @property
+    def media_allow_private_urls(self) -> bool:
+        """Allow HTTP(S) media URLs on local or private addresses."""
+        return self.p.media_allow_private_urls
+
+    @media_allow_private_urls.setter
+    def media_allow_private_urls(self, value: bool):
+        self.p.media_allow_private_urls = value
 
     @property
     def slot_prompt_similarity(self) -> float:
@@ -3192,6 +3237,15 @@ cdef class CommonParams:
     @tts_lang.setter
     def tts_lang(self, value: str):
         self.p.tts_lang = value
+
+    @property
+    def tts_voice(self) -> str:
+        """Default voice name for text-to-speech generation."""
+        return self.p.tts_voice
+
+    @tts_voice.setter
+    def tts_voice(self, value: str):
+        self.p.tts_voice = value
 
     @property
     def tts_speaker_file(self) -> str:

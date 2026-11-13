@@ -15,6 +15,7 @@
 #include "llama.h"
 #include "log.h"
 
+#include <algorithm>
 #include <clocale>
 #include <exception>
 #include <future>
@@ -138,6 +139,8 @@ static void server_register_routes(server_http_context & ctx_http, server_routes
     ctx_http.post("/v1/audio/transcriptions", ex_wrapper(routes.post_transcriptions_oai));
     ctx_http.post("/audio/transcriptions", ex_wrapper(routes.post_transcriptions_oai));
     ctx_http.post("/tts", ex_wrapper(routes.post_tts));
+    ctx_http.post("/v1/audio/speech", ex_wrapper(routes.post_speech_oai));
+    ctx_http.post("/audio/speech", ex_wrapper(routes.post_speech_oai));
     ctx_http.ws("/v1/realtime", routes.ws_realtime);
     ctx_http.post("/v1/messages", ex_wrapper(routes.post_anthropic_messages));  // anthropic messages API
     ctx_http.post("/infill", ex_wrapper(routes.post_infill));
@@ -206,6 +209,21 @@ static bool server_setup_features(server_http_context & ctx_http,
         SRV_WRN("%s",
                 "security: no API key is set and CORS allows all origins (see "
                 "https://github.com/ggml-org/llama.cpp/pull/25655)\n");
+    }
+
+    // tools can run shell commands: do not expose them to the network without auth
+    const bool tools_enabled = !params.server_tools.empty() || !params.mcp_servers_config.empty() ||
+                               !params.mcp_servers_json.empty() || params.ui_mcp_proxy;
+    const bool loopback_only = std::all_of(params.hostnames.begin(), params.hostnames.end(), [](const std::string & h) {
+        return string_ends_with(h, ".sock") || h == "localhost" || h == "::1" || h == "[::1]" ||
+               string_starts_with(h, "127.");
+    });
+    if (tools_enabled && !loopback_only && params.api_keys.empty() && !params.server_tools_allow_unauth) {
+        SRV_ERR("%s",
+                "security: server tools, MCP servers or MCP proxy are enabled on a non-loopback address without an API "
+                "key\n");
+        SRV_ERR("%s", "set --api-key, bind to 127.0.0.1, or pass --allow-unauthenticated-tools on a trusted network\n");
+        return false;
     }
 
     std::vector<std::string> warn_names;
@@ -545,6 +563,13 @@ std::vector<ggml_backend_dev_props> get_device_info() {
 Server::Server(const common_params & params) : _params(params), _ctx_server(new server_context()) {
     if (_params.model.path.empty()) {
         throw std::invalid_argument("params.model.path is required: xllamacpp disabled the router server feature");
+    }
+
+    // Python skips CLI postprocessing, which provides writable override storage
+    // for the native fitter when it reduces GPU layers or adjusts placement.
+    const size_t ntbo = llama_max_tensor_buft_overrides();
+    while (_params.tensor_buft_overrides.size() < ntbo) {
+        _params.tensor_buft_overrides.push_back({ nullptr, nullptr });
     }
 
     std::promise<int> out;

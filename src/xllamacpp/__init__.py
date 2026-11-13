@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from .xllamacpp import *
-from .memory import estimate_gpu_layers
 
 from . import _version
 

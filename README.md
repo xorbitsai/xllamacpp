@@ -1066,32 +1066,28 @@ result = server.handle_chat_completions({
 })
 ```
 
-### GPU Memory Estimation
+### Automatic GPU Placement
 
-Estimate how many layers can be offloaded to GPU(s) given available memory:
+For loading a model on the available devices, llama.cpp can choose GPU layer
+counts and splits automatically. This is enabled by default:
 
 ```python
-from xllamacpp import estimate_gpu_layers
+import xllamacpp as xlc
 
-devices = [
-    {"name": "cuda", "memory_free": 8 * 1024**3, "memory_min": 2048},
-]
-
-estimate = estimate_gpu_layers(
-    devices,
-    "models/my-model.gguf",
-    [],                      # projector paths
-    context_length=2048,
-    batch_size=512,
-    num_parallel=1,
-    kv_cache_type="",
-)
-
-print(f"Layers to offload: {estimate.layers}")
-print(f"VRAM usage: {estimate.vram_size / 1024**3:.2f} GB")
-print(f"Total model size: {estimate.total_size / 1024**3:.2f} GB")
-print(f"Tensor split: {estimate.tensor_split}")
+params = xlc.CommonParams()
+params.model.path = "models/my-model.gguf"
+params.n_ctx = 4096
+params.n_gpu_layers = -1   # auto (default); -2 requests all layers
+params.fit_params = True  # fit to current free device memory (default)
+# Leave tensor_split at its default all-zero value for automatic splitting.
+server = xlc.Server(params)
 ```
+
+The default fit margin is 1 GiB per device. `fit_params_target` sets these margins
+in bytes, with one entry per device; `n_ctx = 0` also allows context sizing.
+Use the default layer split mode for automatic placement; tensor split mode does
+not support auto-fit. The selected settings are internal to the server and are
+not written back to the Python `params` object.
 
 ### System Info & Device Info
 
