@@ -7,6 +7,7 @@
 #include "server-cors-proxy.h"
 #include "server-stream.h"
 #include "server-tools.h"
+#include "server-startup.h"
 
 #include "arg.h"
 #include "build-info.h"
@@ -19,9 +20,8 @@
 #include <clocale>
 #include <exception>
 #include <future>
+#include <mutex>
 #include <thread>  // for std::thread::hardware_concurrency
-
-static std::function<void(int)> shutdown_handler;
 
 // wrapper function that handles exceptions and logs errors
 // this is to make sure handler_t never throws exceptions; instead, it returns an error response
@@ -305,79 +305,56 @@ static bool server_on_listening(server_http_context & ctx_http,
     return true;
 }
 
-static void init(common_params &   params,
-                 server_context &  ctx_server,
-                 std::string &     listening_address,
-                 std::promise<int> out) {
-    // Python owns the process locale and signal handlers.
-    common_log_set_verbosity_thold(params.verbosity);
-    common_init();
-    server_stream_session_manager_start();
+// Native fitting temporarily replaces the process-wide logger. Serialize startup
+// only, and never leave a callback pointing at attempt-local storage.
+static std::mutex                               startup_mutex;
+static thread_local xllamacpp::startup_result * startup_diagnostics = nullptr;
 
-    SRV_INF("%s", "initializing ...\n");
-    llama_backend_init();
-    llama_numa_init(params.numa);
-    SRV_INF("build_info: %s\n", llama_build_info());
+static void startup_log_callback(ggml_log_level level, const char * text, void * user_data) {
+    if (startup_diagnostics && level == GGML_LOG_LEVEL_ERROR) {
+        try {
+            startup_diagnostics->record_error(text);
+        } catch (...) {
+            // Logging must remain safe even when the host allocator is exhausted.
+        }
+    }
+    common_log_default_callback(level, text, user_data);
+}
 
-    auto clean_up_globals = []() {
-        server_stream_session_manager_stop();
-        llama_backend_free();
-        shutdown_handler = nullptr;
-    };
-
+static void init_impl(common_params &                           params,
+                      server_context &                          ctx_server,
+                      std::string &                             listening_address,
+                      std::promise<xllamacpp::startup_result> & out,
+                      xllamacpp::startup_result &               result,
+                      std::unique_lock<std::mutex> &            startup_lock) {
     common_models_handler models_handler;
     if (!params.model.hf_repo.empty()) {
-        try {
-            models_handler = common_models_handler_init(params, LLAMA_EXAMPLE_SERVER);
-            if (common_models_handler_is_preset_repo(models_handler)) {
-                common_models_handler_apply(models_handler, params);
-            }
-        } catch (const std::exception & e) {
-            SRV_ERR("failed to fetch model metadata: %s\n", e.what());
-            clean_up_globals();
-            out.set_value(1);
-            return;
+        result.stage   = "model metadata";
+        models_handler = common_models_handler_init(params, LLAMA_EXAMPLE_SERVER);
+        if (common_models_handler_is_preset_repo(models_handler)) {
+            common_models_handler_apply(models_handler, params);
         }
     }
 
-    // Server requires a model path; router and download-worker roles are CLI-only.
+    result.stage = "model parameters";
     common_params_print_info(params, true);
     if (!server_prepare_params(params, SERVER_ROLE_INSTANCE)) {
-        clean_up_globals();
-        out.set_value(1);
         return;
     }
 
-    // Resolve model files before initializing HTTP and tools, as upstream does.
-    try {
-        common_models_handler_apply(models_handler, params);
-    } catch (const std::exception & e) {
-        SRV_ERR("failed to download model: %s\n", e.what());
-        clean_up_globals();
-        out.set_value(1);
-        return;
-    }
+    result.stage = "model download";
+    common_models_handler_apply(models_handler, params);
 
-    // These objects outlive the HTTP handlers that capture them.
+    // These objects outlive the HTTP handlers that capture them. Their destructors
+    // stop/join HTTP workers and shut down MCP, including on exceptional exits.
     server_mcp          mcp_mgr;
     server_routes       routes(params, ctx_server);
     server_tools        tools;
     server_http_context ctx_http;
 
-    auto clean_up = [&]() {
-        SRV_INF("%s: cleaning up before exit...\n", __func__);
-        server_stream_session_manager_stop();
-        ctx_http.stop();
-        ctx_server.terminate();
-        mcp_mgr.shutdown();
-        llama_backend_free();
-        shutdown_handler = nullptr;
-    };
-
+    result.stage = "HTTP initialization";
     if (!ctx_http.init(params)) {
-        SRV_ERR("%s", "failed to initialize HTTP server\n");
-        clean_up();
-        out.set_value(1);
+        result.detail = "failed to initialize HTTP server (check address/port and TLS settings)";
         return;
     }
 
@@ -385,57 +362,89 @@ static void init(common_params &   params,
     server_register_stream_routes(ctx_http, server_stream_make_get_handler(), server_stream_make_lookup_handler(),
                                   server_stream_make_delete_handler());
 
+    result.stage = "server features";
     if (!server_setup_features(ctx_http, params, mcp_mgr, tools, SERVER_ROLE_INSTANCE)) {
-        clean_up();
-        out.set_value(1);
+        result.detail = "check API keys, tool authentication, and MCP configuration";
         return;
     }
 
-    // Serve /health while the model loads.
+    result.stage = "HTTP startup";
     if (!ctx_http.start()) {
-        clean_up();
-        SRV_ERR("%s", "exiting due to HTTP server error\n");
-        out.set_value(1);
+        result.detail = "failed to bind/listen on HTTP address/port";
         return;
     }
 
+    // Ignore earlier diagnostics when deciding whether model loading ran out of
+    // device memory. HTTP/tools/download failures must never trigger a fit retry.
+    result.stage = "model loading";
+    result.errors.clear();
+    result.device_oom = false;
     if (!ctx_server.load_model(params)) {
-        clean_up();
-        ctx_http.join();
-        SRV_ERR("%s", "exiting due to model loading error\n");
-        out.set_value(1);
         return;
     }
 
+    result.stage = "server metadata";
+    result.errors.clear();
+    result.device_oom = false;
     routes.update_meta(ctx_server);
     ctx_http.is_ready.store(true);
     SRV_INF("%s", "model loaded\n");
 
-    shutdown_handler = [&](int) {
-        mcp_mgr.shutdown();
-        ctx_server.terminate();
-    };
-
+    result.stage = "server connection";
     server_connect connect_proc;
     if (!server_on_listening(ctx_http, params, connect_proc)) {
-        ctx_http.stop();
-        ctx_http.join();
-        clean_up();
-        out.set_value(1);
         return;
     }
 
-    listening_address = ctx_http.listening_addresses.front();
-    out.set_value(0);
+    listening_address   = ctx_http.listening_addresses.front();
+    result.success      = true;
+    startup_diagnostics = nullptr;
+    startup_lock.unlock();
+    out.set_value(result);
     ctx_server.start_loop();
 
-    clean_up();
+    ctx_http.stop();
     ctx_http.join();
+    mcp_mgr.shutdown();
 
     // Rerank contexts cannot use common_memory_breakdown_print.
     auto * ll_ctx = ctx_server.get_llama_context();
     if (ll_ctx != nullptr && params.pooling_type != LLAMA_POOLING_TYPE_RANK) {
         common_memory_breakdown_print(ll_ctx);
+    }
+}
+
+static void init(common_params &                         params,
+                 server_context &                        ctx_server,
+                 std::string &                           listening_address,
+                 std::promise<xllamacpp::startup_result> out) {
+    std::unique_lock<std::mutex> startup_lock(startup_mutex);
+    xllamacpp::startup_result    result;
+    startup_diagnostics = &result;
+    try {
+        // Python owns the process locale and signal handlers.
+        common_log_set_verbosity_thold(params.verbosity);
+        common_init();
+        llama_log_set(startup_log_callback, nullptr);
+        server_stream_session_manager_start();
+        SRV_INF("%s", "initializing ...\n");
+        llama_backend_init();
+        llama_numa_init(params.numa);
+        SRV_INF("build_info: %s\n", llama_build_info());
+        init_impl(params, ctx_server, listening_address, out, result, startup_lock);
+    } catch (const std::bad_alloc & e) {
+        result.host_oom = true;
+        result.detail   = e.what();
+    } catch (const std::exception & e) {
+        result.detail = e.what();
+        result.record_error(e.what());
+    } catch (...) {
+        result.detail = "unknown native exception";
+    }
+    startup_diagnostics = nullptr;
+    server_stream_session_manager_stop();
+    if (!result.success) {
+        out.set_value(std::move(result));
     }
 }
 
@@ -560,40 +569,87 @@ std::vector<ggml_backend_dev_props> get_device_info() {
     return result;
 }
 
-Server::Server(const common_params & params) : _params(params), _ctx_server(new server_context()) {
+Server::Server(const common_params & params, const std::vector<size_t> & fit_retry_margins) : _params(params) {
+    validate_fit_retry_margins(fit_retry_margins);
     if (_params.model.path.empty()) {
         throw std::invalid_argument("params.model.path is required: xllamacpp disabled the router server feature");
     }
 
-    // Python skips CLI postprocessing, which provides writable override storage
-    // for the native fitter when it reduces GPU layers or adjusts placement.
-    const size_t ntbo = llama_max_tensor_buft_overrides();
-    while (_params.tensor_buft_overrides.size() < ntbo) {
-        _params.tensor_buft_overrides.push_back({ nullptr, nullptr });
-    }
-
-    std::promise<int> out;
-    std::future<int>  fut = out.get_future();
-    _loop_thread =
-        std::thread(init, std::ref(_params), std::ref(*_ctx_server), std::ref(_listening_address), std::move(out));
-    if (fut.get() != 0) {
-        if (_loop_thread.joinable()) {
+    // Keep a pristine snapshot: failed native loads may change their own params.
+    auto       next_params = params;
+    const auto attempt     = [&]() {
+        _params = next_params;
+        // Python skips the CLI's writable storage for automatic buffer overrides.
+        _params.tensor_buft_overrides.resize(
+            std::max(_params.tensor_buft_overrides.size(), llama_max_tensor_buft_overrides()), { nullptr, nullptr });
+        _ctx_server = std::make_shared<server_context>();
+        std::promise<startup_result> out;
+        auto                         fut = out.get_future();
+        _loop_thread =
+            std::thread(init, std::ref(_params), std::ref(*_ctx_server), std::ref(_listening_address), std::move(out));
+        auto result = fut.get();
+        if (!result.success) {
             _loop_thread.join();
+            // HTTP workers and routes have already been destroyed by init_impl.
+            // Free every partial model/context/projector before remeasuring VRAM.
+            _ctx_server.reset();
+            llama_backend_free();
         }
-        throw std::runtime_error("Failed to init server, please check the input params.");
+        return result;
+    };
+    const auto prepare_retry = [&](size_t extra) {
+        const bool automatic =
+            params.n_gpu_layers == -1 &&
+            (params.split_mode == LLAMA_SPLIT_MODE_LAYER || params.split_mode == LLAMA_SPLIT_MODE_NONE) &&
+            std::all_of(std::begin(params.tensor_split), std::end(params.tensor_split),
+                        [](float value) { return value == 0; }) &&
+            std::all_of(params.tensor_buft_overrides.begin(), params.tensor_buft_overrides.end(),
+                        [](const llama_model_tensor_buft_override & value) { return value.pattern == nullptr; });
+        // Every step is relative to the caller's margins, never cumulative.
+        auto margins = params.fit_params_target;
+        if (!increase_fit_margin(params.fit_params, automatic, margins, extra)) {
+            return false;
+        }
+        next_params.fit_params_target = std::move(margins);
+        LOG_WRN("GPU allocation failed; retrying native auto-fit with an additional %.2f MiB per device\n",
+                extra / (1024.0 * 1024.0));
+        return true;
+    };
+    auto result = start_with_retry(fit_retry_margins, attempt, prepare_retry, _startup_attempts);
+    if (!result.success) {
+        const auto message =
+            "Failed to init server after " + std::to_string(_startup_attempts) + " attempt(s): " + result.message();
+        if (result.device_oom || result.host_oom) {
+            throw startup_memory_error(message);
+        }
+        throw std::runtime_error(message);
     }
 
-    _routes = std::make_shared<server_routes>(_params, *_ctx_server);
-    _routes->update_meta(*_ctx_server);
+    try {
+        _routes = std::make_shared<server_routes>(_params, *_ctx_server);
+        _routes->update_meta(*_ctx_server);
+    } catch (...) {
+        _ctx_server->terminate();
+        _loop_thread.join();
+        _routes.reset();
+        _ctx_server.reset();
+        llama_backend_free();
+        throw;
+    }
 }
 
 Server::~Server() {
     _ctx_server->terminate();
-    LOG_INF("%s: waiting for main loop exit\n", __func__);
     if (_loop_thread.joinable()) {
         _loop_thread.join();
     }
-    LOG_INF("%s: main loop exited\n", __func__);
+    _routes.reset();
+    _ctx_server.reset();
+    llama_backend_free();
+}
+
+unsigned Server::startup_attempts() const {
+    return _startup_attempts;
 }
 
 std::string Server::listening_address() const {

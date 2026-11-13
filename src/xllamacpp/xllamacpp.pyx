@@ -10,6 +10,7 @@
 xllamacpp: a thin cython wrapper of llama.cpp
 """
 from libc.stdint cimport int32_t, uint32_t, int8_t, uint16_t
+from libc.stddef cimport size_t
 from libcpp cimport bool as c_bool
 from libcpp.vector cimport vector
 from libcpp.string cimport string
@@ -3345,9 +3346,36 @@ ctypedef fused json_dict_or_str:
 
 
 cdef class Server:
+    """Native llama.cpp server.
+
+    fit_retry_margins_bytes accepts a tuple or list of positive, strictly
+    increasing extra per-device memory margins. Each entry permits one retry
+    after a recoverable GPU allocation failure, relative to the original fit
+    margins. The schedule is copied internally; None (default) disables retries.
+    Explicit placement settings disable retries. Startup failures include native
+    error details; recognized allocation failures raise MemoryError.
+    """
     cdef shared_ptr[CServer] svr
 
-    def __cinit__(self, CommonParams common_params):
+    def __cinit__(self, CommonParams common_params, *, fit_retry_margins_bytes=None):
+        cdef vector[size_t] retry_margins
+        cdef object max_margin = <size_t>-1
+        cdef object previous = 0
+        if fit_retry_margins_bytes is not None:
+            if not isinstance(fit_retry_margins_bytes, (tuple, list)):
+                raise TypeError("fit_retry_margins_bytes must be a tuple, list, or None")
+            schedule = tuple(fit_retry_margins_bytes)
+            if not schedule:
+                raise ValueError("fit_retry_margins_bytes must not be empty; use None to disable retries")
+            for value in schedule:
+                if isinstance(value, bool) or not isinstance(value, int):
+                    raise TypeError("fit_retry_margins_bytes entries must be integers in bytes")
+                if value <= previous:
+                    raise ValueError("fit_retry_margins_bytes must be positive and strictly increasing")
+                if value > max_margin:
+                    raise ValueError("fit_retry_margins_bytes entries must fit in size_t")
+                retry_margins.push_back(value)
+                previous = value
         # Mirror the CPU-params postprocessing that common_params_parser_init
         # performs for the CLI (common/arg.cpp): params built from Python skip
         # CLI parsing, so resolve n_threads < 0 to the number of math cores
@@ -3357,7 +3385,12 @@ cdef class Server:
         xllamacpp.postprocess_cpu_params(common_params.p.cpuparams_batch, &common_params.p.cpuparams)
         xllamacpp.postprocess_cpu_params(common_params.p.speculative.draft.cpuparams, &common_params.p.cpuparams)
         xllamacpp.postprocess_cpu_params(common_params.p.speculative.draft.cpuparams_batch, &common_params.p.cpuparams_batch)
-        self.svr = make_shared[CServer](common_params.p)
+        self.svr = make_shared[CServer](common_params.p, retry_margins)
+
+    @property
+    def startup_attempts(self):
+        """Number of loads actually attempted, including the initial load."""
+        return self.svr.get().startup_attempts()
 
     @property
     def listening_address(self):

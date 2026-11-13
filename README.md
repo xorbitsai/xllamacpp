@@ -1069,7 +1069,15 @@ result = server.handle_chat_completions({
 ### Automatic GPU Placement
 
 For loading a model on the available devices, llama.cpp can choose GPU layer
-counts and splits automatically. This is enabled by default:
+counts and splits automatically. This is enabled by default.
+
+This replaces the removed `xllamacpp.memory` module and `estimate_gpu_layers`
+helper. [Native fitting](https://github.com/ggml-org/llama.cpp/blob/b12361/common/fit.cpp)
+uses the runtime's own planned model, context, and compute buffers and current
+free device memory. Keeping sizing in llama.cpp avoids maintaining separate
+Python estimates for each model architecture, cache layout, and backend.
+
+Leave placement settings at their defaults:
 
 ```python
 import xllamacpp as xlc
@@ -1088,6 +1096,56 @@ in bytes, with one entry per device; `n_ctx = 0` also allows context sizing.
 Use the default layer split mode for automatic placement; tensor split mode does
 not support auto-fit. The selected settings are internal to the server and are
 not written back to the Python `params` object.
+
+#### Optional Startup Retries
+
+Configure retries after recoverable GPU allocation failures with a tuple or list
+of extra fitting margins in bytes:
+
+```python
+MiB = 1024 * 1024
+server = xlc.Server(
+    params,
+    fit_retry_margins_bytes=(256 * MiB, 512 * MiB, 1024 * MiB),
+)
+print(server.startup_attempts)  # actual loads, maximum 4 with this schedule
+```
+
+Each entry permits one retry with that much additional headroom **per device**,
+relative to the original `fit_params_target` values. With the default 1 GiB fit
+margin, the example allows:
+
+| Load attempt | Extra headroom per device | Total fit margin per device |
+| --- | --- | --- |
+| 1 (initial load) | 0 | 1 GiB |
+| 2 | 256 MiB | 1.25 GiB |
+| 3 | 512 MiB | 1.5 GiB |
+| 4 | 1024 MiB | 2 GiB |
+
+The maximum number of loads is `1 + len(fit_retry_margins_bytes)`. Retries stop
+as soon as a load succeeds. When the schedule is exhausted, the final failure is
+raised to the caller. Margins are extra headroom for the fitter, not additional
+GPU allocations, and are never added cumulatively across retries.
+
+Entries must be positive, strictly increasing integer byte counts that fit in
+the native `size_t` type. Empty schedules, booleans, and generators are rejected;
+use `None` to disable retries. The server copies the schedule internally and
+leaves the input unchanged.
+
+`fit_retry_margins_bytes=None` (the default) performs one load without OOM retries.
+Native llama.cpp automatic fitting still runs by default. Each retry frees the
+failed load before running the fitter against current free memory. Retries require
+`fit_params = True`, automatic GPU layers and splits, and no explicit tensor
+buffer overrides. They stop early on success, an unrelated error, or a margin
+that would overflow the native size limit. Explicit context sizes remain
+unchanged; `n_ctx = 0` permits native context sizing. The caller's placement and
+margin settings are preserved.
+
+Startup exceptions include the failed stage and available native error details.
+Recognized allocation failures raise `MemoryError`; other startup failures raise
+`RuntimeError`. A retry can recover from an underestimated memory requirement or
+changing free memory, but cannot guarantee a fit. Backend failures that abort the
+process cannot be caught or retried by this in-process binding.
 
 ### System Info & Device Info
 

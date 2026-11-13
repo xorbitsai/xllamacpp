@@ -120,7 +120,14 @@ server = xlc.Server(params)
 del server
 """
     result = subprocess.run(
-        [sys.executable, "-c", script, os.path.join(model_path, "stories15M-q4_0.gguf")],
+        [
+            sys.executable,
+            "-c",
+            script,
+            os.path.join(model_path, "stories15M-q4_0.gguf"),
+        ],
+        # pytest's pythonpath setting changes sys.path only in this process.
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
         capture_output=True,
         text=True,
         timeout=120,
@@ -132,7 +139,8 @@ del server
     assert offloads and offloads[-1] == "0", result.stderr
 
 
-def test_model_download_precedes_http_init(model_path, tmp_path):
+@pytest.mark.parametrize("margins", [None, (256 << 20, 512 << 20)])
+def test_model_download_precedes_http_init(model_path, tmp_path, margins):
     import socket
     import subprocess
 
@@ -157,9 +165,7 @@ def test_model_download_precedes_http_init(model_path, tmp_path):
     downloaded = tmp_path / "downloaded.gguf"
     params = xlc.CommonParams()
     params.model.path = str(downloaded)
-    params.model.url = (
-        f"http://127.0.0.1:{download_port}/stories15M-q4_0.gguf"
-    )
+    params.model.url = f"http://127.0.0.1:{download_port}/stories15M-q4_0.gguf"
     params.n_ctx = 256
     params.n_parallel = 1
     params.cpuparams.n_threads = 2
@@ -171,8 +177,9 @@ def test_model_download_precedes_http_init(model_path, tmp_path):
             occupied.bind(("127.0.0.1", 0))
             occupied.listen()
             params.port = occupied.getsockname()[1]
-            with pytest.raises(RuntimeError, match="Failed to init server"):
-                xlc.Server(params)
+            with pytest.raises(RuntimeError, match="HTTP startup") as error:
+                xlc.Server(params, fit_retry_margins_bytes=margins)
+            assert "after 1 attempt(s)" in str(error.value)
         assert downloaded.stat().st_size == os.path.getsize(
             os.path.join(model_path, "stories15M-q4_0.gguf")
         )
@@ -196,32 +203,55 @@ def test_model_download_precedes_http_init(model_path, tmp_path):
         ("ui_mcp_proxy", True),
     ],
 )
-def test_network_tools_require_authentication(model_path, capfd, feature, value):
-    import time
+def test_network_tools_require_authentication(model_path, feature, value):
+    import subprocess
 
-    params = xlc.CommonParams()
-    params.model.path = os.path.join(model_path, "stories15M-q4_0.gguf")
-    params.hostnames = ["0.0.0.0"]
-    params.n_ctx = 256
-    params.n_parallel = 1
-    params.warmup = False
-    setattr(params, feature, value)
-    with pytest.raises(RuntimeError, match="Failed to init server"):
-        xlc.Server(params)
-    # The native logger writes asynchronously.
-    diagnostic = "non-loopback address without an API key"
-    stderr = ""
-    deadline = time.monotonic() + 2
-    while diagnostic not in stderr and time.monotonic() < deadline:
-        stderr += capfd.readouterr().err
-        time.sleep(0.01)
-    assert diagnostic in stderr
+    # Capture complete logs after the native logging worker exits. Reading and
+    # truncating capfd while it writes can discard part of an error message.
+    script = """
+import json
+import sys
+import xllamacpp as xlc
 
-    # Failed feature setup must clean up global streaming/backend state.
-    params.hostnames = ["127.0.0.1"]
-    setattr(params, feature, type(value)())
-    server = xlc.Server(params)
-    assert server.listening_address.startswith("http://127.0.0.1:")
+params = xlc.CommonParams()
+params.model.path = sys.argv[1]
+params.port = 0
+params.hostnames = ["0.0.0.0"]
+params.n_ctx = 256
+params.n_parallel = 1
+params.warmup = False
+feature, value = sys.argv[2], json.loads(sys.argv[3])
+setattr(params, feature, value)
+try:
+    xlc.Server(params)
+except RuntimeError as error:
+    assert "Failed to init server" in str(error)
+else:
+    raise AssertionError("unauthenticated network tools were accepted")
+
+# Failed feature setup must clean up global streaming/backend state.
+params.hostnames = ["127.0.0.1"]
+setattr(params, feature, type(value)())
+server = xlc.Server(params)
+assert server.listening_address.startswith("http://127.0.0.1:")
+del server
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            script,
+            os.path.join(model_path, "stories15M-q4_0.gguf"),
+            feature,
+            json.dumps(value),
+        ],
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "non-loopback address without an API key" in result.stderr
 
 
 @pytest.mark.parametrize("authorization", ["loopback", "api_key", "explicit_opt_in"])
