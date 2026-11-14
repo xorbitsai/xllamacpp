@@ -55,9 +55,9 @@ The central configuration object. Controls model loading, inference, sampling, s
 |:---------|:-----|:--------|:---:|:------------|
 | `is_pp_shared` | bool | `false` | R/W | batched-bench params |
 | `is_tg_separate` | bool | `false` | R/W | batched-bench params |
-| `n_pl` | list[int] | `` | R/W |  |
-| `n_pp` | list[int] | `` | R/W |  |
-| `n_tg` | list[int] | `` | R/W |  |
+| `n_pl` | list[int] | `[]` | R/W |  |
+| `n_pp` | list[int] | `[]` | R/W |  |
+| `n_tg` | list[int] | `[]` | R/W |  |
 
 ### Behavior Flags
 
@@ -92,7 +92,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 |:---------|:-----|:--------|:---:|:------------|
 | `cpuparams` | [CpuParams](#cpuparams) | `` | R/W |  |
 | `cpuparams_batch` | [CpuParams](#cpuparams) | `` | R/W |  |
-| `numa` | ggml_numa_strategy | `GGML_NUMA_STRATEGY_DISABLED` | R/W | KV cache defragmentation threshold. |
+| `numa` | ggml_numa_strategy | `GGML_NUMA_STRATEGY_DISABLED` | R/W | NUMA memory placement strategy. |
 
 ### CVector Generator
 
@@ -127,6 +127,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `fit_params_print` | bool | `false` | R/W | print the estimated required memory to run the model |
 | `fit_params_target` | list[int] | `std::vector<size_t>(llama_max_devices(), 1024 * 1024*1024)` | R/W | margin per device in bytes for fitting parameters to free memory |
 | `main_gpu` | int | `0` | R/W | the GPU that is used for scratch and small tensors |
+| `moe_cache_cpu_share` | float | `0.0` | R/W | share of the MoE cache misses computed on the CPU instead of uploaded |
 | `moe_cache_size` | int | `0` | R/W | GPU cache size in bytes for the MoE experts kept in the CPU, split among the GPUs like the layers |
 | `n_gpu_layers` | int | `-1` | R/W | number of layers to store in VRAM, -1 is auto, <= -2 is all |
 | `no_extra_bufts` | bool | `false` | R/W | disable extra buffer types (used for weight repacking) |
@@ -172,7 +173,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
-| `lora_adapters` | list | `` | R/W | Get the list of LoRA adapters as a list of [CommonAdapterLoraInfo](#commonadapterlorainfo) objects. |
+| `lora_adapters` | list | `[]` | R/W | Get the list of LoRA adapters as a list of [CommonAdapterLoraInfo](#commonadapterlorainfo) objects. |
 | `lora_init_without_apply` | bool | `false` | R/W | only load lora to memory, but do not apply it to ctx (user can manually apply lora later using llama_lora_adapter_apply). |
 
 ### Model
@@ -188,7 +189,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
-| `image` | list[str] | `` | R/W | path to image file(s) ; TODO: change the name to "media" |
+| `image` | list[str] | `[]` | R/W | path to image file(s) ; TODO: change the name to "media" |
 | `image_max_tokens` | int | `-1` | R/W |  |
 | `image_min_tokens` | int | `-1` | R/W |  |
 | `mmproj` | [CommonParamsModel](#commonparamsmodel) | `` | R/W |  |
@@ -210,7 +211,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `out_file` | str | `` | R/W | output filename for all example programs |
 | `path_prompts_log_dir` | str | `""` | R/W | directory with logged prompts |
 | `save_logits` | bool | `false` | R/W | whether to save logits to files |
-| `tensor_filter` | list[str] | `` | R/W | filter tensor names for debug output (regex) |
+| `tensor_filter` | list[str] | `[]` | R/W | filter tensor names for debug output (regex) |
 | `verbosity` | int | `3` | R/W | LOG_LEVEL_INFO |
 
 ### Perplexity / Benchmarks
@@ -232,8 +233,8 @@ The central configuration object. Controls model loading, inference, sampling, s
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
-| `antiprompt` | list[str] | `` | R/W | strings upon which more user input is prompted (a.k.a. reverse prompts). |
-| `in_files` | list[str] | `` | R/W | all input files. |
+| `antiprompt` | list[str] | `[]` | R/W | strings upon which more user input is prompted (a.k.a. reverse prompts). |
+| `in_files` | list[str] | `[]` | R/W | all input files. |
 | `input_prefix` | str | `""` | R/W | string to prefix user inputs with |
 | `input_prefix_bos` | bool | `false` | R/W | prefix BOS to user inputs, preceding input_prefix |
 | `input_suffix` | str | `""` | R/W | string to suffix user inputs with |
@@ -248,7 +249,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 |:---------|:-----|:--------|:---:|:------------|
 | `chunk_separator` | str | `"\n"` | R/W | chunk separator for context embedding |
 | `chunk_size` | int | `64` | R/W | chunk size for context embedding |
-| `context_files` | list[str] | `` | R/W | context files to embed |
+| `context_files` | list[str] | `[]` | R/W | context files to embed |
 | `i_pos` | int | `-1` | R/W | position of the passkey in the junk text |
 | `n_junk` | int | `250` | R/W | number of times to repeat the junk text |
 
@@ -269,7 +270,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 
 | Property | Type | Default | R/W | Description |
 |:---------|:-----|:--------|:---:|:------------|
-| `api_keys` | list[str] | `` | R/W | list of api keys |
+| `api_keys` | list[str] | `[]` | R/W | list of api keys |
 | `api_prefix` | str | `""` | R/W |  |
 | `cache_idle_slots` | bool | `true` | R/W | save and clear idle slots upon starting a new task |
 | `cache_prompt` | bool | `true` | R/W | whether to enable prompt caching |
@@ -294,10 +295,12 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `log_json` | bool | `false` | R/W | log json |
 | `mcp_servers_config` | str | `` | R/W | path to JSON file with MCP server definitions |
 | `mcp_servers_json` | str | `` | R/W | inline JSON with MCP server definitions |
+| `media_allow_private_urls` | bool | `false` | R/W | Allow HTTP(S) media URLs on local or private addresses. |
 | `media_path` | str | `` | R/W | path to directory for loading media files |
 | `models_autoload` | bool | `true` | R/W | automatically load models when requested via the router server |
 | `models_dir` | str | `""` | R/W | directory containing models for the router server |
 | `models_max` | int | `4` | R/W | maximum number of models to load simultaneously |
+| `models_memory_margin` | int | `0` | R/W | MiB of device memory to keep free when loading router models (0 disables accounting). Router mode is disabled in the Python Server API. |
 | `models_preset` | str | `""` | R/W | directory containing model presets for the router server |
 | `models_preset_hf` | str | `""` | R/W | show a warning about remote presets on router loaded (if not empty) |
 | `n_cache_reuse` | int | `0` | R/W | min chunk size to reuse from the cache via KV shifting |
@@ -312,7 +315,8 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `server_base` | str | `` | R/W | if set, connect to this server instead of starting a new one |
 | `server_connect` | bool | `false` | R/W | enable the optional llama-connect tunnel. |
 | `server_connect_code` | str | `""` | R/W | share code for llama-connect; empty generates a code at startup. |
-| `server_tools` | list[str] | `` | R/W | enable built-in tools |
+| `server_tools` | list[str] | `[]` | R/W | enable built-in tools |
+| `server_tools_allow_unauth` | bool | `false` | R/W | Allow tools/MCP on a non-loopback address without an API key. |
 | `server_tools_runtime` | str | `` | R/W | runtime used for built-in server tools. |
 | `sleep_idle_seconds` | int | `-1` | R/W | if >0, server will sleep after this many seconds of idle time |
 | `slot_prompt_similarity` | float | `0.1` | R/W | slot prompt similarity. |
@@ -347,6 +351,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 |:---------|:-----|:--------|:---:|:------------|
 | `tts_lang` | str | `""` | R/W |  |
 | `tts_speaker_file` | str | `""` | R/W |  |
+| `tts_voice` | str | `""` | R/W | Default voice name for text-to-speech generation. |
 
 ### Tokenization
 
@@ -386,6 +391,7 @@ Model path and source parameters. Access via `params.model`.
 | `hf_file` | str | `""` | R/W | HF file |
 | `hf_repo` | str | `""` | R/W | HF repo |
 | `path` | str | `""` | R/W | model local path |
+| `shards` | list[str] | `[]` | R/W | Additional local shard paths for a split GGUF model; the primary path is included automatically. |
 | `url` | str | `""` | R/W | model url to download |
 
 ---
@@ -408,8 +414,8 @@ Sampling parameters that control token generation strategy. Access via `params.s
 | `generation_prompt` | str | `` | R/W | The assistant generation prompt already prefilled into the prompt. |
 | `grammar` | CommonGrammar | `` | R/W | optional grammar constraint (user / output-format / tool-calls) |
 | `ignore_eos` | bool | `false` | R/W | ignore end-of-sentence |
-| `logit_bias` | list[LlamaLogitBias] | `` | R/W | logit biases to apply |
-| `logit_bias_eog` | list[LlamaLogitBias] | `` | R/W | pre-calculated logit biases for EOG tokens |
+| `logit_bias` | list[LlamaLogitBias] | `[]` | R/W | logit biases to apply |
+| `logit_bias_eog` | list[LlamaLogitBias] | `[]` | R/W | pre-calculated logit biases for EOG tokens |
 | `min_keep` | int | `0` | R/W | 0 = disabled, otherwise samplers should return at least min_keep tokens |
 | `min_p` | float | `0.05` | R/W | 0.0 = disabled |
 | `mirostat` | int | `0` | R/W | 0 = disabled, 1 = mirostat, 2 = mirostat 2.0 |
@@ -422,10 +428,10 @@ Sampling parameters that control token generation strategy. Access via `params.s
 | `penalty_last_n` | int | `64` | R/W | last n tokens to penalize (0 = disable penalty, -1 = context size) |
 | `penalty_present` | float | `0.00` | R/W | 0.0 = disabled |
 | `penalty_repeat` | float | `1.00` | R/W | 1.0 = disabled |
-| `reasoning_budget_end` | list[list[int]] | `` | R/W | end tag token sequences; the first tag is used as the forcing sequence |
-| `reasoning_budget_forced` | list[int] | `` | R/W | forced sequence (message + first end tag) |
+| `reasoning_budget_end` | list[list[int]] | `[]` | R/W | end tag token sequences; the first tag is used as the forcing sequence |
+| `reasoning_budget_forced` | list[int] | `[]` | R/W | forced sequence (message + first end tag) |
 | `reasoning_budget_message` | str | `` | R/W | message injected before end tag when budget exhausted |
-| `reasoning_budget_start` | list[int] | `` | R/W | start tag token sequence |
+| `reasoning_budget_start` | list[int] | `[]` | R/W | start tag token sequence |
 | `reasoning_budget_tokens` | int | `-1` | R/W | -1 = disabled, >= 0 = token budget |
 | `reasoning_control` | bool | `false` | R/W | create the budget sampler on demand so reasoning can be ended at runtime |
 | `samplers` | str | `{ COMMON_SAMPLER_TYPE_PENALTIES, COMMON_SAMPLER_TYPE_DRY, COMMON_SAMPLER_TYPE_TOP_N_SIGMA, COMMON_SAMPLER_TYPE_TOP_K, COMMON_SAMPLER_TYPE_TYPICAL_P, COMMON_SAMPLER_TYPE_TOP_P, COMMON_SAMPLER_TYPE_MIN_P, COMMON_SAMPLER_TYPE_XTC, COMMON_SAMPLER_TYPE_TEMPERATURE, }` | R/W | get/set sampler types |
@@ -454,7 +460,7 @@ Speculative decoding parameters. Access via `params.speculative`.
 | `ngram_mod` | [CommonParamsSpeculativeNgramMod](#commonparamsspeculativengrammod) | `` | R | Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_MOD` method. See [CommonParamsSpeculativeNgramMod](#commonparamsspeculativengrammod). |
 | `ngram_simple` | [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap) | `` | R | Parameters for the `COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE` method. See [CommonParamsSpeculativeNgramMap](#commonparamsspeculativengrammap). |
 | `synth_len` | float | `-1.0` | R/W | synthetic speculative acceptance length; -1 disables it. |
-| `synth_rates` | list[float] | `` | R/W | synthetic speculative acceptance rates. |
+| `synth_rates` | list[float] | `[]` | R/W | synthetic speculative acceptance rates. |
 | `types` | list[common_speculative_type] | `{ COMMON_SPECULATIVE_TYPE_NONE }` | R/W | List of speculative decoding methods to enable. Draft-model-free methods: `COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE`, `NGRAM_MAP_K`, `NGRAM_MAP_K4V`, `NGRAM_MOD`, `NGRAM_CACHE`. Draft-model methods: `COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE`, `DRAFT_MTP`, `DRAFT_EAGLE3`, `DRAFT_DFLASH`, `DRAFT_DSPARK`. Not required when only a draft model path is set — draft decoding is enabled automatically. |
 
 ---

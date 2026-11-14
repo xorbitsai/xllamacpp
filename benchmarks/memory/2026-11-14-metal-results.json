@@ -1,0 +1,971 @@
+{
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "estimator_sha256": "70dd9f518c8a09599bae8296815fcbfbb9d7192041d36040c7661a255a42cbc4",
+  "harness_sha256": "6e8868cc4b08546fc32ea71dd89b8c269b1ea9ae95929c2518e5991d4235de00",
+  "physical_memory_bytes": 34359738368,
+  "llama_commit": "951d465f5c7c16fb486ff45bb14d99984e68c6db",
+  "model_sha256": {
+    "/Users/po/Work/xllamacpp/models/Llama-3.2-1B-Instruct-Q8_0.gguf": "432f310a77f4650a88d0fd59ecdd7cebed8d684bafea53cbff0473542964f0c3",
+    "/Users/po/Work/xllamacpp/models/qwen1_5-0_5b-chat-q2_k.gguf": "dafa51a44e4e9e3a96be7ad9232e3cc5bf819f90cc9b9f5ac5a848886977ecc1",
+    "/Users/po/Work/xllamacpp/models/stories15M-q4_0.gguf": "66967fbece6dbe97886593fdbb73589584927e29119ec31f08090732d1861739",
+    "/Users/po/Work/xllamacpp/models/stories15M_MOE-F16.gguf": "1240dfc1957df9f3550dd6c1d9e64b466fc2f452d8bc34bd4e45e1a1e2ca6055"
+  },
+  "results": [
+    {
+      "config": {
+        "name": "stories-512",
+        "model": "/Users/po/Work/xllamacpp/models/stories15M-q4_0.gguf",
+        "prompt_repeats": 8,
+        "n_ctx": 512
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 19854624,
+      "estimate": {
+        "n_ctx": 512,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 19854624,
+            "model_bytes": 13166208,
+            "context_bytes": 3538944,
+            "compute_bytes": 3149472,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 6635072,
+            "model_bytes": 5184000,
+            "context_bytes": 0,
+            "compute_bytes": 1451072,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 26489696,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 19890176,
+      "startup_peak_bytes": 20021248,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 66,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 19890176,
+      "peak_device_bytes": 20021248,
+      "success": true,
+      "peak_device_total_bytes": 20414464,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "stories-4096",
+        "model": "/Users/po/Work/xllamacpp/models/stories15M-q4_0.gguf",
+        "prompt_repeats": 8,
+        "n_ctx": 4096
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 49674400,
+      "estimate": {
+        "n_ctx": 4096,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 49674400,
+            "model_bytes": 13166208,
+            "context_bytes": 28311552,
+            "compute_bytes": 8196640,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 8470080,
+            "model_bytes": 5184000,
+            "context_bytes": 0,
+            "compute_bytes": 3286080,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 58144480,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 49709056,
+      "startup_peak_bytes": 49840128,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 66,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 49709056,
+      "peak_device_bytes": 49840128,
+      "success": true,
+      "peak_device_total_bytes": 50233344,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "stories-partial",
+        "model": "/Users/po/Work/xllamacpp/models/stories15M-q4_0.gguf",
+        "prompt_repeats": 8,
+        "n_ctx": 2048,
+        "n_gpu_layers": 3
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 20652704,
+      "estimate": {
+        "n_ctx": 2048,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 20652704,
+            "model_bytes": 10917504,
+            "context_bytes": 4718592,
+            "compute_bytes": 5016608,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 19522112,
+            "model_bytes": 5193216,
+            "context_bytes": 9437184,
+            "compute_bytes": 4891712,
+            "free_bytes": null,
+            "total_bytes": null
+          },
+          {
+            "kind": "buffer_type",
+            "name": "CPU_REPACK",
+            "required_bytes": 2239488,
+            "model_bytes": 2239488,
+            "context_bytes": 0,
+            "compute_bytes": 0,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 42414304,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 20709376,
+      "startup_peak_bytes": 20840448,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 66,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 20709376,
+      "peak_device_bytes": 20840448,
+      "success": true,
+      "peak_device_total_bytes": 21233664,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "stories-cpu",
+        "model": "/Users/po/Work/xllamacpp/models/stories15M-q4_0.gguf",
+        "prompt_repeats": 8,
+        "n_ctx": 2048,
+        "n_gpu_layers": 0
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 0,
+      "estimate": {
+        "n_ctx": 2048,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 0,
+            "model_bytes": 0,
+            "context_bytes": 0,
+            "compute_bytes": 0,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 24246464,
+            "model_bytes": 5198976,
+            "context_bytes": 14155776,
+            "compute_bytes": 4891712,
+            "free_bytes": null,
+            "total_bytes": null
+          },
+          {
+            "kind": "buffer_type",
+            "name": "CPU_REPACK",
+            "required_bytes": 13151232,
+            "model_bytes": 13151232,
+            "context_bytes": 0,
+            "compute_bytes": 0,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 37397696,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 0,
+      "startup_peak_bytes": 0,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 66,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 0,
+      "peak_device_bytes": 0,
+      "success": true,
+      "peak_device_total_bytes": 393216,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "stories-parallel4",
+        "model": "/Users/po/Work/xllamacpp/models/stories15M-q4_0.gguf",
+        "prompt_repeats": 8,
+        "n_ctx": 4096,
+        "n_parallel": 4
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 53900704,
+      "estimate": {
+        "n_ctx": 4096,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 53900704,
+            "model_bytes": 13166208,
+            "context_bytes": 28311552,
+            "compute_bytes": 12422944,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 6897216,
+            "model_bytes": 5184000,
+            "context_bytes": 0,
+            "compute_bytes": 1713216,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 60797920,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 53936128,
+      "startup_peak_bytes": 54067200,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 66,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 53936128,
+      "peak_device_bytes": 54067200,
+      "success": true,
+      "peak_device_total_bytes": 54460416,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "stories-no-flash",
+        "model": "/Users/po/Work/xllamacpp/models/stories15M-q4_0.gguf",
+        "prompt_repeats": 8,
+        "n_ctx": 2048,
+        "flash_attn": 0,
+        "n_batch": 512
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 35549344,
+      "estimate": {
+        "n_ctx": 2048,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 35549344,
+            "model_bytes": 13166208,
+            "context_bytes": 14155776,
+            "compute_bytes": 8227360,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 9057856,
+            "model_bytes": 5184000,
+            "context_bytes": 0,
+            "compute_bytes": 3873856,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 44607200,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 35586048,
+      "startup_peak_bytes": 35717120,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 66,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 35586048,
+      "peak_device_bytes": 35717120,
+      "success": true,
+      "peak_device_total_bytes": 36110336,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "stories-q8-kv",
+        "model": "/Users/po/Work/xllamacpp/models/stories15M-q4_0.gguf",
+        "prompt_repeats": 8,
+        "n_ctx": 4096,
+        "quantized_kv": true,
+        "flash_attn": 1
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": null,
+      "estimation_error": "failed to create llama_context from model",
+      "after_estimate_bytes": 393216,
+      "success": false,
+      "error": "Failed to init server after 1 attempt(s): model loading failed\nllama_init_from_model: K cache type q8_0 with block size 32 does not divide n_embd_head_k=48\n",
+      "memory_error": false,
+      "peak_device_bytes": 13189120,
+      "peak_device_total_bytes": 13582336,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "qwen-1024",
+        "model": "/Users/po/Work/xllamacpp/models/qwen1_5-0_5b-chat-q2_k.gguf",
+        "n_ctx": 1024
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 357698336,
+      "estimate": {
+        "n_ctx": 1024,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 357698336,
+            "model_bytes": 241417216,
+            "context_bytes": 100663296,
+            "compute_bytes": 15617824,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 55778368,
+            "model_bytes": 51050496,
+            "context_bytes": 0,
+            "compute_bytes": 4727872,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 413476704,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 357744640,
+      "startup_peak_bytes": 358367232,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 513,
+      "tokens_predicted": 1,
+      "inference_device_bytes": 357744640,
+      "peak_device_bytes": 358367232,
+      "success": true,
+      "peak_device_total_bytes": 358760448,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "qwen-8192",
+        "model": "/Users/po/Work/xllamacpp/models/qwen1_5-0_5b-chat-q2_k.gguf",
+        "n_ctx": 8192
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 1093538336,
+      "estimate": {
+        "n_ctx": 8192,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 1093538336,
+            "model_bytes": 241417216,
+            "context_bytes": 805306368,
+            "compute_bytes": 46814752,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 59448384,
+            "model_bytes": 51050496,
+            "context_bytes": 0,
+            "compute_bytes": 8397888,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 1152986720,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 1093582848,
+      "startup_peak_bytes": 1094205440,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 769,
+      "tokens_predicted": 1,
+      "inference_device_bytes": 1093844992,
+      "peak_device_bytes": 1094467584,
+      "success": true,
+      "peak_device_total_bytes": 1094860800,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "qwen-partial",
+        "model": "/Users/po/Work/xllamacpp/models/qwen1_5-0_5b-chat-q2_k.gguf",
+        "n_ctx": 2048,
+        "n_gpu_layers": 8
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 238567456,
+      "estimate": {
+        "n_ctx": 2048,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 238567456,
+            "model_bytes": 160818176,
+            "context_bytes": 58720256,
+            "compute_bytes": 19029024,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 289207360,
+            "model_bytes": 131649536,
+            "context_bytes": 142606336,
+            "compute_bytes": 14951488,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 527774816,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 238632960,
+      "startup_peak_bytes": 239255552,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 769,
+      "tokens_predicted": 1,
+      "inference_device_bytes": 238895104,
+      "peak_device_bytes": 239517696,
+      "success": true,
+      "peak_device_total_bytes": 239910912,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "llama-512",
+        "model": "/Users/po/Work/xllamacpp/models/Llama-3.2-1B-Instruct-Q8_0.gguf",
+        "n_ctx": 512
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 1346940576,
+      "estimate": {
+        "n_ctx": 512,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 1346940576,
+            "model_bytes": 1313251456,
+            "context_bytes": 16777216,
+            "compute_bytes": 16911904,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 287745088,
+            "model_bytes": 279085056,
+            "context_bytes": 0,
+            "compute_bytes": 8660032,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 1634685664,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 1346961408,
+      "startup_peak_bytes": 1347485696,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 258,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 1346961408,
+      "peak_device_bytes": 1347485696,
+      "success": true,
+      "peak_device_total_bytes": 1347878912,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "llama-4096",
+        "model": "/Users/po/Work/xllamacpp/models/Llama-3.2-1B-Instruct-Q8_0.gguf",
+        "n_ctx": 4096
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 1471869600,
+      "estimate": {
+        "n_ctx": 4096,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 1471869600,
+            "model_bytes": 1313251456,
+            "context_bytes": 134217728,
+            "compute_bytes": 24400416,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 289580096,
+            "model_bytes": 279085056,
+            "context_bytes": 0,
+            "compute_bytes": 10495040,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 1761449696,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 1471889408,
+      "startup_peak_bytes": 1472413696,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 770,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 1471889408,
+      "peak_device_bytes": 1472413696,
+      "success": true,
+      "peak_device_total_bytes": 1472806912,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "llama-partial",
+        "model": "/Users/po/Work/xllamacpp/models/Llama-3.2-1B-Instruct-Q8_0.gguf",
+        "n_ctx": 2048,
+        "n_gpu_layers": 8
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 778488992,
+      "estimate": {
+        "n_ctx": 2048,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 778488992,
+            "model_bytes": 731537536,
+            "context_bytes": 29360128,
+            "compute_bytes": 17591328,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 353690816,
+            "model_bytes": 279232640,
+            "context_bytes": 37748736,
+            "compute_bytes": 36709440,
+            "free_bytes": null,
+            "total_bytes": null
+          },
+          {
+            "kind": "buffer_type",
+            "name": "CPU_REPACK",
+            "required_bytes": 581566464,
+            "model_bytes": 581566464,
+            "context_bytes": 0,
+            "compute_bytes": 0,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 1713746272,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 778534912,
+      "startup_peak_bytes": 779059200,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 770,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 778534912,
+      "peak_device_bytes": 779059200,
+      "success": true,
+      "peak_device_total_bytes": 779452416,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "llama-q8-kv",
+        "model": "/Users/po/Work/xllamacpp/models/Llama-3.2-1B-Instruct-Q8_0.gguf",
+        "n_ctx": 4096,
+        "quantized_kv": true,
+        "flash_attn": 1
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 1409872544,
+      "estimate": {
+        "n_ctx": 4096,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 1409872544,
+            "model_bytes": 1313251456,
+            "context_bytes": 71827456,
+            "compute_bytes": 24793632,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 289580096,
+            "model_bytes": 279085056,
+            "context_bytes": 0,
+            "compute_bytes": 10495040,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 1699452640,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 1409892352,
+      "startup_peak_bytes": 1410416640,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 770,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 1410154496,
+      "peak_device_bytes": 1410678784,
+      "success": true,
+      "peak_device_total_bytes": 1411072000,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "moe-2048",
+        "model": "/Users/po/Work/xllamacpp/models/stories15M_MOE-F16.gguf",
+        "prompt_repeats": 8,
+        "n_ctx": 2048
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 73774752,
+      "estimate": {
+        "n_ctx": 2048,
+        "basis": "requested_configuration",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 73774752,
+            "model_bytes": 54306432,
+            "context_bytes": 14155776,
+            "compute_bytes": 5312544,
+            "free_bytes": 26800209920,
+            "total_bytes": 26800603136
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 20669504,
+            "model_bytes": 18432000,
+            "context_bytes": 0,
+            "compute_bytes": 2237504,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 94444256,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 73826304,
+      "startup_peak_bytes": 73957376,
+      "startup_attempts": 1,
+      "completion_ok": true,
+      "tokens_evaluated": 66,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 73826304,
+      "peak_device_bytes": 73957376,
+      "success": true,
+      "peak_device_total_bytes": 74350592,
+      "refused_allocations": 0,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "controlled-no-retry",
+        "model": "/Users/po/Work/xllamacpp/models/Llama-3.2-1B-Instruct-Q8_0.gguf",
+        "n_ctx": 512,
+        "n_gpu_layers": -1,
+        "fit_params": true,
+        "advertised_limit_bytes": 2487791264,
+        "allocation_limit_bytes": 1338966016,
+        "automatic_retry": false
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 1346940576,
+      "estimate": {
+        "n_ctx": 512,
+        "basis": "auto_fit_after_cleanup",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 1346940576,
+            "model_bytes": 1313251456,
+            "context_bytes": 16777216,
+            "compute_bytes": 16911904,
+            "free_bytes": 2487398048,
+            "total_bytes": 2487791264
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 287745088,
+            "model_bytes": 279085056,
+            "context_bytes": 0,
+            "compute_bytes": 8660032,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 1634685664,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "success": false,
+      "error": "Failed to init server after 1 attempt(s): model loading failed\nggml_metal_buffer_init: error: failed to allocate buffer, size =    16.14 MiB\nggml_backend_metal_buffer_type_alloc_buffer: failed to allocate Metal buffer of 16911904 bytes (out of memory)\nggml_gallocr_reserve_n_impl: failed to allocate MTL0 buffer of size 16911904\ngraph_reserve: failed to allocate compute buffers\nllama_init_from_model: failed to initialize the context: failed to allocate compute pp buffers\n\nEstimated memory required for main model (weights + context + compute); auto-fit rerun after failed-load cleanup, n_ctx=512:\n  MTL0: 1284.54 MiB (weights 1252.41, context 16.00, compute 16.13); free 2372.17 MiB, total 2372.54 MiB\n  Host: 274.42 MiB (weights 266.16, context 0.00, compute 8.26)\nEstimate excludes projector, draft model, adapters and backend overhead; shared memory budgets may overlap.",
+      "memory_error": true,
+      "peak_device_bytes": 1330036736,
+      "peak_device_total_bytes": 1330429952,
+      "refused_allocations": 1,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "controlled-auto",
+        "model": "/Users/po/Work/xllamacpp/models/Llama-3.2-1B-Instruct-Q8_0.gguf",
+        "n_ctx": 512,
+        "n_gpu_layers": -1,
+        "fit_params": true,
+        "advertised_limit_bytes": 2487791264,
+        "allocation_limit_bytes": 1338966016,
+        "automatic_retry": true
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 1346940576,
+      "estimate": {
+        "n_ctx": 512,
+        "basis": "auto_fit_after_cleanup",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 1346940576,
+            "model_bytes": 1313251456,
+            "context_bytes": 16777216,
+            "compute_bytes": 16911904,
+            "free_bytes": 2487398048,
+            "total_bytes": 2487791264
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 287745088,
+            "model_bytes": 279085056,
+            "context_bytes": 0,
+            "compute_bytes": 8660032,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 1634685664,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "loaded_device_bytes": 1082163200,
+      "startup_peak_bytes": 1330036736,
+      "startup_attempts": 2,
+      "completion_ok": true,
+      "tokens_evaluated": 258,
+      "tokens_predicted": 16,
+      "inference_device_bytes": 1082163200,
+      "peak_device_bytes": 1330036736,
+      "success": true,
+      "peak_device_total_bytes": 1330429952,
+      "refused_allocations": 1,
+      "exit_code": 0
+    },
+    {
+      "config": {
+        "name": "controlled-weight-oom",
+        "model": "/Users/po/Work/xllamacpp/models/Llama-3.2-1B-Instruct-Q8_0.gguf",
+        "n_ctx": 512,
+        "n_gpu_layers": -1,
+        "fit_params": true,
+        "automatic_retry": true,
+        "advertised_limit_bytes": 2487791264,
+        "allocation_limit_bytes": 673470288
+      },
+      "device": "Apple M2 Max",
+      "baseline_bytes": 393216,
+      "predicted_device_bytes": 1346940576,
+      "estimate": {
+        "n_ctx": 512,
+        "basis": "auto_fit_after_cleanup",
+        "scope": "main model weights, context and compute buffers; excludes projector, draft model and adapters",
+        "buffers": [
+          {
+            "kind": "device",
+            "name": "MTL0",
+            "required_bytes": 1346940576,
+            "model_bytes": 1313251456,
+            "context_bytes": 16777216,
+            "compute_bytes": 16911904,
+            "free_bytes": 2487398048,
+            "total_bytes": 2487791264
+          },
+          {
+            "kind": "host",
+            "name": "Host",
+            "required_bytes": 287745088,
+            "model_bytes": 279085056,
+            "context_bytes": 0,
+            "compute_bytes": 8660032,
+            "free_bytes": null,
+            "total_bytes": null
+          }
+        ],
+        "required_bytes": 1634685664,
+        "max_device_shortfall_bytes": 0
+      },
+      "after_estimate_bytes": 393216,
+      "success": false,
+      "exit_code": -11,
+      "crashed": true,
+      "peak_device_bytes": null,
+      "peak_device_total_bytes": null,
+      "error": "Process exited -11; see controlled-weight-oom.log"
+    }
+  ]
+}

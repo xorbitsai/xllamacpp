@@ -390,6 +390,7 @@ extensions = [
             "src/xllamacpp/server.cpp",
             "thirdparty/llama.cpp/tools/server/server-connect.cpp",
             "thirdparty/llama.cpp/tools/server/server-models.cpp",
+            "thirdparty/llama.cpp/tools/server/server-models-sched.cpp",
             "thirdparty/llama.cpp/tools/server/server-http.cpp",
         ],
     ),

@@ -4,6 +4,7 @@ from xllamacpp.xllamacpp cimport common_params, ggml_backend_dev_props, llama_mo
 from libcpp cimport bool as c_bool
 from libcpp.string cimport string as std_string
 from libcpp.vector cimport vector as std_vector
+from libc.stddef cimport size_t
 
 cdef extern from "server.h" namespace "xllamacpp" nogil:
     std_string c_get_system_info "xllamacpp::get_system_info" ()
@@ -15,7 +16,9 @@ cdef extern from "server.h" namespace "xllamacpp" nogil:
     ctypedef c_bool (*Callback "xllamacpp::Callback")(std_string &&, void *py_cb)
     cdef cppclass CServer "xllamacpp::Server":
 
-        CServer(const common_params& params) except +
+        CServer(const common_params& params, const std_vector[size_t]& fit_retry_margins, std_string* startup_memory_report, c_bool auto_fit_retry) except +
+
+        unsigned startup_attempts() except +
 
         std_string listening_address() except +
 

@@ -90,6 +90,7 @@ cdef extern from "ggml.h":
         GGML_TYPE_NVFP4 # NVFP4 (4 blocks, E4M3 scale)
         GGML_TYPE_Q1_0
         GGML_TYPE_Q2_0
+        GGML_TYPE_F8_E4M3
         GGML_TYPE_COUNT
 
 
@@ -251,6 +252,7 @@ cdef extern from "llama.h":
     ctypedef struct llama_context_params:
         uint32_t n_outputs_max_per_seq
         size_t moe_cache_size
+        float moe_cache_cpu_share
 
 
 #------------------------------------------------------------------------------
@@ -318,7 +320,6 @@ cdef extern from "common.h":
     ctypedef struct common_grammar_trigger:
         common_grammar_trigger_type type
         std_string value
-        bint at_start
         llama_token token
 
     cpdef enum common_grammar_type:
@@ -434,6 +435,7 @@ cdef extern from "common.h":
         std_string hf_repo       # HF repo                                                    // NOLINT
         std_string hf_file       # HF file                                                    // NOLINT
         std_string docker_repo   # Docker repo                                                // NOLINT
+        std_vector[std_string] shards
 
     # draft-model-based speculative decoding parameters
     ctypedef struct common_params_speculative_draft:
@@ -653,6 +655,7 @@ cdef extern from "common.h":
         ggml_type cache_type_k      # KV cache data type for the K
         ggml_type cache_type_v      # KV cache data type for the V
         size_t moe_cache_size       # GPU cache size for CPU-resident MoE experts
+        float moe_cache_cpu_share
 
         common_conversation_mode conversation_mode
 
@@ -743,6 +746,7 @@ cdef extern from "common.h":
         # enable built-in tools
         std_vector[std_string] server_tools
         std_string server_tools_runtime
+        bint server_tools_allow_unauth
 
         # MCP server configs (Cursor-compatible JSON)
         std_string mcp_servers_config
@@ -752,6 +756,7 @@ cdef extern from "common.h":
         std_string models_dir    # directory containing models for the router server
         std_string models_preset # directory containing model presets for the router server
         int32_t models_max       # maximum number of models to load simultaneously
+        int models_memory_margin
         bint models_autoload     # automatically load models when requested via the router server
         std_string models_preset_hf # show a warning about remote presets on router loaded
 
@@ -759,6 +764,7 @@ cdef extern from "common.h":
 
         std_string slot_save_path
         std_string media_path    # path to directory for loading media files
+        bint media_allow_private_urls
 
         float slot_prompt_similarity
 
@@ -823,6 +829,7 @@ cdef extern from "common.h":
 
         # TTS params
         std_string tts_lang
+        std_string tts_voice
         std_string tts_speaker_file
 
         bint is_gen_docs

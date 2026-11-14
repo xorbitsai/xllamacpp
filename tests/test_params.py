@@ -80,7 +80,8 @@ def test_enum_values():
     assert xlc.ggml_sched_priority.GGML_SCHED_PRIO_REALTIME == 3
     assert xlc.ggml_numa_strategy.GGML_NUMA_STRATEGY_COUNT == 5
     assert xlc.ggml_type.GGML_TYPE_Q2_0 == 42
-    assert xlc.ggml_type.GGML_TYPE_COUNT == 43
+    assert xlc.ggml_type.GGML_TYPE_F8_E4M3 == 43
+    assert xlc.ggml_type.GGML_TYPE_COUNT == 44
     assert xlc.ggml_backend_dev_type.GGML_BACKEND_DEVICE_TYPE_ACCEL == 3
     assert xlc.llama_rope_scaling_type.LLAMA_ROPE_SCALING_TYPE_MAX_VALUE == 3
     assert xlc.llama_pooling_type.LLAMA_POOLING_TYPE_RANK == 4
@@ -173,6 +174,11 @@ def test_common_params():
     assert params.model.hf_repo == ""
     assert params.model.hf_file == ""
     assert params.model.docker_repo == ""
+    assert params.model.shards == []
+    params.model.shards = ["part-00002.gguf", "分片-00003.gguf"]
+    assert params.model.shards == ["part-00002.gguf", "分片-00003.gguf"]
+    params.model.shards = []
+    assert params.model.shards == []
     assert params.model_alias == set()
     params.model_alias = {"alias1", "alias2"}
     assert params.model_alias == {"alias1", "alias2"}
@@ -261,6 +267,9 @@ def test_common_params():
     assert params.cache_type_k == xlc.ggml_type.GGML_TYPE_F16
     assert params.cache_type_v == xlc.ggml_type.GGML_TYPE_F16
     assert params.moe_cache_size == 0
+    assert params.moe_cache_cpu_share == 0.0
+    params.moe_cache_cpu_share = 0.25
+    assert params.moe_cache_cpu_share == 0.25
     params.moe_cache_size = 1024
     assert params.moe_cache_size == 1024
 
@@ -401,6 +410,9 @@ def test_common_params():
     params.server_tools = ["tool1", "tool2"]
     assert params.server_tools == ["tool1", "tool2"]
     assert params.server_tools_runtime == ""
+    assert params.server_tools_allow_unauth == False
+    params.server_tools_allow_unauth = True
+    assert params.server_tools_allow_unauth == True
     params.server_tools_runtime = "docker"
     assert params.server_tools_runtime == "docker"
 
@@ -419,6 +431,9 @@ def test_common_params():
 
     assert params.slot_save_path == ""
     assert params.media_path == ""
+    assert params.media_allow_private_urls == False
+    params.media_allow_private_urls = True
+    assert params.media_allow_private_urls == True
 
     assert params.slot_prompt_similarity == approx(0.1)
 
@@ -491,6 +506,9 @@ def test_common_params():
     assert params.no_alloc is True
 
     assert params.tts_lang == ""
+    assert params.tts_voice == ""
+    params.tts_voice = "alloy"
+    assert params.tts_voice == "alloy"
     params.tts_lang = "en"
     assert params.tts_lang == "en"
     assert params.tts_speaker_file == ""
@@ -518,6 +536,9 @@ def test_common_params():
     assert params.models_preset == "/presets"
 
     assert params.models_max == 4
+    assert params.models_memory_margin == 0
+    params.models_memory_margin = 512
+    assert params.models_memory_margin == 512
     params.models_max = 5
     assert params.models_max == 5
 
@@ -883,6 +904,8 @@ params.port = int(sys.argv[2])
 params.n_ctx = 256
 params.n_predict = 1
 params.warmup = False
+# Upstream logs attention-rotation configuration at INFO, mapped to verbosity 4.
+params.verbosity = 4
 params.cpuparams.n_threads = 2
 params.cpuparams_batch.n_threads = 2
 params.cache_ram_mib = 0

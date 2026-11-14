@@ -50,8 +50,8 @@ Issues = "https://github.com/xorbitsai/xllamacpp/issues"
 Changelog = "https://github.com/xorbitsai/xllamacpp/releases"
 
 [project.optional-dependencies]
-test = ['pytest', 'pytest-cov']
-all = ['gguf', 'orjson']
+test = ['pytest', 'pytest-cov', 'gguf']
+all = ['orjson']
 
 [build-system]
 requires = ["setuptools >= 61", "cython >= 3.1", "versioneer[toml]"]

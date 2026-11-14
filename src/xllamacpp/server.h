@@ -22,10 +22,14 @@ std::string json_schema_to_grammar_str(const std::string & schema_json_str);
 
 class Server {
   public:
-    Server(const common_params & params);
+    Server(const common_params &       params,
+           const std::vector<size_t> & fit_retry_margins     = {},
+           std::string *               startup_memory_report = nullptr,
+           bool                        auto_fit_retry        = false);
     ~Server();
 
     std::string listening_address() const;
+    unsigned    startup_attempts() const;
 
     std::string handle_metrics();
 
@@ -48,6 +52,7 @@ class Server {
                                  void *              py_cb_ok);
 
   private:
+    unsigned                        _startup_attempts = 0;
     common_params                   _params;
     std::string                     _listening_address;
     // Incomplete type of server_context

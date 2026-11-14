@@ -10,6 +10,7 @@
 xllamacpp: a thin cython wrapper of llama.cpp
 """
 from libc.stdint cimport int32_t, uint32_t, int8_t, uint16_t
+from libc.stddef cimport size_t
 from libcpp cimport bool as c_bool
 from libcpp.vector cimport vector
 from libcpp.string cimport string
@@ -705,6 +706,15 @@ cdef class CommonParamsModel:
     @docker_repo.setter
     def docker_repo(self, value: str):
         self.p.docker_repo = value
+
+    @property
+    def shards(self) -> list[str]:
+        """Additional local shard paths for a split GGUF model."""
+        return self.p.shards
+
+    @shards.setter
+    def shards(self, value: list[str]):
+        self.p.shards = value
 
 cdef class CommonParamsSpeculativeDraft:
     cdef xllamacpp.common_params_speculative_draft *p
@@ -1538,7 +1548,7 @@ cdef class CommonParams:
 
     @property
     def numa(self) -> ggml_numa_strategy:
-        """KV cache defragmentation threshold."""
+        """NUMA memory placement strategy."""
         return self.p.numa
 
     @numa.setter
@@ -2227,6 +2237,15 @@ cdef class CommonParams:
         self.p.moe_cache_size = value
 
     @property
+    def moe_cache_cpu_share(self) -> float:
+        """Share of MoE cache misses computed on the CPU instead of uploaded."""
+        return self.p.moe_cache_cpu_share
+
+    @moe_cache_cpu_share.setter
+    def moe_cache_cpu_share(self, value: float):
+        self.p.moe_cache_cpu_share = value
+
+    @property
     def mmproj(self) -> CommonParamsModel:
         return CommonParamsModel.from_ptr(&self.p.mmproj, self)
 
@@ -2811,6 +2830,15 @@ cdef class CommonParams:
         self.p.server_tools_runtime = value
 
     @property
+    def server_tools_allow_unauth(self) -> bool:
+        """Allow tools/MCP on a non-loopback address without an API key."""
+        return self.p.server_tools_allow_unauth
+
+    @server_tools_allow_unauth.setter
+    def server_tools_allow_unauth(self, value: bool):
+        self.p.server_tools_allow_unauth = value
+
+    @property
     def mcp_servers_config(self) -> str:
         """path to JSON file with MCP server definitions"""
         return self.p.mcp_servers_config
@@ -2856,6 +2884,15 @@ cdef class CommonParams:
         self.p.models_max = value
 
     @property
+    def models_memory_margin(self) -> int:
+        """MiB of device memory to keep free when loading router models; 0 disables accounting."""
+        return self.p.models_memory_margin
+
+    @models_memory_margin.setter
+    def models_memory_margin(self, value: int):
+        self.p.models_memory_margin = value
+
+    @property
     def models_autoload(self) -> bool:
         """automatically load models when requested via the router server"""
         return self.p.models_autoload
@@ -2899,6 +2936,15 @@ cdef class CommonParams:
     @media_path.setter
     def media_path(self, value: str):
         self.p.media_path = value
+
+    @property
+    def media_allow_private_urls(self) -> bool:
+        """Allow HTTP(S) media URLs on local or private addresses."""
+        return self.p.media_allow_private_urls
+
+    @media_allow_private_urls.setter
+    def media_allow_private_urls(self, value: bool):
+        self.p.media_allow_private_urls = value
 
     @property
     def slot_prompt_similarity(self) -> float:
@@ -3194,6 +3240,15 @@ cdef class CommonParams:
         self.p.tts_lang = value
 
     @property
+    def tts_voice(self) -> str:
+        """Default voice name for text-to-speech generation."""
+        return self.p.tts_voice
+
+    @tts_voice.setter
+    def tts_voice(self, value: str):
+        self.p.tts_voice = value
+
+    @property
     def tts_speaker_file(self) -> str:
         return self.p.tts_speaker_file
 
@@ -3291,9 +3346,44 @@ ctypedef fused json_dict_or_str:
 
 
 cdef class Server:
+    """Native llama.cpp server.
+
+    fit_retry_margins_bytes="auto" (default) estimates device shortfalls after each GPU
+    OOM and increases extra headroom for at most four retries (8 GiB cap).
+    Estimation failure falls back to increasing headroom without an estimate.
+    fit_retry_margins_bytes also accepts a tuple or list of positive, strictly
+    increasing extra per-device memory margins. Each entry permits one retry
+    after a recoverable GPU allocation failure, relative to the original fit
+    margins. The schedule is copied internally; None explicitly disables retries.
+    Explicit placement settings disable retries. Startup failures include native
+    error details; recognized allocation failures raise MemoryError, with a
+    best-effort memory_estimate dict (byte counts) or None when unavailable.
+    """
     cdef shared_ptr[CServer] svr
 
-    def __cinit__(self, CommonParams common_params):
+    def __cinit__(self, CommonParams common_params, *, fit_retry_margins_bytes="auto"):
+        cdef vector[size_t] retry_margins
+        cdef string memory_report
+        cdef c_bool auto_fit_retry = False
+        cdef object max_margin = <size_t>-1
+        cdef object previous = 0
+        if isinstance(fit_retry_margins_bytes, str) and fit_retry_margins_bytes == "auto":
+            auto_fit_retry = True
+        elif fit_retry_margins_bytes is not None:
+            if not isinstance(fit_retry_margins_bytes, (tuple, list)):
+                raise TypeError("fit_retry_margins_bytes must be 'auto', a tuple, list, or None")
+            schedule = tuple(fit_retry_margins_bytes)
+            if not schedule:
+                raise ValueError("fit_retry_margins_bytes must not be empty; use None to disable retries")
+            for value in schedule:
+                if isinstance(value, bool) or not isinstance(value, int):
+                    raise TypeError("fit_retry_margins_bytes entries must be integers in bytes")
+                if value <= previous:
+                    raise ValueError("fit_retry_margins_bytes must be positive and strictly increasing")
+                if value > max_margin:
+                    raise ValueError("fit_retry_margins_bytes entries must fit in size_t")
+                retry_margins.push_back(value)
+                previous = value
         # Mirror the CPU-params postprocessing that common_params_parser_init
         # performs for the CLI (common/arg.cpp): params built from Python skip
         # CLI parsing, so resolve n_threads < 0 to the number of math cores
@@ -3303,7 +3393,22 @@ cdef class Server:
         xllamacpp.postprocess_cpu_params(common_params.p.cpuparams_batch, &common_params.p.cpuparams)
         xllamacpp.postprocess_cpu_params(common_params.p.speculative.draft.cpuparams, &common_params.p.cpuparams)
         xllamacpp.postprocess_cpu_params(common_params.p.speculative.draft.cpuparams_batch, &common_params.p.cpuparams_batch)
-        self.svr = make_shared[CServer](common_params.p)
+        try:
+            self.svr = make_shared[CServer](common_params.p, retry_margins, &memory_report, auto_fit_retry)
+        except MemoryError as error:
+            error.memory_estimate = None
+            if not memory_report.empty():
+                try:
+                    error.memory_estimate = json.loads(memory_report)
+                except Exception:
+                    # Diagnostic decoding must preserve the original allocation error.
+                    pass
+            raise
+
+    @property
+    def startup_attempts(self):
+        """Number of loads actually attempted, including the initial load."""
+        return self.svr.get().startup_attempts()
 
     @property
     def listening_address(self):
