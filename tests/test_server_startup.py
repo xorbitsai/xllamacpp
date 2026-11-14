@@ -29,6 +29,7 @@ import xllamacpp as xlc
         (3, TypeError),
         ({}, TypeError),
         ("1024", TypeError),
+        ("automatic", TypeError),
         (iter([1, 2]), TypeError),
     ],
 )
@@ -63,13 +64,16 @@ def startup_checks(tmp_path_factory):
     return binary
 
 
-@pytest.mark.parametrize("scenario", ["classification", "retry", "failures", "margin"])
+@pytest.mark.parametrize(
+    "scenario",
+    ["classification", "retry", "adaptive", "adaptive_failures", "failures", "margin"],
+)
 def test_native_startup_policy(startup_checks, scenario):
     subprocess.run([str(startup_checks), scenario], check=True, timeout=10)
 
 
 @pytest.mark.parametrize(
-    "margins", [None, (256 << 20, 512 << 20), [256 << 20, 512 << 20]]
+    "margins", ["default", None, "auto", (256 << 20, 512 << 20), [256 << 20, 512 << 20]]
 )
 def test_invalid_model_diagnostics(tmp_path, margins):
     params = xlc.CommonParams()
@@ -81,7 +85,10 @@ def test_invalid_model_diagnostics(tmp_path, margins):
     params.warmup = False
     params.verbosity = 0
     with pytest.raises(RuntimeError) as error:
-        xlc.Server(params, fit_retry_margins_bytes=margins)
+        if margins == "default":
+            xlc.Server(params)
+        else:
+            xlc.Server(params, fit_retry_margins_bytes=margins)
     message = str(error.value)
     assert "after 1 attempt(s)" in message
     assert "model loading" in message
@@ -89,8 +96,8 @@ def test_invalid_model_diagnostics(tmp_path, margins):
     assert "failed to load model" in message
 
 
-@pytest.mark.parametrize("container", [tuple, list])
-def test_retry_opt_in_preserves_explicit_settings(model_path, container):
+@pytest.mark.parametrize("container", [tuple, list, None])
+def test_retry_preserves_explicit_settings(model_path, container):
     params = xlc.CommonParams()
     params.model.path = str(Path(model_path) / "stories15M-q4_0.gguf")
     params.port = 0
@@ -105,7 +112,7 @@ def test_retry_opt_in_preserves_explicit_settings(model_path, container):
         params.tensor_split,
         params.fit_params_target,
     )
-    margins = container((256 << 20, 512 << 20))
+    margins = container((256 << 20, 512 << 20)) if container else "auto"
     server = xlc.Server(params, fit_retry_margins_bytes=margins)
     assert server.startup_attempts == 1
     assert server.listening_address.startswith("http://127.0.0.1:")
@@ -115,4 +122,24 @@ def test_retry_opt_in_preserves_explicit_settings(model_path, container):
         params.tensor_split,
         params.fit_params_target,
     ) == before
-    assert margins == container((256 << 20, 512 << 20))
+    assert margins == (container((256 << 20, 512 << 20)) if container else "auto")
+
+
+@pytest.mark.parametrize("mode", ["default", "auto", None])
+def test_auto_retry_first_load_success(model_path, mode):
+    params = xlc.CommonParams()
+    params.model.path = str(Path(model_path) / "stories15M-q4_0.gguf")
+    params.port = 0
+    params.n_ctx = 128
+    params.n_parallel = 1
+    params.warmup = False
+    params.verbosity = 0
+    margins = params.fit_params_target
+    if mode == "default":
+        server = xlc.Server(params)
+    else:
+        server = xlc.Server(params, fit_retry_margins_bytes=mode)
+    assert server.startup_attempts == 1
+    assert server.listening_address.startswith("http://127.0.0.1:")
+    assert params.fit_params_target == margins
+    assert params.n_gpu_layers == -1

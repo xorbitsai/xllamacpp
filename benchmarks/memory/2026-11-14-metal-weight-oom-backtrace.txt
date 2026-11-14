@@ -1,0 +1,12 @@
+Controlled weight-allocation failure: SIGSEGV, null access at 0x10
+Faulting thread frames from the macOS crash report:
+0: ggml_metal_buffer_is_shared
+1: ggml_backend_metal_buffer_shared_get_base(ggml_backend_buffer*)
+2: ggml_backend_buffer_get_base
+3: llama_model_loader::load_all_data(ggml_context*, std::__1::vector<ggml_backend_buffer*, std::__1::allocator<ggml_backend_buffer*>>&, std::__1::vector<std::__1::unique_ptr<llama_mlock, std::__1::default_delete<llama_mlock>>, std::__1::allocator<std::__1::unique_ptr<llama_mlock, std::__1::default_delete<llama_mlock>>>>*, bool (*)(float, void*), void*)
+4: llama_model_base::load_tensors(llama_model_loader&)
+5: llama_model_load_from_file_impl(gguf_context*, void (*)(ggml_tensor*, void*), void*, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>>&, __sFILE*, llama_model_params)
+6: llama_model_load_from_file
+7: common_model_load(std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, llama_model_params const&)
+8: common_init_result::common_init_result(common_params&, bool)
+9: common_init_from_params(common_params&, bool)

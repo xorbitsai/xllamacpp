@@ -1097,10 +1097,34 @@ Use the default layer split mode for automatic placement; tensor split mode does
 not support auto-fit. The selected settings are internal to the server and are
 not written back to the Python `params` object.
 
-#### Optional Startup Retries
+#### Startup Retries
+
+By default, startup automatically retries recoverable GPU allocation failures
+(`fit_retry_margins_bytes="auto"`):
+
+```python
+server = xlc.Server(params)
+print(server.startup_attempts)  # initial load plus at most four retries
+```
+
+After each OOM, the failed load is freed and llama.cpp estimates the main model's
+device memory again. The next extra margin is the larger of twice the previous
+extra margin or the previous extra margin plus the largest measured device
+shortfall and 256 MiB of headroom. It rounds up to 256 MiB and caps extra margins
+at 8 GiB per device, stopping when that cap has already been tried. These values
+are relative to the original `fit_params_target`, rather than cumulative additions.
+The chosen margin is logged before each restart.
+
+If measurement fails or shows no shortfall, automatic retries use increasing
+headroom; with no measured gaps the extra margins are 256 MiB, 512 MiB, 1 GiB and
+2 GiB. Cleanup and refitting may hide the original shortfall, and estimates omit
+some allocations, so this is a bounded recovery policy, not an exact prediction
+of the margin needed. Automatic mode is enabled by default; pass
+`fit_retry_margins_bytes=None` to disable retries.
+The placement requirements and stop conditions below apply to automatic mode too.
 
 Configure retries after recoverable GPU allocation failures with a tuple or list
-of extra fitting margins in bytes:
+of explicit extra fitting margins in bytes:
 
 ```python
 MiB = 1024 * 1024
@@ -1122,7 +1146,8 @@ margin, the example allows:
 | 3 | 512 MiB | 1.5 GiB |
 | 4 | 1024 MiB | 2 GiB |
 
-The maximum number of loads is `1 + len(fit_retry_margins_bytes)`. Retries stop
+With an explicit schedule, the maximum number of loads is
+`1 + len(fit_retry_margins_bytes)`. Retries stop
 as soon as a load succeeds. When the schedule is exhausted, the final failure is
 raised to the caller. Margins are extra headroom for the fitter, not additional
 GPU allocations, and are never added cumulatively across retries.
@@ -1132,7 +1157,7 @@ the native `size_t` type. Empty schedules, booleans, and generators are rejected
 use `None` to disable retries. The server copies the schedule internally and
 leaves the input unchanged.
 
-`fit_retry_margins_bytes=None` (the default) performs one load without OOM retries.
+`fit_retry_margins_bytes=None` performs one load without OOM retries.
 Native llama.cpp automatic fitting still runs by default. Each retry frees the
 failed load before running the fitter against current free memory. Retries require
 `fit_params = True`, automatic GPU layers and splits, and no explicit tensor
@@ -1146,6 +1171,43 @@ Recognized allocation failures raise `MemoryError`; other startup failures raise
 `RuntimeError`. A retry can recover from an underestimated memory requirement or
 changing free memory, but cannot guarantee a fit. Backend failures that abort the
 process cannot be caught or retried by this in-process binding.
+
+On OOM, the exception also includes a best-effort estimate of the main model's
+memory requirement, broken down into weights, context and compute buffers for
+each device and the host. Access the same information in bytes through
+`error.memory_estimate`:
+
+```python
+try:
+    server = xlc.Server(params)
+except MemoryError as error:
+    print(error)  # readable memory breakdown in MiB, alongside the native error
+    estimate = error.memory_estimate  # dict, or None if unavailable
+    if estimate is not None:
+        for buffer in estimate["buffers"]:
+            print(buffer["name"], buffer["required_bytes"], buffer["free_bytes"])
+```
+
+The exception's measurement runs after the final OOM; automatic retry mode also
+measures between retries. Both run after freeing the failed load, using
+llama.cpp's allocation-free buffer sizing. When fitting is enabled, measurement reruns
+auto-fit against current free memory; `estimate["basis"]` is then
+`"auto_fit_after_cleanup"`, so the result may differ from the failed placement.
+Otherwise the basis is `"requested_configuration"`. `estimate["n_ctx"]` records
+the measured context size, and `estimate["required_bytes"]` sums all buffer rows.
+Each row includes `model_bytes`, `context_bytes`, `compute_bytes`, `free_bytes`
+and `total_bytes`; unavailable memory budgets are `None`. Shared host/device
+memory budgets may overlap. `max_device_shortfall_bytes` is the largest positive
+gap between a device's required buffers and its reported free memory; zero can
+also mean that device budgets were unavailable. These estimates exclude projectors, draft models,
+adapters and backend overhead, so they are not a guaranteed peak memory figure.
+If measurement fails, the original `MemoryError` is preserved and explains why
+the estimate is unavailable.
+
+See the [Metal memory validation](benchmarks/memory/README.md) for measured
+estimation errors, a reproducible benchmark, and controlled allocation-failure
+results. It also documents a native Metal weight-allocation crash that cannot
+be caught by the in-process retry loop. CUDA and ROCm accuracy remain unverified.
 
 ### System Info & Device Info
 

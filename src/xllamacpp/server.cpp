@@ -8,6 +8,7 @@
 #include "server-stream.h"
 #include "server-tools.h"
 #include "server-startup.h"
+#include "server-memory.h"
 
 #include "arg.h"
 #include "build-info.h"
@@ -379,6 +380,7 @@ static void init_impl(common_params &                           params,
     result.stage = "model loading";
     result.errors.clear();
     result.device_oom = false;
+    result.host_oom   = false;
     if (!ctx_server.load_model(params)) {
         return;
     }
@@ -386,6 +388,7 @@ static void init_impl(common_params &                           params,
     result.stage = "server metadata";
     result.errors.clear();
     result.device_oom = false;
+    result.host_oom   = false;
     routes.update_meta(ctx_server);
     ctx_http.is_ready.store(true);
     SRV_INF("%s", "model loaded\n");
@@ -569,7 +572,11 @@ std::vector<ggml_backend_dev_props> get_device_info() {
     return result;
 }
 
-Server::Server(const common_params & params, const std::vector<size_t> & fit_retry_margins) : _params(params) {
+Server::Server(const common_params &       params,
+               const std::vector<size_t> & fit_retry_margins,
+               std::string *               startup_memory_report,
+               bool                        auto_fit_retry) :
+    _params(params) {
     validate_fit_retry_margins(fit_retry_margins);
     if (_params.model.path.empty()) {
         throw std::invalid_argument("params.model.path is required: xllamacpp disabled the router server feature");
@@ -597,17 +604,17 @@ Server::Server(const common_params & params, const std::vector<size_t> & fit_ret
         }
         return result;
     };
+    const bool automatic_placement =
+        params.n_gpu_layers == -1 &&
+        (params.split_mode == LLAMA_SPLIT_MODE_LAYER || params.split_mode == LLAMA_SPLIT_MODE_NONE) &&
+        std::all_of(std::begin(params.tensor_split), std::end(params.tensor_split),
+                    [](float value) { return value == 0; }) &&
+        std::all_of(params.tensor_buft_overrides.begin(), params.tensor_buft_overrides.end(),
+                    [](const llama_model_tensor_buft_override & value) { return value.pattern == nullptr; });
     const auto prepare_retry = [&](size_t extra) {
-        const bool automatic =
-            params.n_gpu_layers == -1 &&
-            (params.split_mode == LLAMA_SPLIT_MODE_LAYER || params.split_mode == LLAMA_SPLIT_MODE_NONE) &&
-            std::all_of(std::begin(params.tensor_split), std::end(params.tensor_split),
-                        [](float value) { return value == 0; }) &&
-            std::all_of(params.tensor_buft_overrides.begin(), params.tensor_buft_overrides.end(),
-                        [](const llama_model_tensor_buft_override & value) { return value.pattern == nullptr; });
         // Every step is relative to the caller's margins, never cumulative.
         auto margins = params.fit_params_target;
-        if (!increase_fit_margin(params.fit_params, automatic, margins, extra)) {
+        if (!increase_fit_margin(params.fit_params, automatic_placement, margins, extra)) {
             return false;
         }
         next_params.fit_params_target = std::move(margins);
@@ -615,11 +622,32 @@ Server::Server(const common_params & params, const std::vector<size_t> & fit_ret
                 extra / (1024.0 * 1024.0));
         return true;
     };
-    auto result = start_with_retry(fit_retry_margins, attempt, prepare_retry, _startup_attempts);
+    const auto estimate_shortfall = [&]() {
+        std::lock_guard<std::mutex> lock(startup_mutex);
+        return estimate_startup_memory(_params).device_shortfall_bytes;
+    };
+    const bool can_auto_retry =
+        auto_fit_retry && params.fit_params && automatic_placement && !params.fit_params_target.empty();
+    auto result = can_auto_retry ?
+                      start_with_auto_retry(attempt, prepare_retry, estimate_shortfall, _startup_attempts) :
+                      start_with_retry(fit_retry_margins, attempt, prepare_retry, _startup_attempts);
     if (!result.success) {
-        const auto message =
+        auto message =
             "Failed to init server after " + std::to_string(_startup_attempts) + " attempt(s): " + result.message();
         if (result.device_oom || result.host_oom) {
+            // Estimation must never replace the original allocation failure.
+            try {
+                std::lock_guard<std::mutex> lock(startup_mutex);
+                const auto                  estimate = estimate_startup_memory(_params);
+                message += estimate.summary;
+                if (startup_memory_report) {
+                    *startup_memory_report = estimate.report;
+                }
+            } catch (const std::exception & e) {
+                message += "\nMemory estimate unavailable: " + std::string(e.what());
+            } catch (...) {
+                message += "\nMemory estimate unavailable";
+            }
             throw startup_memory_error(message);
         }
         throw std::runtime_error(message);

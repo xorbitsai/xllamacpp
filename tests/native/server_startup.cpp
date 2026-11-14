@@ -22,6 +22,8 @@ int main(int argc, char ** argv) {
                  std::string("vk::Device::allocateMemory: VK_ERROR_OUT_OF_DEVICE_MEMORY"),
                  std::string("vk::Device::allocateMemory: ErrorOutOfDeviceMemory"),
                  std::string("ggml_metal_device_buffer_init: error: failed to allocate buffer, size = 512 MiB"),
+                 std::string("ggml_backend_metal_buffer_type_alloc_buffer: failed to allocate Metal buffer of "
+                             "536870912 bytes (out of memory)"),
              }) {
             assert(failure(error).device_oom);
         }
@@ -34,7 +36,10 @@ int main(int argc, char ** argv) {
              }) {
             assert(!failure(error).device_oom);
         }
-        auto result = failure(oom);
+        auto       result = failure(oom);
+        const auto host =
+            failure("ggml_backend_cpu_buffer_type_alloc_buffer: failed to allocate buffer of size 536870912");
+        assert(host.host_oom && !host.device_oom);
         result.record_error(std::string(32000, 'x'));
         assert(result.errors.size() == 8192);
         assert(result.device_oom);
@@ -81,6 +86,94 @@ int main(int argc, char ** argv) {
             attempts);
         assert(result.success && attempts == 4 && calls == 4 && preparations == 3);
         assert(!live_allocation);
+    } else if (scenario == "adaptive") {
+        constexpr size_t          MiB = 1024 * 1024;
+        const std::vector<size_t> expected{ 768 * MiB, 1536 * MiB, 3840 * MiB };
+        unsigned                  calls           = 0;
+        unsigned                  attempts        = 0;
+        unsigned                  estimates       = 0;
+        bool                      live_allocation = false;
+        std::vector<size_t>       used;
+        const auto                result = start_with_auto_retry(
+            [&]() {
+                assert(!live_allocation);
+                live_allocation = true;
+                struct allocation {
+                    bool & live;
+                    ~allocation() { live = false; }
+                } context{ live_allocation };
+                if (++calls < 4) {
+                    return failure(oom);
+                }
+                startup_result loaded;
+                loaded.success = true;
+                return loaded;
+            },
+            [&](size_t extra) {
+                assert(!live_allocation);
+                used.push_back(extra);
+                return true;
+            },
+            [&]() {
+                assert(!live_allocation);
+                const size_t gaps[] = { 384 * MiB, 0, 2048 * MiB };
+                return gaps[estimates++];
+            },
+            attempts);
+        assert(result.success && calls == 4 && attempts == 4 && estimates == 3);
+        assert(used == expected);
+        const auto limit = auto_fit_margin_limit();
+        assert(next_auto_fit_margin(0, 0) == 256 * MiB);
+        assert(next_auto_fit_margin(limit, 0) == 0);
+        assert(next_auto_fit_margin(limit - 256 * MiB, 0) == limit);
+        assert(next_auto_fit_margin(0, std::numeric_limits<size_t>::max()) == limit);
+    } else if (scenario == "adaptive_failures") {
+        for (int mode = 0; mode < 9; ++mode) {
+            unsigned            calls     = 0;
+            unsigned            attempts  = 0;
+            unsigned            estimates = 0;
+            std::vector<size_t> used;
+            const auto          result = start_with_auto_retry(
+                [&]() {
+                    ++calls;
+                    if (mode == 2) {
+                        startup_result loaded;
+                        loaded.success = true;
+                        return loaded;
+                    }
+                    if (mode == 3 || (mode == 8 && calls == 2)) {
+                        return failure("invalid model");
+                    }
+                    auto failed     = failure(oom, mode == 4 ? "HTTP startup" : "model loading");
+                    failed.host_oom = mode == 5;
+                    return failed;
+                },
+                [&](size_t extra) {
+                    used.push_back(extra);
+                    return mode != 6;
+                },
+                [&]() -> size_t {
+                    ++estimates;
+                    if (mode == 1) {
+                        throw std::runtime_error("measurement unavailable");
+                    }
+                    return mode == 7 ? std::numeric_limits<size_t>::max() : 0;
+                },
+                attempts);
+            const unsigned expected = mode < 2 ? 5 : mode >= 7 ? 2 : 1;
+            assert(calls == expected && attempts == expected);
+            assert(estimates == (mode < 2 ? 4u : mode >= 6 ? 1u : 0u));
+            assert(result.success == (mode == 2));
+            if (mode < 2) {
+                const std::vector<size_t> fallback{ size_t(256) << 20, size_t(512) << 20, size_t(1) << 30,
+                                                    size_t(2) << 30 };
+                assert(used == fallback);
+                assert(result.detail.find("First attempt:") != std::string::npos);
+            }
+            if (mode == 8) {
+                assert(!result.device_oom && !result.host_oom);
+            }
+        }
     } else if (scenario == "failures") {
         // Each failure mode must be bounded, including a second OOM.
         for (int mode = 0; mode < 7; ++mode) {

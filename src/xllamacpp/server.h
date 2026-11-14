@@ -22,7 +22,10 @@ std::string json_schema_to_grammar_str(const std::string & schema_json_str);
 
 class Server {
   public:
-    Server(const common_params & params, const std::vector<size_t> & fit_retry_margins = {});
+    Server(const common_params &       params,
+           const std::vector<size_t> & fit_retry_margins     = {},
+           std::string *               startup_memory_report = nullptr,
+           bool                        auto_fit_retry        = false);
     ~Server();
 
     std::string listening_address() const;

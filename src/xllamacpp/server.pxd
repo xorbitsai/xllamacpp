@@ -16,7 +16,7 @@ cdef extern from "server.h" namespace "xllamacpp" nogil:
     ctypedef c_bool (*Callback "xllamacpp::Callback")(std_string &&, void *py_cb)
     cdef cppclass CServer "xllamacpp::Server":
 
-        CServer(const common_params& params, const std_vector[size_t]& fit_retry_margins) except +
+        CServer(const common_params& params, const std_vector[size_t]& fit_retry_margins, std_string* startup_memory_report, c_bool auto_fit_retry) except +
 
         unsigned startup_attempts() except +
 

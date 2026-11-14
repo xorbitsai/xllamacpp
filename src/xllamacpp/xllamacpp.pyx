@@ -3348,22 +3348,30 @@ ctypedef fused json_dict_or_str:
 cdef class Server:
     """Native llama.cpp server.
 
-    fit_retry_margins_bytes accepts a tuple or list of positive, strictly
+    fit_retry_margins_bytes="auto" (default) estimates device shortfalls after each GPU
+    OOM and increases extra headroom for at most four retries (8 GiB cap).
+    Estimation failure falls back to increasing headroom without an estimate.
+    fit_retry_margins_bytes also accepts a tuple or list of positive, strictly
     increasing extra per-device memory margins. Each entry permits one retry
     after a recoverable GPU allocation failure, relative to the original fit
-    margins. The schedule is copied internally; None (default) disables retries.
+    margins. The schedule is copied internally; None explicitly disables retries.
     Explicit placement settings disable retries. Startup failures include native
-    error details; recognized allocation failures raise MemoryError.
+    error details; recognized allocation failures raise MemoryError, with a
+    best-effort memory_estimate dict (byte counts) or None when unavailable.
     """
     cdef shared_ptr[CServer] svr
 
-    def __cinit__(self, CommonParams common_params, *, fit_retry_margins_bytes=None):
+    def __cinit__(self, CommonParams common_params, *, fit_retry_margins_bytes="auto"):
         cdef vector[size_t] retry_margins
+        cdef string memory_report
+        cdef c_bool auto_fit_retry = False
         cdef object max_margin = <size_t>-1
         cdef object previous = 0
-        if fit_retry_margins_bytes is not None:
+        if isinstance(fit_retry_margins_bytes, str) and fit_retry_margins_bytes == "auto":
+            auto_fit_retry = True
+        elif fit_retry_margins_bytes is not None:
             if not isinstance(fit_retry_margins_bytes, (tuple, list)):
-                raise TypeError("fit_retry_margins_bytes must be a tuple, list, or None")
+                raise TypeError("fit_retry_margins_bytes must be 'auto', a tuple, list, or None")
             schedule = tuple(fit_retry_margins_bytes)
             if not schedule:
                 raise ValueError("fit_retry_margins_bytes must not be empty; use None to disable retries")
@@ -3385,7 +3393,17 @@ cdef class Server:
         xllamacpp.postprocess_cpu_params(common_params.p.cpuparams_batch, &common_params.p.cpuparams)
         xllamacpp.postprocess_cpu_params(common_params.p.speculative.draft.cpuparams, &common_params.p.cpuparams)
         xllamacpp.postprocess_cpu_params(common_params.p.speculative.draft.cpuparams_batch, &common_params.p.cpuparams_batch)
-        self.svr = make_shared[CServer](common_params.p, retry_margins)
+        try:
+            self.svr = make_shared[CServer](common_params.p, retry_margins, &memory_report, auto_fit_retry)
+        except MemoryError as error:
+            error.memory_estimate = None
+            if not memory_report.empty():
+                try:
+                    error.memory_estimate = json.loads(memory_report)
+                except Exception:
+                    # Diagnostic decoding must preserve the original allocation error.
+                    pass
+            raise
 
     @property
     def startup_attempts(self):
