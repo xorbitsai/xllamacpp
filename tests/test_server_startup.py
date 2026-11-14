@@ -1,5 +1,6 @@
 """Exercise the native retry controller without exhausting real GPU memory."""
 
+import json
 import os
 from pathlib import Path
 import shutil
@@ -143,3 +144,45 @@ def test_auto_retry_first_load_success(model_path, mode):
     assert server.listening_address.startswith("http://127.0.0.1:")
     assert params.fit_params_target == margins
     assert params.n_gpu_layers == -1
+
+
+@pytest.mark.parametrize("margins", [None, "auto"])
+def test_immediate_shutdown_after_startup(model_path, margins):
+    # A successful constructor must wait for the task loop to start; otherwise
+    # its initialization can overwrite an immediate terminate() request.
+    script = """
+import json
+import sys
+import xllamacpp as xlc
+
+params = xlc.CommonParams()
+params.model.path = sys.argv[1]
+params.port = 0
+params.n_ctx = 128
+params.n_parallel = 1
+params.n_gpu_layers = 0
+params.cpuparams.n_threads = 2
+params.cpuparams_batch.n_threads = 2
+params.warmup = False
+params.verbosity = 0
+# Readiness must work even with both diagnostic HTTP endpoints disabled.
+params.endpoint_metrics = False
+params.endpoint_slots = False
+for _ in range(20):
+    server = xlc.Server(params, fit_retry_margins_bytes=json.loads(sys.argv[2]))
+    del server
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            script,
+            str(Path(model_path) / "stories15M-q4_0.gguf"),
+            json.dumps(margins),
+        ],
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr

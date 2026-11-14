@@ -592,9 +592,23 @@ Server::Server(const common_params &       params,
         _ctx_server = std::make_shared<server_context>();
         std::promise<startup_result> out;
         auto                         fut = out.get_future();
-        _loop_thread =
-            std::thread(init, std::ref(_params), std::ref(*_ctx_server), std::ref(_listening_address), std::move(out));
-        auto result = fut.get();
+        startup_result               result;
+        {
+            // Queue a readiness probe before the loop can enter idle sleep.
+            // The reader must be destroyed before a failed context is freed.
+            auto        reader = _ctx_server->get_response_reader();
+            server_task task(SERVER_TASK_TYPE_METRICS);
+            task.id = reader.get_new_id();
+            reader.post_task(std::move(task), true);
+            _loop_thread = std::thread(init, std::ref(_params), std::ref(*_ctx_server), std::ref(_listening_address),
+                                       std::move(out));
+            result       = fut.get();
+            if (result.success) {
+                // Model readiness precedes start_loop's running flag. Wait for
+                // a processed task so immediate terminate() cannot be lost.
+                reader.next(not_stop);
+            }
+        }
         if (!result.success) {
             _loop_thread.join();
             // HTTP workers and routes have already been destroyed by init_impl.
