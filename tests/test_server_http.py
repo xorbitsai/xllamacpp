@@ -12,6 +12,18 @@ from contextlib import closing
 import xllamacpp as xlc
 
 
+def wait_for_sleep(server_url, timeout=10.0):
+    """Wait for the asynchronous idle check without waking the server."""
+    deadline = time.monotonic() + timeout
+    while (remaining := deadline - time.monotonic()) > 0:
+        response = requests.get(f"{server_url}/props", timeout=remaining)
+        assert response.status_code == 200
+        if response.json()["is_sleeping"]:
+            return
+        time.sleep(0.1)
+    pytest.fail(f"Server did not go to sleep within {timeout} seconds")
+
+
 class TestServerHTTP:
     """Test suite for xllamacpp HTTP server endpoints"""
 
@@ -338,8 +350,8 @@ class TestServerHTTP:
 
         Based on: thirdparty/llama.cpp/tools/server/tests/unit/test_sleep.py
         """
-        # Wait a bit so that server can go to sleep
-        time.sleep(2)
+        # Wait until the server's idle check has put it to sleep.
+        wait_for_sleep(server_url)
 
         # Make sure these endpoints are still responsive after sleep
         response = requests.get(f"{server_url}/health")
@@ -372,8 +384,7 @@ class TestServerHTTP:
         2. Python API methods (handle_completions) can wake up the server
         3. Server reports is_sleeping=False after Python API call
         """
-        # Wait a bit so that server can go to sleep
-        time.sleep(2)
+        wait_for_sleep(server_url)
 
         # Verify server is sleeping
         response = requests.get(f"{server_url}/props")
@@ -397,7 +408,7 @@ class TestServerHTTP:
         assert response.json()["is_sleeping"] == False
 
         # Wait for server to go to sleep again
-        time.sleep(2)
+        wait_for_sleep(server_url)
 
         # Verify server is sleeping again
         response = requests.get(f"{server_url}/props")
