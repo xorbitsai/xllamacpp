@@ -14,3 +14,16 @@ diff --git a/common/CMakeLists.txt b/common/CMakeLists.txt
          INSTALL_COMMAND ""
          BUILD_BYPRODUCTS ${LLGUIDANCE_PATH}/${LLGUIDANCE_LIB_NAME} ${LLGUIDANCE_PATH}/llguidance.h
          UPDATE_COMMAND ""
+@@ -183,7 +187,11 @@ if (LLAMA_LLGUIDANCE)
+     target_include_directories(${TARGET} PRIVATE ${LLGUIDANCE_PATH})
+     target_link_libraries(${TARGET} PRIVATE llguidance)
+     if (WIN32)
+-        target_link_libraries(${TARGET} PRIVATE ws2_32 userenv ntdll bcrypt)
++        # Rust's std implements Mutex/Condvar/RwLock on WaitOnAddress and
++        # WakeByAddress*, which are exported from Synchronization.lib. A Rust
++        # staticlib does not record that native dependency, so link it here
++        # instead of relying on the directives inside llguidance.lib.
++        target_link_libraries(${TARGET} PRIVATE ws2_32 userenv ntdll bcrypt synchronization)
+     endif()
+ endif()
+ 
