@@ -107,6 +107,11 @@ if PLATFORM == "Windows":
             "Shell32",
             "userenv",
             "ntdll",
+            # Rust's std implements Mutex/Condvar/RwLock on WaitOnAddress and
+            # WakeByAddress*, which are exported from Synchronization.lib. The
+            # Rust llguidance staticlib does not record that dependency, so the
+            # extension has to link it, exactly like llama-common does in CMake.
+            "Synchronization",
         ]
     )
     # Note: Windows builds use LLAMA_BUILD_BORINGSSL=ON which statically links OpenSSL
