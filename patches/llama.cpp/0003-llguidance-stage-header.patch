@@ -1,0 +1,16 @@
+diff --git a/common/CMakeLists.txt b/common/CMakeLists.txt
+--- a/common/CMakeLists.txt
++++ b/common/CMakeLists.txt
+@@ -169,7 +169,11 @@ if (LLAMA_LLGUIDANCE)
+         SOURCE_DIR ${LLGUIDANCE_SRC}
+         BUILD_IN_SOURCE TRUE
+         CONFIGURE_COMMAND ""
+-        BUILD_COMMAND cargo build --release --package llguidance
++        BUILD_COMMAND cargo build --release --package llguidance --target-dir ${LLGUIDANCE_SRC}/target
++        # Cargo 1.100 changed OUT_DIR; do not rely on build.rs to stage the header.
++        COMMAND ${CMAKE_COMMAND} -E copy_if_different
++            ${LLGUIDANCE_SRC}/parser/llguidance.h
++            ${LLGUIDANCE_PATH}/llguidance.h
+         INSTALL_COMMAND ""
+         BUILD_BYPRODUCTS ${LLGUIDANCE_PATH}/${LLGUIDANCE_LIB_NAME} ${LLGUIDANCE_PATH}/llguidance.h
+         UPDATE_COMMAND ""
