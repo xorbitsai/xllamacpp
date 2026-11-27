@@ -38,6 +38,7 @@ def test_get_device_info():
     info = xlc.get_device_info()
     assert len(info) > 0
     assert "CPU" in [i["name"] for i in info]
+    assert all(isinstance(i["caps"]["fast_async_host_input"], bool) for i in info)
     print(info)
 
 
@@ -140,7 +141,7 @@ del server
 
 
 @pytest.mark.parametrize("margins", [None, (256 << 20, 512 << 20)])
-def test_model_download_precedes_http_init(model_path, tmp_path, margins):
+def test_http_startup_precedes_model_download(model_path, tmp_path, margins):
     import socket
     import subprocess
 
@@ -172,7 +173,8 @@ def test_model_download_precedes_http_init(model_path, tmp_path, margins):
     params.cpuparams_batch.n_threads = 2
     params.warmup = False
     try:
-        # A bind failure must happen after the model has been downloaded.
+        # A bind failure must avoid downloading a model. A retry downloads it
+        # after HTTP startup, allowing clients to observe download progress.
         with socket.socket() as occupied:
             occupied.bind(("127.0.0.1", 0))
             occupied.listen()
@@ -180,6 +182,10 @@ def test_model_download_precedes_http_init(model_path, tmp_path, margins):
             with pytest.raises(RuntimeError, match="HTTP startup") as error:
                 xlc.Server(params, fit_retry_margins_bytes=margins)
             assert "after 1 attempt(s)" in str(error.value)
+        assert not downloaded.exists()
+        params.port = 0
+        server = xlc.Server(params, fit_retry_margins_bytes=margins)
+        del server
         assert downloaded.stat().st_size == os.path.getsize(
             os.path.join(model_path, "stories15M-q4_0.gguf")
         )
@@ -192,6 +198,114 @@ def test_model_download_precedes_http_init(model_path, tmp_path, margins):
     params.port = 0
     server = xlc.Server(params)
     assert server.listening_address.startswith("http://127.0.0.1:")
+
+
+def test_model_download_events(model_path, tmp_path):
+    import socket
+    import subprocess
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    import requests
+
+    model = os.path.join(model_path, "stories15M-q4_0.gguf")
+    started = threading.Event()
+    release = threading.Event()
+
+    class DownloadHandler(BaseHTTPRequestHandler):
+        def do_HEAD(self):
+            self.send_response(200)
+            self.send_header("Content-Length", str(os.path.getsize(model)))
+            self.end_headers()
+
+        def do_GET(self):
+            self.do_HEAD()
+            with open(model, "rb") as source:
+                self.wfile.write(source.read(65536))
+                self.wfile.flush()
+                started.set()
+                if release.wait(15):
+                    import shutil
+
+                    shutil.copyfileobj(source, self.wfile)
+
+        def log_message(self, *args):
+            pass
+
+    download = ThreadingHTTPServer(("127.0.0.1", 0), DownloadHandler)
+    worker = threading.Thread(target=download.serve_forever, daemon=True)
+    worker.start()
+    with socket.socket() as available:
+        available.bind(("127.0.0.1", 0))
+        port = available.getsockname()[1]
+    script = """
+import sys
+import xllamacpp as xlc
+params = xlc.CommonParams()
+params.model.path, params.model.url = sys.argv[1:3]
+params.port = int(sys.argv[3])
+params.n_ctx = 128
+params.n_gpu_layers = 0
+params.warmup = False
+params.verbosity = 0
+server = xlc.Server(params)
+sys.stdin.readline()
+del server
+"""
+    # The constructor holds the GIL; downloading in a child lets this test
+    # observe HTTP health and SSE while startup is still in progress.
+    with (tmp_path / "server.log").open("w+") as log:
+        child = subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                script,
+                str(tmp_path / "model.gguf"),
+                f"http://127.0.0.1:{download.server_port}/model.gguf",
+                str(port),
+            ],
+            env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+            stdin=subprocess.PIPE,
+            stdout=log,
+            stderr=log,
+            text=True,
+        )
+        try:
+            if not started.wait(15):
+                log.seek(0)
+                pytest.fail("Download did not start: " + log.read())
+            url = f"http://127.0.0.1:{port}"
+            assert requests.get(f"{url}/health", timeout=5).status_code == 503
+            with requests.get(f"{url}/models/sse", stream=True, timeout=15) as response:
+                assert response.status_code == 200
+                events = (
+                    json.loads(line[6:])
+                    for line in response.iter_lines(chunk_size=1)
+                    if line.startswith(b"data: ")
+                )
+                first = next(events)
+                assert first["event"] == "download_progress"
+                assert next(iter(first["data"]["progress"].values()))[
+                    "total"
+                ] == os.path.getsize(model)
+                release.set()
+                received = []
+                for event in events:
+                    received.append(event["event"])
+                    if event.get("data", {}).get("status") == "loaded":
+                        break
+                assert "download_finished" in received
+                assert requests.get(f"{url}/health", timeout=5).status_code == 200
+            child.communicate("\n", timeout=10)
+            log.seek(0)
+            assert child.returncode == 0, log.read()
+        finally:
+            release.set()
+            if child.poll() is None:
+                child.kill()
+                child.communicate(timeout=5)
+            download.shutdown()
+            download.server_close()
+            worker.join(timeout=5)
 
 
 @pytest.mark.parametrize(
@@ -277,6 +391,36 @@ def test_tools_allow_authorized_network_configuration(model_path, authorization)
     response = requests.get(f"{url}/cors-proxy", headers=headers, timeout=5)
     assert response.status_code == 500  # enabled proxy rejects the missing URL
     assert "invalid URL" in response.json()["error"]["message"]
+
+
+@pytest.mark.parametrize("allow_private", [False, True])
+@pytest.mark.parametrize("method", ["GET", "POST"])
+def test_mcp_proxy_private_addresses(model_path, allow_private, method):
+    import requests
+
+    params = xlc.CommonParams()
+    params.model.path = os.path.join(model_path, "stories15M-q4_0.gguf")
+    params.port = 0
+    params.n_ctx = 128
+    params.n_gpu_layers = 0
+    params.warmup = False
+    params.ui_mcp_proxy = True
+    params.ui_mcp_proxy_allow_private_urls = allow_private
+    server = xlc.Server(params)
+    # Forward to this server to exercise the proxy without external network access.
+    response = requests.request(
+        method,
+        f"{server.listening_address}/cors-proxy",
+        params={"url": f"{server.listening_address}/health"},
+        timeout=5,
+    )
+    if allow_private:
+        assert response.status_code == (200 if method == "GET" else 404)
+        if method == "GET":
+            assert response.json()["status"] == "ok"
+    else:
+        assert response.status_code == 400
+        assert "not a public address" in response.json()["error"]["message"]
 
 
 def test_llama_server(model_path):

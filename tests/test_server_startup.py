@@ -186,3 +186,39 @@ for _ in range(20):
         timeout=60,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_shutdown_with_model_events_connected(model_path):
+    script = """
+import json
+import sys
+import requests
+import xllamacpp as xlc
+
+params = xlc.CommonParams()
+params.model.path = sys.argv[1]
+params.port = 0
+params.n_ctx = 128
+params.n_gpu_layers = 0
+params.warmup = False
+params.verbosity = 0
+for _ in range(3):
+    server = xlc.Server(params)
+    with requests.get(server.listening_address + '/models/sse', stream=True, timeout=5) as response:
+        assert response.status_code == 200
+        lines = response.iter_lines(chunk_size=1)
+        event = json.loads(next(lines)[6:])
+        assert event['data']['status'] == 'loaded'
+        assert 'info' in event['data']
+        assert 'memory' in event['data']
+        del server
+        assert list(lines) == [b'']
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(Path(model_path) / "stories15M-q4_0.gguf")],
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)},
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr

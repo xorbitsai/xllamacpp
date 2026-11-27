@@ -333,10 +333,35 @@ class build_ext(_build_ext):
 
         # Archives are staged by build.py, so check optional ones only now.
         for extension in self.distribution.ext_modules:
+            # Build settings can change httplib class layouts. Recompile when
+            # CMake's configuration changes, even if the sources did not.
+            extension.depends = [*(extension.depends or []), cache]
             # subproc.h changes common_subproc's layout behind this macro.
             # Match the native library when compiling server-connect.cpp.
             if entries.get("LLAMA_SUBPROCESS", "").upper() in cmake_true:
                 extension.define_macros.append(("LLAMA_SUBPROCESS", "1"))
+
+            # ClientImpl has SSL-only members, including for plain HTTP clients.
+            # Match cpp-httplib's public definition and its SSL provider headers.
+            ssl_include = None
+            if entries.get("LLAMA_BUILD_BORINGSSL", "").upper() in cmake_true:
+                ssl_include = os.path.join(entries["BoringSSL_SOURCE_DIR"], "include")
+            elif entries.get("LLAMA_BUILD_LIBRESSL", "").upper() in cmake_true:
+                ssl_include = os.path.join(entries["LibreSSL_SOURCE_DIR"], "include")
+            elif (
+                entries.get("LLAMA_OPENSSL", "").upper() in cmake_true
+                and entries.get("OPENSSL_VERSION_SUPPORTED", "").upper() in cmake_true
+            ):
+                ssl_include = entries["OPENSSL_INCLUDE_DIR"]
+            if ssl_include:
+                extension.define_macros.append(("CPPHTTPLIB_OPENSSL_SUPPORT", "1"))
+                extension.include_dirs.insert(0, ssl_include)
+                if PLATFORM == "Darwin":
+                    extension.extra_link_args.extend(
+                        ["-framework", "CoreFoundation", "-framework", "Security"]
+                    )
+                elif PLATFORM == "Windows":
+                    extension.libraries.append("crypt32")
 
             optional = {"libllguidance.a", "libssl.a", "libcrypto.a"}
             absent = [
