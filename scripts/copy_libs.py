@@ -37,8 +37,13 @@ def copy_library_files():
 
     staged_count = 0
     skipped_count = 0
+    legacy_ui_dir = os.path.join(src_dir, "tools", "ui") + os.sep
 
     for lib_file in lib_files:
+        # The current build produces the UI archive under ui/apps/chat.
+        # Ignore leftover archives from builds that used tools/ui.
+        if lib_file.startswith(legacy_ui_dir):
+            continue
         filename = os.path.basename(lib_file)
         dst_file = os.path.join(dst_dir, filename)
 

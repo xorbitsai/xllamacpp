@@ -30,6 +30,7 @@ VERSION = versioneer.get_version()
 PLATFORM = platform.system()
 
 LLAMACPP_LIBS_DIR = os.path.join(CWD, "src/llama.cpp/lib")
+LLAMACPP_UI_BUILD_DIR = os.path.join(CWD, "thirdparty/llama.cpp/build/ui/apps/chat")
 DEFAULT_MACOSX_DEPLOYMENT_TARGET = "13.3"
 MACOSX_DEPLOYMENT_TARGET = (
     os.environ.get("MACOSX_DEPLOYMENT_TARGET") or DEFAULT_MACOSX_DEPLOYMENT_TARGET
@@ -68,14 +69,8 @@ INCLUDE_DIRS = [
     os.path.join(
         CWD, "thirdparty/llama.cpp"
     ),  # For including 'common/base64.hpp' in server/utils.hpp
-    os.path.join(
-        CWD, "thirdparty/llama.cpp/build/tools/server"
-    ),  # For including index.html.gz.hpp and loading.html.hpp
-    os.path.join(
-        CWD, "thirdparty/llama.cpp/build/tools/ui"
-    ),  # For including generated ui.h
+    LLAMACPP_UI_BUILD_DIR,  # For including generated ui.h
     os.path.join(CWD, "thirdparty/llama.cpp/tools/server"),
-    os.path.join(CWD, "thirdparty/llama.cpp/tools/ui"),
     os.path.join(CWD, "thirdparty/llama.cpp/tools/mtmd"),
     os.path.join(CWD, "thirdparty/llama.cpp/vendor"),
 ]
@@ -335,7 +330,11 @@ class build_ext(_build_ext):
         for extension in self.distribution.ext_modules:
             # Build settings can change httplib class layouts. Recompile when
             # CMake's configuration changes, even if the sources did not.
-            extension.depends = [*(extension.depends or []), cache]
+            extension.depends = [
+                *(extension.depends or []),
+                cache,
+                os.path.join(LLAMACPP_UI_BUILD_DIR, "ui.h"),
+            ]
             # subproc.h changes common_subproc's layout behind this macro.
             # Match the native library when compiling server-connect.cpp.
             if entries.get("LLAMA_SUBPROCESS", "").upper() in cmake_true:
