@@ -138,6 +138,8 @@ cdef extern from "ggml-backend.h":
         bint events
         # mmap is supported for loading
         bint mmap_support
+        # fast ordered asynchronous writes from host memory
+        bint fast_async_host_input
 
     # all the device properties
     ctypedef struct ggml_backend_dev_props:
@@ -421,6 +423,8 @@ cdef extern from "common.h":
         COMMON_SPECULATIVE_TYPE_DRAFT_MTP     # Multi-token prediction
         COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH  # DFlash speculative decoding
         COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK  # DSpark speculative decoding
+        COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH2  # DFlash2 speculative decoding
+        COMMON_SPECULATIVE_TYPE_DRAFT_LILICORR  # LiliCorr speculative decoding
         COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE  # simple self-speculative decoding based on n-grams
         COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K   # self-speculative decoding with n-gram keys only
         COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V # self-speculative decoding with n-gram keys and 4 m-gram values
@@ -736,7 +740,9 @@ cdef extern from "common.h":
         # UI configs
         bint ui
 
+        bint ui_agent
         bint ui_mcp_proxy
+        bint ui_mcp_proxy_allow_private_urls
         std_string ui_config_json
 
         bint endpoint_slots
@@ -831,6 +837,7 @@ cdef extern from "common.h":
         std_string tts_lang
         std_string tts_voice
         std_string tts_speaker_file
+        std_string tts_speaker_text
 
         bint is_gen_docs
 

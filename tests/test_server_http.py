@@ -8,8 +8,52 @@ import requests
 import threading
 from typing import Dict, Any
 from contextlib import closing
+from pathlib import Path
+import shutil
+import subprocess
 
 import xllamacpp as xlc
+
+
+@pytest.mark.skipif(shutil.which("openssl") is None, reason="requires openssl")
+def test_https_server_uses_native_ssl_configuration(model_path, tmp_path):
+    certificate, key = tmp_path / "certificate.pem", tmp_path / "key.pem"
+    subprocess.run(
+        [
+            "openssl",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-nodes",
+            "-keyout",
+            str(key),
+            "-out",
+            str(certificate),
+            "-days",
+            "1",
+            "-subj",
+            "/CN=localhost",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    params = xlc.CommonParams()
+    params.model.path = str(Path(model_path) / "stories15M-q4_0.gguf")
+    params.port = 0
+    params.n_ctx = 128
+    params.n_gpu_layers = 0
+    params.warmup = False
+    params.ssl_file_cert = str(certificate)
+    params.ssl_file_key = str(key)
+    server = xlc.Server(params)
+    assert server.listening_address.startswith("https://")
+    with pytest.warns(requests.packages.urllib3.exceptions.InsecureRequestWarning):
+        response = requests.get(
+            f"{server.listening_address}/health", verify=False, timeout=5
+        )
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
 
 
 def wait_for_sleep(server_url, timeout=10.0):
@@ -101,6 +145,44 @@ class TestServerHTTP:
         data = response.json()
         assert "data" in data
 
+    def test_model_events_replay_sleep_and_wake(self, server_url):
+        # Wake first so the replay includes the latest loaded status.
+        response = requests.post(
+            f"{server_url}/completion",
+            json={"prompt": "Hello", "n_predict": 1},
+            timeout=10,
+        )
+        assert response.status_code == 200
+        with requests.get(
+            f"{server_url}/models/sse", stream=True, timeout=15
+        ) as response:
+            assert response.status_code == 200
+            assert response.headers["Content-Type"].startswith("text/event-stream")
+            events = (
+                json.loads(line[6:])
+                for line in response.iter_lines(chunk_size=1)
+                if line.startswith(b"data: ")
+            )
+            replay = next(events)
+            assert replay["event"] == "status_change"
+            assert replay["data"]["status"] == "loaded"
+            assert replay["model"]
+
+            wait_for_sleep(server_url)
+            assert next(events)["data"]["status"] == "sleeping"
+            response = requests.post(
+                f"{server_url}/completion",
+                json={"prompt": "Hello", "n_predict": 1},
+                timeout=10,
+            )
+            assert response.status_code == 200
+            statuses = []
+            for event in events:
+                statuses.append(event["data"]["status"])
+                if statuses[-1] == "loaded":
+                    break
+            assert statuses[-1] == "loaded"
+
     def test_props_endpoints(self, server_url):
         """Test server properties endpoints"""
         # Test GET /props
@@ -128,14 +210,18 @@ class TestServerHTTP:
         assert response.json()["error"]["type"] == "not_supported_error"
 
     @pytest.mark.parametrize("path", ["/v1/audio/speech", "/audio/speech"])
-    def test_speech_rejects_non_audio_model(self, server_url, path):
-        response = requests.post(f"{server_url}{path}", json={"input": "Hello"})
+    @pytest.mark.parametrize("options", [{}, {"speed": 2.0}])
+    def test_speech_rejects_non_audio_model(self, server_url, path, options):
+        response = requests.post(
+            f"{server_url}{path}", json={"input": "Hello", **options}
+        )
         assert response.status_code == 501
         assert response.json()["error"]["type"] == "not_supported_error"
 
     @pytest.mark.parametrize("path", ["/v1/audio/speech", "/audio/speech"])
     @pytest.mark.parametrize(
-        "options", [{"response_format": "mp3"}, {"stream_format": "sse"}, {"speed": 2.0}]
+        "options",
+        [{"response_format": "mp3"}, {"stream_format": "sse"}],
     )
     def test_speech_validates_options(self, server_url, path, options):
         response = requests.post(
@@ -245,7 +331,9 @@ class TestServerHTTP:
         assert response.status_code == 200
         assert response.json() == []
 
-        response = requests.get(f"{server_url}/v1/stream", params={"conv_id": "unknown"})
+        response = requests.get(
+            f"{server_url}/v1/stream", params={"conv_id": "unknown"}
+        )
         assert response.status_code == 404
 
         response = requests.delete(

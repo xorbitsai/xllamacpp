@@ -2762,6 +2762,15 @@ cdef class CommonParams:
         self.p.ui = value
 
     @property
+    def ui_agent(self) -> bool:
+        """Enable agent mode in Llama Chat without server tools or the MCP proxy."""
+        return self.p.ui_agent
+
+    @ui_agent.setter
+    def ui_agent(self, value: bool):
+        self.p.ui_agent = value
+
+    @property
     def ui_mcp_proxy(self) -> bool:
         """UI MCP proxy"""
         return self.p.ui_mcp_proxy
@@ -2769,6 +2778,15 @@ cdef class CommonParams:
     @ui_mcp_proxy.setter
     def ui_mcp_proxy(self, value: bool):
         self.p.ui_mcp_proxy = value
+
+    @property
+    def ui_mcp_proxy_allow_private_urls(self) -> bool:
+        """Allow the UI MCP proxy to reach local or private addresses."""
+        return self.p.ui_mcp_proxy_allow_private_urls
+
+    @ui_mcp_proxy_allow_private_urls.setter
+    def ui_mcp_proxy_allow_private_urls(self, value: bool):
+        self.p.ui_mcp_proxy_allow_private_urls = value
 
     @property
     def ui_config_json(self) -> str:
@@ -3255,6 +3273,15 @@ cdef class CommonParams:
     @tts_speaker_file.setter
     def tts_speaker_file(self, value: str):
         self.p.tts_speaker_file = value
+
+    @property
+    def tts_speaker_text(self) -> str:
+        """Transcript of the reference speaker audio for text-to-speech."""
+        return self.p.tts_speaker_text
+
+    @tts_speaker_text.setter
+    def tts_speaker_text(self, value: str):
+        self.p.tts_speaker_text = value
 
     @property
     def is_gen_docs(self) -> bool:

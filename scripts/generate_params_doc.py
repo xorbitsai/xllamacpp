@@ -573,7 +573,7 @@ COMMON_PARAMS_GROUPS = [
         "api_keys", "ssl_file_key", "ssl_file_cert",
         "default_template_kwargs", "preserve_reasoning_specified",
         "cors_origins", "cors_origins_explicit", "cors_methods", "cors_headers", "cors_credentials",
-        "ui", "ui_mcp_proxy", "ui_config_json",
+        "ui", "ui_agent", "ui_mcp_proxy", "ui_mcp_proxy_allow_private_urls", "ui_config_json",
         "server_tools", "server_tools_runtime", "server_tools_allow_unauth", "mcp_servers_config", "mcp_servers_json",
         "endpoint_slots", "endpoint_props", "endpoint_metrics",
         "models_dir", "models_preset", "models_preset_hf", "models_max", "models_memory_margin", "models_autoload",
@@ -586,7 +586,7 @@ COMMON_PARAMS_GROUPS = [
         "tensor_buft_overrides",
     ]),
     ("Text-to-Speech", [
-        "tts_lang", "tts_voice", "tts_speaker_file",
+        "tts_lang", "tts_voice", "tts_speaker_file", "tts_speaker_text",
     ]),
     ("Tokenization", [
         "tokenize_ids", "tokenize_stdin", "tokenize_no_bos", "tokenize_show_count",

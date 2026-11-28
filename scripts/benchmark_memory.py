@@ -58,9 +58,7 @@ def build_harness(binary, log):
         llama / "vendor",
         llama / "tools/server",
         llama / "tools/mtmd",
-        llama / "tools/ui",
-        llama / "build/tools/server",
-        llama / "build/tools/ui",
+        llama / "build/ui/apps/chat",
     ]
     command += ["-I" + str(path) for path in includes]
     command += [

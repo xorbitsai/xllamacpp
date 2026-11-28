@@ -105,6 +105,8 @@ def test_enum_values():
     assert xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3 == 2
     assert xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_MTP == 3
     assert xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK == 5
+    assert xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH2 == 6
+    assert xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_LILICORR == 7
 
 
 def test_common_params():
@@ -398,6 +400,12 @@ def test_common_params():
     assert params.ui is True
     params.ui = False
     assert params.ui is False
+    assert params.ui_agent is False
+    params.ui_agent = True
+    assert params.ui_agent is True
+    assert params.ui_mcp_proxy_allow_private_urls is False
+    params.ui_mcp_proxy_allow_private_urls = True
+    assert params.ui_mcp_proxy_allow_private_urls is True
     assert params.ui_mcp_proxy is False
     params.ui_mcp_proxy = True
     assert params.ui_mcp_proxy is True
@@ -511,6 +519,9 @@ def test_common_params():
     assert params.tts_voice == "alloy"
     params.tts_lang = "en"
     assert params.tts_lang == "en"
+    assert params.tts_speaker_text == ""
+    params.tts_speaker_text = "Reference transcript"
+    assert params.tts_speaker_text == "Reference transcript"
     assert params.tts_speaker_file == ""
     params.tts_speaker_file = "/tmp/speaker.wav"
     assert params.tts_speaker_file == "/tmp/speaker.wav"
@@ -565,10 +576,9 @@ def test_common_params():
     assert params.speculative.draft.probabilistic is True
 
     # Test new speculative types field
-    assert (
-        params.speculative.types
-        == [xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_NONE]
-    )
+    assert params.speculative.types == [
+        xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_NONE
+    ]
     assert params.speculative.synth_len == approx(-1.0)
     params.speculative.synth_len = 3.5
     assert params.speculative.synth_len == approx(3.5)
@@ -579,13 +589,10 @@ def test_common_params():
         xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE,
         xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_MTP,
     ]
-    assert (
-        params.speculative.types
-        == [
-            xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE,
-            xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_MTP,
-        ]
-    )
+    assert params.speculative.types == [
+        xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE,
+        xlc.common_speculative_type.COMMON_SPECULATIVE_TYPE_DRAFT_MTP,
+    ]
 
     # Test new ngram-based speculative decoding fields (ngram_simple)
     assert params.speculative.ngram_simple.size_n == 12

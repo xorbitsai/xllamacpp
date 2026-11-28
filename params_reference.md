@@ -327,8 +327,10 @@ The central configuration object. Controls model loading, inference, sampling, s
 | `timeout_read` | int | `3600` | R/W | http read timeout in seconds |
 | `timeout_write` | int | `timeout_read` | R/W | http write timeout in seconds |
 | `ui` | bool | `true` | R/W | enable UI |
+| `ui_agent` | bool | `false` | R/W | Enable agent mode in Llama Chat without server tools or the MCP proxy. |
 | `ui_config_json` | str | `` | R/W | UI config json |
 | `ui_mcp_proxy` | bool | `false` | R/W | UI MCP proxy |
+| `ui_mcp_proxy_allow_private_urls` | bool | `false` | R/W | allow the MCP CORS proxy to reach local or private addresses |
 | `use_jinja` | bool | `true` | R/W |  |
 
 ### Sub-params
@@ -351,6 +353,7 @@ The central configuration object. Controls model loading, inference, sampling, s
 |:---------|:-----|:--------|:---:|:------------|
 | `tts_lang` | str | `""` | R/W |  |
 | `tts_speaker_file` | str | `""` | R/W |  |
+| `tts_speaker_text` | str | `""` | R/W | Transcript of the reference speaker audio for text-to-speech. |
 | `tts_voice` | str | `""` | R/W | Default voice name for text-to-speech generation. |
 
 ### Tokenization

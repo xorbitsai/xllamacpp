@@ -18,11 +18,13 @@
 #include "log.h"
 
 #include <algorithm>
+#include <atomic>
 #include <clocale>
 #include <exception>
 #include <future>
 #include <mutex>
 #include <thread>  // for std::thread::hardware_concurrency
+#include <unordered_map>
 
 // wrapper function that handles exceptions and logs errors
 // this is to make sure handler_t never throws exceptions; instead, it returns an error response
@@ -236,11 +238,13 @@ static bool server_setup_features(server_http_context & ctx_http,
         warn_names.push_back("peer-to-peer tunnel (llama-connect, experimental)");
     }
 
-    // CORS proxy (EXPERIMENTAL, only used by the Web UI for MCP)
+    // CORS proxy (EXPERIMENTAL, only used by Llama Chat for MCP)
     if (params.ui_mcp_proxy) {
-        ctx_http.get("/cors-proxy", ex_wrapper(proxy_handler_get));
-        ctx_http.post("/cors-proxy", ex_wrapper(proxy_handler_post));
-        warn_names.push_back("MCP proxy (experimental)");
+        ctx_http.get("/cors-proxy", ex_wrapper(proxy_make_handler("GET", params.ui_mcp_proxy_allow_private_urls)));
+        ctx_http.post("/cors-proxy", ex_wrapper(proxy_make_handler("POST", params.ui_mcp_proxy_allow_private_urls)));
+        warn_names.push_back(params.ui_mcp_proxy_allow_private_urls ?
+                                 "MCP proxy (experimental, local and private addresses allowed)" :
+                                 "MCP proxy (experimental)");
     } else {
         ctx_http.get("/cors-proxy", ex_wrapper(res_403));
         ctx_http.post("/cors-proxy", ex_wrapper(res_403));
@@ -306,6 +310,39 @@ static bool server_on_listening(server_http_context & ctx_http,
     return true;
 }
 
+// Throttled download progress for single-model startup.
+struct server_download_progress : public common_download_callback {
+    // called under the lock, the files are downloaded in parallel threads
+    std::function<void(const common_download_progress &)> on_progress;
+    std::function<bool()>                                 should_stop;
+    // throttle each file on its own, a shared timer lets a small, fast file (e.g. a draft) starve the updates of the others
+    std::mutex                                            mutex;
+    std::unordered_map<std::string, int64_t>              last_progress_time;
+
+    void notify(const common_download_progress & p) {
+        std::lock_guard<std::mutex> lk(mutex);
+        on_progress(p);
+    }
+
+    void on_start(const common_download_progress & p) override { notify(p); }
+
+    void on_update(const common_download_progress & p) override {
+        int64_t                     now = ggml_time_ms();
+        // the first update of a file always passes, it carries the file's total size
+        std::lock_guard<std::mutex> lk(mutex);
+        auto                        it = last_progress_time.find(p.url);
+        if (it != last_progress_time.end() && now - it->second < 100) {
+            return;
+        }
+        last_progress_time[p.url] = now;
+        on_progress(p);
+    }
+
+    void on_done(const common_download_progress & p, bool) override { notify(p); }
+
+    bool is_cancelled() const override { return should_stop ? should_stop() : false; }
+};
+
 // Native fitting temporarily replaces the process-wide logger. Serialize startup
 // only, and never leave a callback pointing at attempt-local storage.
 static std::mutex                               startup_mutex;
@@ -343,8 +380,16 @@ static void init_impl(common_params &                           params,
         return;
     }
 
-    result.stage = "model download";
-    common_models_handler_apply(models_handler, params);
+    const std::string model_name = server_get_model_name(params);
+    server_models_sse sse(/* replay_last */ true);
+    std::atomic<bool> sse_stopping = false;
+    auto              notify       = [&](const std::string & event, const json & data = nullptr) {
+        sse.notify(event, model_name, data);
+    };
+    auto notify_status = [&](server_model_status status, json data = json::object()) {
+        data["status"] = server_model_status_to_string(status);
+        notify("status_change", data);
+    };
 
     // These objects outlive the HTTP handlers that capture them. Their destructors
     // stop/join HTTP workers and shut down MCP, including on exceptional exits.
@@ -352,6 +397,31 @@ static void init_impl(common_params &                           params,
     server_routes       routes(params, ctx_server);
     server_tools        tools;
     server_http_context ctx_http;
+
+    // Stop streaming readers before joining HTTP workers. Clear the state callback
+    // before its captured SSE state leaves scope, including on failed startup.
+    struct instance_cleanup {
+        server_http_context & http;
+        server_context &      server;
+        server_mcp &          mcp;
+        std::atomic<bool> &   stopping;
+        bool                  active = true;
+
+        void run() {
+            if (!active) {
+                return;
+            }
+            active = false;
+            server_stream_session_manager_stop();
+            stopping.store(true);
+            http.stop();
+            http.join();
+            server.set_state_callback({});
+            mcp.shutdown();
+        }
+
+        ~instance_cleanup() { run(); }
+    } cleanup{ ctx_http, ctx_server, mcp_mgr, sse_stopping };
 
     result.stage = "HTTP initialization";
     if (!ctx_http.init(params)) {
@@ -362,6 +432,9 @@ static void init_impl(common_params &                           params,
     server_register_routes(ctx_http, routes);
     server_register_stream_routes(ctx_http, server_stream_make_get_handler(), server_stream_make_lookup_handler(),
                                   server_stream_make_delete_handler());
+    ctx_http.get(
+        "/models/sse",
+        ex_wrapper(sse.make_handler([&sse_stopping]() { return sse_stopping.load(std::memory_order_relaxed); })));
 
     result.stage = "server features";
     if (!server_setup_features(ctx_http, params, mcp_mgr, tools, SERVER_ROLE_INSTANCE)) {
@@ -375,6 +448,54 @@ static void init_impl(common_params &                           params,
         return;
     }
 
+    result.stage                      = "model download";
+    json                     progress = json::object();
+    server_download_progress dl;
+    dl.on_progress = [&](const common_download_progress & p) {
+        if (p.total == 0) {
+            return;
+        }
+        progress[p.url] = {
+            { "done",  p.downloaded },
+            { "total", p.total      }
+        };
+        notify("download_progress", {
+                                        { "progress", progress }
+        });
+    };
+    try {
+        common_models_handler_apply(models_handler, params, &dl);
+        if (!progress.empty()) {
+            notify("download_finished");
+        }
+    } catch (const std::exception & e) {
+        SRV_ERR("failed to download model: %s\n", e.what());
+        notify("download_failed");
+        notify_status(SERVER_MODEL_STATUS_UNLOADED, {
+                                                        { "exit_code", 1 }
+        });
+        throw;
+    }
+
+    ctx_server.set_state_callback([&](server_state state, json payload) {
+        switch (state) {
+            case SERVER_STATE_LOADING:
+                notify_status(SERVER_MODEL_STATUS_LOADING, {
+                                                               { "progress", payload }
+                });
+                break;
+            case SERVER_STATE_READY:
+                notify_status(SERVER_MODEL_STATUS_LOADED);
+                break;
+            case SERVER_STATE_SLEEPING:
+                notify_status(SERVER_MODEL_STATUS_SLEEPING);
+                break;
+            default:
+                break;
+        }
+    });
+    notify_status(SERVER_MODEL_STATUS_LOADING);
+
     // Ignore earlier diagnostics when deciding whether model loading ran out of
     // device memory. HTTP/tools/download failures must never trigger a fit retry.
     result.stage = "model loading";
@@ -382,6 +503,9 @@ static void init_impl(common_params &                           params,
     result.device_oom = false;
     result.host_oom   = false;
     if (!ctx_server.load_model(params)) {
+        notify_status(SERVER_MODEL_STATUS_UNLOADED, {
+                                                        { "exit_code", 1 }
+        });
         return;
     }
 
@@ -392,6 +516,14 @@ static void init_impl(common_params &                           params,
     routes.update_meta(ctx_server);
     ctx_http.is_ready.store(true);
     SRV_INF("%s", "model loaded\n");
+
+    json data = {
+        { "info", routes.get_model_info() }
+    };
+    if (const auto * ll_ctx = ctx_server.get_llama_context()) {
+        data["memory"] = server_model_memory(llama_n_ctx(ll_ctx), common_memory_breakdown_rows(ll_ctx)).to_json();
+    }
+    notify_status(SERVER_MODEL_STATUS_LOADED, data);
 
     result.stage = "server connection";
     server_connect connect_proc;
@@ -406,9 +538,7 @@ static void init_impl(common_params &                           params,
     out.set_value(result);
     ctx_server.start_loop();
 
-    ctx_http.stop();
-    ctx_http.join();
-    mcp_mgr.shutdown();
+    cleanup.run();
 
     // Rerank contexts cannot use common_memory_breakdown_print.
     auto * ll_ctx = ctx_server.get_llama_context();
